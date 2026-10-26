@@ -79,13 +79,18 @@ function generate(cols: number, rows: number, C: number, rng: Rng, loops: number
       if (n.dist < 0) { n.dist = c.dist + 1; q.push(n); }
     }
   }
-  for (const c of cells) {
-    if (c.links.length === 1) c.front = ((c.links[0] + 2) % 4) as Side;
-    else c.front = ([0, 1, 3, 2] as Side[]).find(s => !c.links.includes(s)) ?? 0;
-  }
+  // A room's furniture faces its "front" wall: opposite the door where possible, but never the
+  // camera-side (south) wall, which is cut away and would put screens and boards in the player's face.
+  const pickFront = (c: Cell): Side => {
+    const solid = ([0, 1, 3, 2] as Side[]).filter(s => !c.links.includes(s));
+    const opp = c.links.length === 1 ? ((c.links[0] + 2) % 4) as Side : null;
+    if (opp !== null && opp !== 2) return opp;
+    const sides = solid.filter(s => s !== 2);
+    return sides.length ? rng.pick(sides) : (solid[0] ?? 0);
+  };
+  for (const c of cells) c.front = pickFront(c);
   const goal = cells.filter(c => c !== entry).sort((a, b) => (b.room ? 1 : 0) - (a.room ? 1 : 0) || b.dist - a.dist)[0];
   goal.room = true;
-  if (goal.links.length === 1) goal.front = ((goal.links[0] + 2) % 4) as Side;
   return { cols, rows, C, cells, entry, goal };
 }
 
@@ -382,6 +387,8 @@ function buildInterior(b: MapBuilder, spec: InteriorSpec, T: Theme, L: Layout, r
       continue;
     }
     if (c.room) T.room(placer(c, FRONT_YAW[c.front]), rng, c, C);
+    // sealed caches reward poking into side rooms; they don't come back until the next visit
+    if (c.room && rng.chance(0.4)) b.spawner({ enemies: [{ id: 'treasure' }], x: c.x, z: c.z, w: C - 3, d: C - 3, count: 1, respawn: 1e6, level: spec.levelRange });
     else T.hall(placer(c, 0), rng, ([0, 1, 2, 3] as Side[]).filter(s => !c.links.includes(s)), C);
     if (rng.chance(spec.density ?? (c.room ? 0.6 : 0.4))) {
       b.spawner({ enemies: spec.enemies, x: c.x, z: c.z, w: C - 4, d: C - 4, count: rng.int(1, 2), respawn: 35, level: spec.levelRange });

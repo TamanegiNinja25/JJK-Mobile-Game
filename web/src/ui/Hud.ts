@@ -20,6 +20,8 @@ export class Hud {
   private tracker!: HTMLDivElement; private trackerName!: HTMLDivElement; private trackerText!: HTMLDivElement;
   private mm!: HTMLCanvasElement; private mmCtx!: CanvasRenderingContext2D;
   private mmBg: HTMLCanvasElement | null = null;
+  /** interiors start unexplored; the player's path clears this mask */
+  private mmFog: HTMLCanvasElement | null = null;
   private bossWrap!: HTMLDivElement; private bossFill!: HTMLDivElement; private bossLag!: HTMLDivElement; private bossName!: HTMLDivElement;
   private boss: Enemy | null = null;
   private skillBtns: { el: HTMLDivElement; cd: HTMLDivElement; icon: HTMLDivElement; id: string | null; cost: HTMLDivElement }[] = [];
@@ -235,6 +237,15 @@ export class Hud {
     x.fillStyle = 'rgba(60,140,220,0.9)';
     for (const wt of w.map.water) x.fillRect((wt.x - wt.w / 2 + W / 2) * S, (wt.z - wt.d / 2 + D / 2) * S, wt.w * S, wt.d * S);
     this.mmBg = c;
+    this.mmFog = null;
+    if (w.mapDef.interior) {
+      const f = document.createElement('canvas');
+      f.width = c.width; f.height = c.height;
+      const fx = f.getContext('2d')!;
+      fx.fillStyle = '#0a0812';
+      fx.fillRect(0, 0, f.width, f.height);
+      this.mmFog = f;
+    }
   }
 
   private drawMinimap() {
@@ -254,6 +265,16 @@ export class Hud {
     const sx = (p.x + W / 2 - view / 2) * S, sz = (p.z + D / 2 - view / 2) * S;
     x.imageSmoothingEnabled = true;
     x.drawImage(this.mmBg, sx, sz, view * S, view * S, 0, 0, N, N);
+    if (this.mmFog) {
+      const fx = this.mmFog.getContext('2d')!;
+      fx.globalCompositeOperation = 'destination-out';
+      const g = fx.createRadialGradient((p.x + W / 2) * S, (p.z + D / 2) * S, 4 * S, (p.x + W / 2) * S, (p.z + D / 2) * S, 7.5 * S);
+      g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      fx.fillStyle = g;
+      fx.fillRect((p.x + W / 2 - 8) * S, (p.z + D / 2 - 8) * S, 16 * S, 16 * S);
+      fx.globalCompositeOperation = 'source-over';
+      x.drawImage(this.mmFog, sx, sz, view * S, view * S, 0, 0, N, N);
+    }
     const toM = (wx: number, wz: number) => [N / 2 + (wx - p.x) * scale, N / 2 + (wz - p.z) * scale];
     for (const po of w.portals) { const [mx, my] = toM(po.d.x, po.d.z); x.fillStyle = '#b08aff'; x.beginPath(); x.arc(mx, my, 6, 0, Math.PI * 2); x.fill(); }
     for (const n of w.npcs) {
@@ -264,6 +285,7 @@ export class Hud {
     }
     for (const e of w.enemies) {
       if (!e.alive) continue;
+      if (this.mmFog && Math.hypot(e.x - p.x, e.z - p.z) > 9) continue; // no wall-hacks indoors
       const [mx, my] = toM(e.x, e.z);
       if (mx < -10 || my < -10 || mx > N + 10 || my > N + 10) continue;
       x.fillStyle = e.isBoss ? '#ff2a3a' : e.d.grade <= 1 ? '#ff9a3a' : '#ff5a6a';
