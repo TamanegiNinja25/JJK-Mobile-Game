@@ -3,6 +3,7 @@ import { Game } from './Game';
 import { skillIcon, itemIcon } from './ui/Icons';
 import { SKILLS } from './rpg/skills';
 import { ITEMS } from './rpg/items';
+import { audio } from './audio/Audio';
 
 function showFatal(msg: string) {
   const d = document.createElement('div');
@@ -22,4 +23,4 @@ const game = new Game();
 game.start();
 
 // debugging/test hooks
-(window as any).__dbg = { skillIcon, itemIcon, SKILLS, ITEMS };
+(window as any).__dbg = { skillIcon, itemIcon, SKILLS, ITEMS, audio };

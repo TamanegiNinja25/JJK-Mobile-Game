@@ -76,6 +76,8 @@ abstract class BossBase implements BossScript {
 
   // ---------------- helpers ----------------
   anim(a: string, d: number) { this.e.model?.play(a, d); }
+  /** plays an attack animation stretched so its contact frame lands `at` seconds from now */
+  strike(a: string, at: number) { this.e.model?.play(a, at / (this.e.model?.impactFrac ?? 0.5)); }
 
   slam(x: number, z: number, r: number, mult: number, windup: number, color = 0xff3a3a, sfx = 'shockwave', opts: DamageOpts = {}) {
     this.w.telegraph('circle', x, z, r, windup, color);
@@ -149,11 +151,11 @@ abstract class BossBase implements BossScript {
       e.faceTowards(t.x, t.z, 1, 99);
       const d = Math.hypot(t.x - e.x, t.z - e.z);
       if (d > range * 0.8) e.lungeV = { x: Math.sin(e.facing) * 8, z: Math.cos(e.facing) * 8, t: 0.12 };
-      this.anim(anims[i % anims.length], gap * 0.95);
+      this.strike(anims[i % anims.length], gap * 0.45);
+      this.w.schedule(gap * 0.3, () => { if (e.alive) this.w.sfx('swing', e.x, e.z, 0.7); });
       this.w.schedule(gap * 0.45, () => {
         if (!e.alive) return;
         this.w.fx.slash(e.x, e.z, e.facing, range * 0.8, 0xffd0d0, arc, i % 2 ? 0.8 : -0.8);
-        this.w.sfx('swing', e.x, e.z, 0.7);
         this.w.damageCone(e, e.x, e.z, e.facing, range, arc, mult, { kind: 'melee', hitSfx: sfx, knock: 0.8 });
       });
     });
@@ -202,9 +204,9 @@ class Glutton extends BossBase {
   moves(): Move[] {
     const e = this.e;
     return [
-      { id: 'slam', cd: 3.5, dur: 1.3, max: 4.5, weight: 3, run: () => { this.anim('slam', 1.1); this.slam(e.x + Math.sin(e.facing) * 1.8, e.z + Math.cos(e.facing) * 1.8, 3.2, 1.5, 0.85, 0xff4a3a, 'shockwave'); } },
+      { id: 'slam', cd: 3.5, dur: 1.3, max: 4.5, weight: 3, run: () => { this.strike('slam', 0.85); this.slam(e.x + Math.sin(e.facing) * 1.8, e.z + Math.cos(e.facing) * 1.8, 3.2, 1.5, 0.85, 0xff4a3a, 'shockwave'); } },
       { id: 'charge', cd: 6, dur: 1.6, min: 4, weight: 2, run: () => { this.w.sfx('roar', e.x, e.z, 0.6, 1.2); this.charge(11, 0.6, 1.6, 0.7); } },
-      { id: 'vomit', cd: 5, dur: 1.2, min: 2.5, max: 11, weight: 2, run: () => { this.anim('cast', 1.0); this.w.schedule(0.5, () => { if (e.alive) { this.w.sfx('squish', e.x, e.z); this.volley(5, 0.9, 'spit', 9, 1.1, 0x9ad04a); } }); } },
+      { id: 'vomit', cd: 5, dur: 1.2, min: 2.5, max: 11, weight: 2, run: () => { this.strike('cast', 0.5); this.w.schedule(0.5, () => { if (e.alive) { this.w.sfx('squish', e.x, e.z); this.volley(5, 0.9, 'spit', 9, 1.1, 0x9ad04a); } }); } },
       { id: 'bite', cd: 1.8, dur: 0.9, max: 3.4, weight: 2, run: () => this.combo(2, 1.1, 0.45, ['punch1', 'punch2'], 'punch', 3.4, 2) },
     ];
   }
@@ -241,7 +243,7 @@ class FingerBearer extends BossBase {
       } },
       { id: 'leap', cd: 8, dur: 1.5, min: 4, weight: 1, run: () => {
         const tx = this.t.x, tz = this.t.z;
-        this.anim('slam', 1.2);
+        this.strike('slam', 1.0);
         this.slam(tx, tz, 3.2, 1.8, 1.0, 0xff3a3a, 'land');
         this.w.schedule(0.75, () => { if (e.alive) { this.w.fx.smoke(e.x, e.z, 0x333333, 10); e.place(tx, tz); } });
       } },
@@ -267,7 +269,7 @@ class Mahito extends BossBase {
       } },
       { id: 'dash', cd: 5, dur: 1.2, min: 4, weight: 2, run: () => { this.charge(16, 0.45, 1.5, 0.55); } },
       { id: 'spikes', cd: 6, dur: 1.2, min: 2, max: 12, weight: 1.5, run: () => {
-        this.anim('throw', 0.8);
+        this.strike('throw', 0.4);
         this.w.schedule(0.4, () => { if (e.alive) { this.w.sfx('squish', e.x, e.z); this.volley(7, 1.4, 'thorn', 11, 1.0, 0x9aa0b0); } });
       } },
       { id: 'blink', cd: 6, dur: 0.6, min: 6, weight: 1, run: () => this.teleportNear(2.5) },
@@ -306,9 +308,9 @@ class Todo extends BossBase {
         });
         this.w.schedule(0.45, () => { if (e.alive) this.combo(1, 1.3, 0.4, ['uppercut'], 'punch', 2.8, 1.6); });
       } },
-      { id: 'rock', cd: 4.5, dur: 0.9, min: 4, weight: 1.5, run: () => { this.anim('throw', 0.8); this.w.schedule(0.35, () => { if (e.alive) { this.w.sfx('swingHeavy', e.x, e.z); this.volley(1, 0, 'orb', 13, 1.5, 0x8a7a6a); } }); } },
+      { id: 'rock', cd: 4.5, dur: 0.9, min: 4, weight: 1.5, run: () => { this.strike('throw', 0.35); this.w.schedule(0.35, () => { if (e.alive) { this.w.sfx('swingHeavy', e.x, e.z); this.volley(1, 0, 'orb', 13, 1.5, 0x8a7a6a); } }); } },
       { id: 'bf', cd: 9, dur: 1.4, max: 4, phase: 1, weight: 1.5, run: () => {
-        this.anim('uppercut', 1.0);
+        this.strike('uppercut', 0.8);
         this.w.sfx('charge', e.x, e.z);
         this.slam(e.x + Math.sin(e.facing) * 1.4, e.z + Math.cos(e.facing) * 1.4, 2.2, 2.6, 0.8, 0xff2a3a, 'blackflash', { knock: 4 });
         this.w.schedule(0.8, () => { if (e.alive) this.w.fx.blackFlash(e.x + Math.sin(e.facing) * 1.4, 1.2, e.z + Math.cos(e.facing) * 1.4); });
@@ -323,14 +325,14 @@ class Hanami extends BossBase {
     const e = this.e;
     return [
       { id: 'roots', cd: 4, dur: 1.4, weight: 3, run: () => {
-        this.anim('slam', 1.1);
+        this.strike('slam', 0.9);
         const base = Math.atan2(this.t.x - e.x, this.t.z - e.z);
         for (const off of [-0.35, 0, 0.35]) this.line(base + off, 13, 1.3, 1.4, 0.9, 0x8aff6a, 'roots', (x0, z0, x1, z1) => {
           for (let i = 1; i <= 6; i++) { const k = i / 6; this.w.fx.spikes(x0 + (x1 - x0) * k, z0 + (z1 - z0) * k, 0.6, 0x6b4a2e, 3); }
         });
       } },
       { id: 'seeds', cd: 5, dur: 1.2, min: 3, weight: 2, run: () => {
-        this.anim('cast', 1.0);
+        this.strike('cast', 0.4);
         this.w.schedule(0.4, () => { if (!e.alive) return; this.w.sfx('roots', e.x, e.z); this.volley(5, 1.2, 'seed', 9, 1.2, 0x9a7a4a); });
       } },
       { id: 'swipe', cd: 2, dur: 1.0, max: 3.5, weight: 2, run: () => this.combo(2, 1.2, 0.45, ['slash1', 'slash2'], 'roots', 3.4, 2.2) },
@@ -355,8 +357,8 @@ class Dagon extends BossBase {
   moves(): Move[] {
     const e = this.e;
     return [
-      { id: 'wave', cd: 4.5, dur: 1.3, weight: 3, run: () => { this.anim('slam', 1.0); this.w.schedule(0.6, () => { if (e.alive) { this.w.sfx('wave', e.x, e.z); this.ringBurst(14, 'water', 7, 1.2, 0x5ab0ff, rand(0, 1)); } }); } },
-      { id: 'tentacle', cd: 2.5, dur: 1.2, max: 4.5, weight: 2, run: () => { this.anim('slam', 1.0); this.slam(e.x + Math.sin(e.facing) * 2, e.z + Math.cos(e.facing) * 2, 3, 1.6, 0.8, 0x5ab0ff, 'water'); } },
+      { id: 'wave', cd: 4.5, dur: 1.3, weight: 3, run: () => { this.strike('slam', 0.6); this.w.schedule(0.6, () => { if (e.alive) { this.w.sfx('wave', e.x, e.z); this.ringBurst(14, 'water', 7, 1.2, 0x5ab0ff, rand(0, 1)); } }); } },
+      { id: 'tentacle', cd: 2.5, dur: 1.2, max: 4.5, weight: 2, run: () => { this.strike('slam', 0.8); this.slam(e.x + Math.sin(e.facing) * 2, e.z + Math.cos(e.facing) * 2, 3, 1.6, 0.8, 0x5ab0ff, 'water'); } },
       { id: 'fish', cd: 9, dur: 1.0, weight: 1.5, run: () => { this.w.sfx('water', e.x, e.z); this.summonAdds('fish', 4, 3.5); } },
       { id: 'geyser', cd: 6, dur: 1.6, weight: 2, run: () => {
         for (let i = 0; i < 4; i++) this.w.schedule(i * 0.25, () => {
@@ -374,7 +376,7 @@ class Jogo extends BossBase {
   moves(): Move[] {
     const e = this.e;
     return [
-      { id: 'fireballs', cd: 3, dur: 1.0, min: 2, weight: 3, run: () => { this.anim('throw', 0.8); this.w.schedule(0.35, () => { if (e.alive) { this.w.sfx('fireball', e.x, e.z); this.volley(3, 0.6, 'fireball', 12, 1.3, 0xff6a1a); } }); } },
+      { id: 'fireballs', cd: 3, dur: 1.0, min: 2, weight: 3, run: () => { this.strike('throw', 0.35); this.w.schedule(0.35, () => { if (e.alive) { this.w.sfx('fireball', e.x, e.z); this.volley(3, 0.6, 'fireball', 12, 1.3, 0xff6a1a); } }); } },
       { id: 'insects', cd: 7, dur: 1.0, weight: 2, run: () => { this.anim('castUp', 0.8); this.w.sfx('fire', e.x, e.z); this.ringBurst(8, 'ember', 6, 0.8, 0xffaa3a); this.volley(3, 1.2, 'ember', 7, 0.8, 0xffaa3a, 3); } },
       { id: 'eruption', cd: 6, dur: 1.8, weight: 2.5, run: () => {
         this.anim('slam', 1);
@@ -408,7 +410,7 @@ class Sukuna extends BossBase {
     return [
       { id: 'cleave', cd: 1.8, dur: 1.1, max: 3.2, weight: 3, run: () => this.combo(3, 1.05, 0.33, ['slash1', 'slash2', 'slash3'], 'dismantle', 3, 2) },
       { id: 'dismantle', cd: 4, dur: 1.2, min: 2, weight: 3, run: () => {
-        this.anim('slash2', 0.8);
+        this.strike('slash2', 0.65);
         const base = Math.atan2(this.t.x - e.x, this.t.z - e.z);
         for (const off of [-0.5, -0.2, 0.2, 0.5]) this.line(base + off, 14, 0.9, 1.3, 0.65, 0xffffff, 'dismantle', (x0, z0, x1, z1) => {
           for (let i = 1; i <= 5; i++) { const k = i / 5; this.w.fx.slash(x0 + (x1 - x0) * k, z0 + (z1 - z0) * k, base + off + Math.PI / 2, 1.2, 0xffffff, 0.8, 0.5); }
@@ -446,12 +448,12 @@ class Mahoraga extends BossBase {
       { id: 'sword', cd: 1.6, dur: 1.2, max: 4, weight: 3, run: () => this.combo(3, 1.1, 0.38, ['slash1', 'slash2', 'thrust'], 'slash', 3.8, 2.0) },
       { id: 'leap', cd: 6, dur: 1.6, min: 4, weight: 2, run: () => {
         const tx = this.t.x, tz = this.t.z;
-        this.anim('slam', 1.3);
+        this.strike('slam', 1.0);
         this.slam(tx, tz, 3.4, 2.0, 1.0, 0xffffff, 'land');
         this.w.schedule(0.8, () => { if (e.alive) { e.place(tx, tz); } });
       } },
       { id: 'charge', cd: 5, dur: 1.4, min: 5, weight: 1.5, run: () => this.charge(14, 0.6, 1.8, 0.6) },
-      { id: 'quake', cd: 8, dur: 1.4, weight: 1.5, run: () => { this.anim('slam', 1.1); this.slam(e.x, e.z, 5, 1.8, 1.0, 0xd8b04a, 'shockwave'); } },
+      { id: 'quake', cd: 8, dur: 1.4, weight: 1.5, run: () => { this.strike('slam', 1.0); this.slam(e.x, e.z, 5, 1.8, 1.0, 0xd8b04a, 'shockwave'); } },
     ];
   }
   onHit(_dmg: number, _src: Actor | null) { /* adaptation handled in incomingMult */ }

@@ -70,6 +70,10 @@ export class Summon extends Actor {
       if (kind === 'totality') scale = 1.6;
     }
     this.setModel(m, scale);
+    if (kind === 'dogWhite' || kind === 'dogBlack' || kind === 'totality' || kind === 'ox') {
+      const heavy = kind !== 'dogWhite' && kind !== 'dogBlack';
+      m.onStep = () => world.sfx(heavy ? 'stomp' : 'pad', this.x, this.z, heavy ? 0.45 : 0.25, heavy ? 1.15 : 1.3);
+    }
     this.targetable = kind === 'dogWhite' || kind === 'dogBlack' || kind === 'rabbit' || kind === 'totality';
     this.radius = kind === 'elephant' ? 1.6 : kind === 'rabbit' ? 0.25 : kind === 'totality' ? 1.3 : kind === 'ox' ? 0.8 : 0.45;
     this.maxHp = this.hp = Math.max(50, (world.player.maxHp ?? 100) * (kind === 'rabbit' ? 0.08 : kind === 'totality' ? 0.9 : 0.45));
@@ -176,7 +180,6 @@ export class Summon extends Actor {
     this.move(sx * spd, sz * spd, dt);
     this.chargeDist += spd * dt;
     if (Math.random() < 0.7) this.world.fx.smoke(this.x - sx, this.z - sz, 0x2a2420, 2);
-    if (this.stateT > 0.12) { this.stateT = 0; this.world.sfx('land', this.x, this.z, 0.35, 1.4); }
     for (const e of this.world.enemies) {
       if (!e.alive || this.hitIds!.has(e.id) || Math.hypot(e.x - this.x, e.z - this.z) > 1.4 + e.radius) continue;
       this.hitIds!.add(e.id);

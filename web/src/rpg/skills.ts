@@ -67,12 +67,13 @@ reg({
   cast: (w, c, lv, t, dx, dz) => {
     const a = aim(c, t, dx, dz);
     c.dash(a.x, a.z, Math.min(2.6, Math.max(0.5, a.dist - 1.2)), 0.14);
-    w.sfx('divergent', c.x, c.z);
-    w.schedule(0.14, () => {
+    w.schedule(0.06, () => w.sfx('swing', c.x, c.z, 0.6, 1.1));
+    w.schedule(0.2, () => {
+      w.sfx('divergent', c.x, c.z);
       w.fx.slash(c.x, c.z, Math.atan2(a.x, a.z), 1.6, 0xbfe4ff, 1.4);
       w.damageCone(c, c.x, c.z, Math.atan2(a.x, a.z), 2.4, 1.7, m(1.5, lv), { kind: 'skill', knock: 0.8 });
     });
-    w.schedule(0.33, () => {
+    w.schedule(0.38, () => {
       const px = c.x + a.x * 1.4, pz = c.z + a.z * 1.4;
       w.fx.shockwave(px, pz, 2.2, 0x6ab8ff);
       w.fx.burst(px, 1, pz, 0x8ad0ff, 26, 6, 0.35);
@@ -89,7 +90,7 @@ reg({
   ce: lv => 12 + lv * 2, cd: () => 6, anim: 'spinKick', animDur: 0.5,
   cast: (w, c, lv) => {
     w.sfx('swingHeavy', c.x, c.z);
-    w.schedule(0.18, () => {
+    w.schedule(0.25, () => {
       w.fx.ring(c.x, c.z, 0xffd08a, 2.9, 0.35, 0.5);
       w.fx.slash(c.x, c.z, c.facing, 2.4, 0xffe0b0, Math.PI * 2, 0);
       w.sfx('kick', c.x, c.z);
@@ -144,7 +145,7 @@ reg({
     const a = aim(c, t, dx, dz);
     c.dash(a.x, a.z, Math.min(2.2, Math.max(0, a.dist - 1.1)), 0.12);
     w.sfx('charge', c.x, c.z, 0.6);
-    w.schedule(0.2, () => {
+    w.schedule(0.26, () => {
       w.damageCone(c, c.x, c.z, Math.atan2(a.x, a.z), 2.6, 1.3, m(1.9, lv), { kind: 'skill', bf: true, knock: 4 });
     });
   },
@@ -156,8 +157,8 @@ reg({
   ce: lv => 16 + lv * 2, cd: () => 7, anim: 'throw', animDur: 0.36, range: 12,
   cast: (w, c, lv, t, dx, dz) => {
     const a = aim(c, t, dx, dz);
-    w.sfx('nail', c.x, c.z, 0.8, 0.6);
-    w.schedule(0.12, () => w.projectile({ x: c.x, z: c.z, dirX: a.x, dirZ: a.z, speed: 22, range: 14, radius: 0.55, mult: m(1.8, lv), pierce: 4, visual: 'knife', team: 'player', opts: { kind: 'skill', dot: { mult: m(0.25, lv), dur: 4 } }, fromCaster: c }));
+    w.schedule(0.17, () => w.sfx('nail', c.x, c.z, 0.8, 0.6));
+    w.schedule(0.17, () => w.projectile({ x: c.x, z: c.z, dirX: a.x, dirZ: a.z, speed: 22, range: 14, radius: 0.55, mult: m(1.8, lv), pierce: 4, visual: 'knife', team: 'player', opts: { kind: 'skill', dot: { mult: m(0.25, lv), dur: 4 } }, fromCaster: c }));
   },
 });
 
@@ -338,10 +339,10 @@ reg({
   cast: (w, c, lv, t, dx, dz) => {
     const a = aim(c, t, dx, dz);
     const base = Math.atan2(a.x, a.z);
-    w.sfx('nail', c.x, c.z);
+    w.schedule(0.17, () => w.sfx('nail', c.x, c.z));
     for (let i = 0; i < 4; i++) {
       const ang = base + (i - 1.5) * 0.16;
-      w.schedule(0.1 + i * 0.03, () => w.projectile({
+      w.schedule(0.17 + i * 0.03, () => w.projectile({
         x: c.x, z: c.z, dirX: Math.sin(ang), dirZ: Math.cos(ang), speed: 24, range: 10, radius: 0.45, mult: m(0.7, lv), visual: 'nail', team: 'player', opts: { kind: 'skill', mark: true }, fromCaster: c,
         onEnd: (x, z) => w.schedule(0.3, () => {
           w.fx.burst(x, 0.8, z, 0xff6a3a, 16, 5, 0.3);
@@ -361,7 +362,7 @@ reg({
   ce: lv => 14 + lv * 2, cd: () => 6, anim: 'throw', animDur: 0.6, range: 11,
   cast: (w, c, lv, t, dx, dz) => {
     const a = aim(c, t, dx, dz);
-    for (let i = 0; i < 8; i++) w.schedule(i * 0.06, () => {
+    for (let i = 0; i < 8; i++) w.schedule(0.18 + i * 0.06, () => {
       const ts = w.targetsNear('enemy', c.x, c.z, 11);
       const tg = ts.length ? ts[i % Math.min(4, ts.length)] : null;
       let ax = a.x, az = a.z;
@@ -378,11 +379,11 @@ reg({
   desc: lv => `Drive a nail into the straw doll: every nail-marked enemy takes ${pct(m(2.4, lv))} ATK, ignoring defense. With no marks, hits the nearest foe for ${pct(m(1.4, lv))}.`,
   ce: lv => 22 + lv * 3, cd: () => 10, anim: 'hammer', animDur: 0.5, range: 16,
   cast: (w, c, lv) => {
-    w.sfx('hammer', c.x, c.z);
     w.fx.sigil(c.x, c.z, 1.3, 0xff2a5a, 0.7);
-    w.schedule(0.22, () => {
+    w.schedule(0.24, () => {
       const ts = w.targetsNear('enemy', c.x, c.z, 16);
       const marked = ts.filter(tg => tg.marked > 0);
+      w.sfx('hammer', c.x, c.z);
       w.sfx('resonance', c.x, c.z);
       if (marked.length) {
         for (const tg of marked) {
@@ -404,7 +405,7 @@ reg({
   ce: lv => 16 + lv * 2, cd: () => 7, anim: 'hammer', animDur: 0.5, range: 3,
   cast: (w, c, lv, t, dx, dz) => {
     const a = aim(c, t, dx, dz);
-    w.sfx('swingHeavy', c.x, c.z);
+    w.schedule(0.15, () => w.sfx('swingHeavy', c.x, c.z));
     w.schedule(0.24, () => {
       const px = c.x + a.x * 1.4, pz = c.z + a.z * 1.4;
       w.sfx('hammer', px, pz, 1, 0.7);
@@ -425,7 +426,7 @@ reg({
     const a = aim(c, t, dx, dz);
     const d = Math.min(a.dist, 6);
     const x = c.x + a.x * d, z = c.z + a.z * d;
-    w.sfx('doll', x, z);
+    w.schedule(0.21, () => { w.sfx('doll', x, z); w.sfx('hammer', c.x, c.z, 0.5, 1.2); });
     w.fx.sigil(x, z, 3.2, 0xd84a3a, 5.2);
     w.summon('doll', x, z, { dur: 5, power: 0, owner: c });
     for (let i = 0; i < 10; i++) w.schedule(0.3 + i * 0.5, () => {
@@ -596,7 +597,7 @@ reg({
   cast: (w, c, lv, t, dx, dz) => {
     const a = aim(c, t, dx, dz);
     const dir = Math.atan2(a.x, a.z);
-    for (let i = 0; i < 5; i++) w.schedule(0.1 + i * 0.09, () => {
+    for (let i = 0; i < 5; i++) w.schedule(0.2 + i * 0.09, () => {
       w.sfx('dismantle', c.x, c.z, 0.8, 0.9 + i * 0.08);
       for (let k = 0; k < 3; k++) w.fx.slash(c.x + a.x * (1.5 + k * 1.6), c.z + a.z * (1.5 + k * 1.6), dir + (Math.random() - 0.5) * 1.2, 1.4, 0xffffff, 0.7, Math.random() * 2 - 1, 1);
       w.damageCone(c, c.x, c.z, dir, 7, 1.3, m(0.7, lv), { kind: 'skill', ignoreDef: true, noBF: true, quiet: i < 4, color: '#ffffff' });
@@ -783,8 +784,8 @@ reg({
   ce: lv => 28 + lv * 3, cd: () => 10, anim: 'hammer', animDur: 0.5, range: 14,
   cast: (w, c, lv, t, dx, dz) => {
     const a = aim(c, t, dx, dz);
-    w.sfx('swingHeavy', c.x, c.z);
-    w.schedule(0.22, () => {
+    w.schedule(0.15, () => w.sfx('swingHeavy', c.x, c.z));
+    w.schedule(0.24, () => {
       w.sfx('hammer', c.x, c.z, 1, 0.8);
       w.sfx('nail', c.x, c.z, 1, 0.6);
       w.fx.shake(0.25);
@@ -804,7 +805,7 @@ reg({
   desc: lv => `Resonance leaps between up to 8 enemies, starting with the marked ones, each jump dealing ${pct(m(1.5, lv))} ATK and spreading marks.`,
   ce: lv => 34 + lv * 3, cd: () => 14, anim: 'hammer', animDur: 0.5, range: 14,
   cast: (w, c, lv) => {
-    w.sfx('hammer', c.x, c.z);
+    w.schedule(0.2, () => w.sfx('hammer', c.x, c.z));
     w.fx.sigil(c.x, c.z, 1.3, 0xff2a5a, 0.7);
     const ts = w.targetsNear('enemy', c.x, c.z, 14).sort((p, q) => q.marked - p.marked).slice(0, 8);
     let px = c.x, pz = c.z;

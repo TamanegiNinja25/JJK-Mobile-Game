@@ -441,6 +441,9 @@ export type ActionName =
   | 'throw' | 'cast' | 'castUp' | 'summon' | 'hammer' | 'clap' | 'hit' | 'die' | 'victory'
   | 'channel' | 'domain' | 'pointUp' | 'wave' | 'bow' | 'sit';
 
+/** Fractions of an action's duration: the strike starts moving at `strike` and connects at `impact`. */
+export const ACTION_TIMING = { strike: 0.3, impact: 0.48 };
+
 export class HumanoidAnimator {
   m: Humanoid;
   walkPhase = 0;
@@ -455,6 +458,8 @@ export class HumanoidAnimator {
   stance: 'fist' | 'blade' | 'hammer' | 'none' = 'none';
   lean = 0;
   blend = 0;          // smooths in/out of actions
+  /** called on every foot plant of the walk cycle */
+  onStep: (() => void) | null = null;
 
   constructor(m: Humanoid) { this.m = m; }
 
@@ -471,7 +476,12 @@ export class HumanoidAnimator {
     this.idleT += dt;
     const sp = this.speed;
     const moving = sp > 0.3;
-    if (moving) this.walkPhase += dt * (4 + sp * 1.55);
+    if (moving) {
+      // a foot plants each time the leg swing reaches an extreme (phase = π/2 + kπ)
+      const before = Math.floor((this.walkPhase - Math.PI / 2) / Math.PI);
+      this.walkPhase += dt * (4 + sp * 1.55);
+      if (Math.floor((this.walkPhase - Math.PI / 2) / Math.PI) !== before && !this.dead) this.onStep?.();
+    }
     const run = clamp(sp / 6, 0, 1);
     const ph = this.walkPhase;
 

@@ -1,7 +1,7 @@
 // Common interface every animated model exposes to entities.
 import * as THREE from 'three';
 import { RigModel } from '../rig';
-import { Humanoid, ActionName } from './humanoid';
+import { Humanoid, ActionName, ACTION_TIMING } from './humanoid';
 
 export interface ModelHandle {
   root: THREE.Group;
@@ -20,6 +20,10 @@ export interface ModelHandle {
   handL?: THREE.Object3D;
   head?: THREE.Object3D;
   setStance?(s: 'fist' | 'blade' | 'hammer' | 'none'): void;
+  /** fired when a foot hits the ground during locomotion */
+  onStep?: (() => void) | null;
+  /** fraction of an attack animation at which the blow connects */
+  impactFrac?: number;
 }
 
 export function wrapHumanoid(h: Humanoid): ModelHandle {
@@ -41,6 +45,9 @@ export function wrapHumanoid(h: Humanoid): ModelHandle {
     handL: h.handL,
     head: h.bones.head,
     setStance: (s) => { a.stance = s; },
+    impactFrac: ACTION_TIMING.impact,
+    get onStep() { return a.onStep; },
+    set onStep(f: (() => void) | null) { a.onStep = f; },
   };
   return handle;
 }
