@@ -6,6 +6,7 @@
 
 **呪術年代記 — a Zenonia-style action RPG for Android, set in the world of Jujutsu Kaisen**
 
+[![Latest release](https://img.shields.io/github/v/release/TamanegiNinja25/JJK-Mobile-Game?label=release&color=8A2BE2)](https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases/latest)
 [![Build APK](https://github.com/TamanegiNinja25/JJK-Mobile-Game/actions/workflows/build-apk.yml/badge.svg)](https://github.com/TamanegiNinja25/JJK-Mobile-Game/actions/workflows/build-apk.yml)
 ![Android 7.0+](https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
@@ -13,6 +14,10 @@
 ![Offline](https://img.shields.io/badge/runs-100%25%20offline-8A2BE2)
 
 <img src="docs/screenshots/title.jpg" width="820" alt="Title screen">
+
+### [⬇ Download CursedChronicles.apk](https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases/latest/download/CursedChronicles.apk)
+
+<sub>Latest release · Android 7.0+ · about 1.3 MB · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a></sub>
 
 </div>
 
@@ -68,8 +73,9 @@ and runs without an internet connection.
 
 ## Download
 
-1. Open the [**Releases**](https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases)
-   page and download `CursedChronicles.apk`. Every successful
+1. Download [**CursedChronicles.apk**](https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases/latest/download/CursedChronicles.apk) from the
+   [latest release](https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases/latest).
+   Every successful
    [build](https://github.com/TamanegiNinja25/JJK-Mobile-Game/actions/workflows/build-apk.yml)
    also has the APKs under its **CursedChronicles-apk** artifact.
 2. On your phone, allow **Install unknown apps** for your browser or file manager, then
