@@ -210,6 +210,17 @@ function exitSign(): PropDef {
   return { geo: b.build(), outline: 0.008, shadow: false, light: { y: 1.7, color: 0x3aff8a, intensity: 1.2, range: 3 } };
 }
 
+/** Lacquered cache sealed with a paper talisman: breaks open for loot. */
+function treasureChest(): PropDef {
+  const b = new PartBag();
+  b.add(G.box(0.9, 0.5, 0.6), 0x7a1a1a, { pos: [0, 0.27, 0], topColor: 0x9a2a24 });
+  b.add(G.box(0.96, 0.16, 0.66), 0x5a1010, { pos: [0, 0.6, 0], topColor: 0x7a1a1a });
+  for (const x of [-0.38, 0.38]) b.add(G.box(0.06, 0.66, 0.68), 0xd8b04a, { pos: [x, 0.34, 0], glow: 0.15 });
+  b.add(G.box(0.98, 0.05, 0.05), 0xd8b04a, { pos: [0, 0.52, 0.31], glow: 0.15 });
+  b.add(G.box(0.14, 0.42, 0.02), 0xf2ead2, { pos: [0, 0.42, 0.315], colorFn: (_x, y, _z, c) => { if (Math.abs(((y * 14) % 1) - 0.5) < 0.12) c.setHex(0xb02020); } });
+  return { geo: b.build(), outline: 0.01, shadow: true };
+}
+
 function cursedBox(): PropDef {
   const b = new PartBag();
   b.add(G.box(0.5, 0.3, 0.35), 0x3a2a24, { pos: [0, 0.15, 0] });
@@ -229,7 +240,7 @@ export const INTERIOR_PROPS: Record<string, () => PropDef> = {
   wallPostDark: () => wallPost(0x241c1c),
   wallPostLow: () => wallPost(0x4a4038, H * 0.42 + 0.1),
   wallPostDarkLow: () => wallPost(0x241c1c, H * 0.42 + 0.1),
-  trackBed, tatami, exitSign,
+  trackBed, tatami, exitSign, treasureChest,
   desk, teacherDesk, blackboard, lockerRow, theaterSeats, cinemaScreen, ticketBooth, popcornCart,
   stationPillar, ticketGate, bunkBed, metalTable, futon, chabudai, bookshelf, tvSet, pottedPlant, cursedBox,
 };

@@ -744,6 +744,7 @@ export class World implements WorldAPI {
     this.fx.burst(e.x, 1, e.z, 0x1a0a20, e.isBoss ? 40 : 10, 3, 0.5, 1.0, false);
     void killer;
     if (d.ai !== 'dummy') triggerReactions('kill', this, this.player, ps.d.skills, { x: e.x, z: e.z });
+    if (d.id === 'treasure') { this.dropCache(e); return; }
     if (d.ai === 'dummy' && d.id === 'dummy') {
       ps.questProgress('kill', 'dummy', 1, this.mapDef.id);
       ps.gainExp(6);
@@ -767,6 +768,17 @@ export class World implements WorldAPI {
       }
     }
     if (!e.noLoot) this.dropLoot(e);
+  }
+
+  /** Sealed caches in interiors: always yen and a consumable, usually a piece of gear. */
+  private dropCache(e: Enemy) {
+    const ps = this.game.ps!, L = e.level;
+    this.fx.burst(e.x, 0.8, e.z, 0xffd84a, 24, 4, 0.3, 0.8);
+    this.loot.push(new Loot(this, e.x, e.z, Math.round((40 + L * 22) * rand(0.8, 1.3)), null));
+    const drops: [string, number, 0 | 1 | 2 | 3][] = [[L >= 22 ? pick(['hpL', 'ceL']) : L >= 10 ? pick(['hpM', 'ceM']) : pick(['hpS', 'ceS']), randInt(1, 2), 0]];
+    if (chance(0.75)) { const id = randomGear(L, ps.d.cls); if (id) drops.push([id, 1, rollRarity(0.15)]); }
+    if (chance(0.5)) drops.push(['fragment', randInt(1, 3), 0]);
+    for (const [id, qty, r] of drops) this.loot.push(new Loot(this, e.x + rand(-0.6, 0.6), e.z + rand(-0.6, 0.6), 0, makeItem(id, r, qty)));
   }
 
   private dropLoot(e: Enemy) {
@@ -865,7 +877,7 @@ export class World implements WorldAPI {
   schedule(delay: number, fn: () => void) { this.tasks.push({ t: this.time + delay, fn }); }
 
   targetsNear(team: 'player' | 'enemy', x: number, z: number, r: number): Target[] {
-    const list: Actor[] = team === 'enemy' ? this.enemies.filter(e => e.alive && e.d.ai !== 'dummy' || e.alive && e.d.id === 'dummy') : this.hostileToEnemies();
+    const list: Actor[] = team === 'enemy' ? this.enemies.filter(e => e.alive && (e.d.ai !== 'dummy' || e.d.id === 'dummy' || e.d.id === 'treasure')) : this.hostileToEnemies();
     return list
       .map(t => ({ t, d: Math.hypot(t.x - x, t.z - z) }))
       .filter(o => o.d <= r + o.t.radius)
