@@ -7,12 +7,14 @@ export interface SkillDef {
   id: string;
   cls: ClassId;
   name: string;
-  type: 'active' | 'passive' | 'ultimate';
+  /** active/buff/ultimate are cast from quick slots; passive and reaction work automatically */
+  type: 'active' | 'buff' | 'passive' | 'reaction' | 'ultimate';
   req: number;
   max: number;
   prereq?: [string, number];
-  row: number;
-  col: number;
+  /** legacy tree position (unused by the current menu) */
+  row?: number;
+  col?: number;
   desc: (lv: number) => string;
   ce?: (lv: number) => number;
   cd?: (lv: number) => number;
@@ -21,8 +23,20 @@ export interface SkillDef {
   range?: number;
   passive?: (lv: number) => Partial<Record<StatKey, number>>;
   cast?: (w: WorldAPI, c: Caster, lv: number, t: Target | null, dx: number, dz: number) => void;
+  /** reaction trigger: fires automatically when its event happens */
+  react?: { on: 'hit' | 'kill' | 'lowHp'; chance: (lv: number) => number; icd: number; run: (w: WorldAPI, c: Caster, lv: number, ctx: ReactCtx) => void };
   color: string;
 }
+
+export interface ReactCtx { src?: Target | null; dmg?: number; x?: number; z?: number }
+
+export const SKILL_TYPES: { id: SkillDef['type']; label: string; desc: string }[] = [
+  { id: 'active', label: 'Active', desc: 'Techniques you cast from a quick slot.' },
+  { id: 'buff', label: 'Buff', desc: 'Timed self-empowerments cast from a quick slot.' },
+  { id: 'passive', label: 'Passive', desc: 'Permanent bonuses that are always on.' },
+  { id: 'reaction', label: 'Reaction', desc: 'Trigger on their own when something happens in battle.' },
+  { id: 'ultimate', label: 'Ultimate', desc: 'Needs a full domain gauge. Lives in quick slot 6.' },
+];
 
 const m = (base: number, lv: number) => base * (1 + 0.16 * (lv - 1));
 const pct = (v: number) => Math.round(v * 100) + '%';
@@ -464,6 +478,384 @@ reg({
     });
   },
 });
+
+// ===========================================================================
+// Expanded techniques: more actives, buffs, passives and reactions
+// ===========================================================================
+
+// ---- Yuji ----------------------------------------------------------------
+reg({
+  id: 'cursedSurge', cls: 'yuji', name: 'Cursed Energy Surge', type: 'buff', req: 5, max: 5, color: '#5ac8ff',
+  desc: lv => `Flood your body with cursed energy for 8s: attack +${10 + lv * 4}%, attack speed +${8 + lv * 2}%.`,
+  ce: lv => 14 + lv * 2, cd: () => 22, anim: 'channel', animDur: 0.45,
+  cast: (w, c, lv) => {
+    w.sfx('buff', c.x, c.z);
+    w.fx.ring(c.x, c.z, 0x5ac8ff, 1.8, 0.45, 0.4);
+    w.fx.pillar(c.x, c.z, 0.9, 2.6, 0x5ac8ff, 0.5);
+    w.fx.burst(c.x, 1, c.z, 0x8ad8ff, 22, 4, 0.25, 0.6);
+    c.addBuff('cursedSurge', 8, { atkPct: 0.1 + lv * 0.04, atkSpd: 0.08 + lv * 0.02 });
+  },
+});
+
+reg({
+  id: 'counterStrike', cls: 'yuji', name: 'Counter Stance', type: 'reaction', req: 9, max: 5, color: '#ffc04a',
+  desc: lv => `When struck, ${8 + lv * 4}% chance to answer instantly with a ${pct(m(1.2, lv))} ATK blow around you (every 3s at most).`,
+  react: { on: 'hit', chance: lv => 0.08 + lv * 0.04, icd: 3, run: (w, c, lv) => {
+    c.model?.play('punch3', 0.3);
+    w.sfx('kick', c.x, c.z, 0.9, 1.2);
+    w.fx.ring(c.x, c.z, 0xffd06a, 2.2, 0.25, 0.35);
+    w.fx.slash(c.x, c.z, c.facing, 2.0, 0xfff0c0, Math.PI * 2, 0);
+    w.damageArea(c, c.x, c.z, 2.2, m(1.2, lv), { kind: 'skill', knock: 2.5 });
+  } },
+});
+
+reg({
+  id: 'vesselBody', cls: 'yuji', name: "Vessel's Resilience", type: 'passive', req: 12, max: 5, color: '#ff8a9a',
+  desc: lv => `Hosting Sukuna hardened you: max CE +${lv * 5}%, CE regen +${(lv * 0.5).toFixed(1)}/s, defense +${lv * 4}%.`,
+  passive: lv => ({ cePct: lv * 0.05, ceRegen: lv * 0.5, defPct: lv * 0.04 }),
+});
+
+reg({
+  id: 'ironWill', cls: 'yuji', name: 'Indomitable Spirit', type: 'buff', req: 18, max: 5, color: '#ffe08a',
+  desc: lv => `Grit your teeth for 6s: damage taken -${20 + lv * 4}%, heal ${6 + lv * 2}% of max HP at once.`,
+  ce: lv => 20 + lv * 2, cd: () => 30, anim: 'victory', animDur: 0.5,
+  cast: (w, c, lv) => {
+    w.sfx('heal', c.x, c.z);
+    w.sfx('buff', c.x, c.z, 0.6, 0.8);
+    w.fx.shockwave(c.x, c.z, 2.4, 0xffe08a);
+    w.fx.burst(c.x, 1, c.z, 0xfff0b0, 20, 3, 0.25, 0.7);
+    c.heal(c.maxHpValue() * (0.06 + lv * 0.02));
+    c.addBuff('ironWill', 6, { dmgReduce: 0.2 + lv * 0.04 });
+  },
+});
+
+reg({
+  id: 'secondWind', cls: 'yuji', name: 'Second Wind', type: 'reaction', req: 24, max: 5, color: '#7aff9a',
+  desc: lv => `When HP falls below 30%, recover ${18 + lv * 4}% of max HP (once every 60s).`,
+  react: { on: 'lowHp', chance: () => 1, icd: 60, run: (w, c, lv) => {
+    w.sfx('heal', c.x, c.z, 0.8, 0.8);
+    w.fx.pillar(c.x, c.z, 1.1, 3, 0x7aff9a, 0.7);
+    w.fx.text(c.x, 2.6, c.z, 'SECOND WIND', '#7aff9a', 18);
+    c.heal(c.maxHpValue() * (0.18 + lv * 0.04));
+  } },
+});
+
+reg({
+  id: 'piercingBlood', cls: 'yuji', name: 'Piercing Blood', type: 'active', req: 26, max: 5, prereq: ['blackflash', 2], color: '#ff2a4a',
+  desc: lv => `Compress your blood and fire it as a beam that pierces everything in a line for ${pct(m(2.4, lv))} ATK.`,
+  ce: lv => 30 + lv * 3, cd: () => 11, anim: 'clap', animDur: 0.55, range: 14,
+  cast: (w, c, lv, t, dx, dz) => {
+    const a = aim(c, t, dx, dz);
+    w.sfx('charge', c.x, c.z, 0.5, 1.5);
+    w.schedule(0.28, () => {
+      const x1 = c.x + a.x * 13, z1 = c.z + a.z * 13;
+      w.sfx('blood', c.x, c.z);
+      w.sfx('beam', c.x, c.z, 0.7, 1.4);
+      w.fx.lightning(c.x + a.x * 0.6, 1.2, c.z + a.z * 0.6, x1, 1.2, z1, 0xff1a3a, 0.22);
+      w.fx.lightning(c.x + a.x * 0.6, 1.2, c.z + a.z * 0.6, x1, 1.2, z1, 0xffc0c8, 0.07);
+      w.fx.burst(x1, 1.2, z1, 0xff2a4a, 18, 5, 0.25);
+      w.fx.shake(0.3);
+      w.damageLine(c, c.x, c.z, x1, z1, 1.1, m(2.4, lv), { kind: 'skill', knock: 1.5 });
+    });
+  },
+});
+
+reg({
+  id: 'fightingSpirit', cls: 'yuji', name: 'Fighting Spirit', type: 'passive', req: 30, max: 5, prereq: ['martial', 3], color: '#ff6a3a',
+  desc: lv => `Crit damage +${lv * 10}%, lifesteal +${lv}%.`,
+  passive: lv => ({ critDmg: lv * 0.1, lifesteal: lv * 0.01 }),
+});
+
+reg({
+  id: 'supernova', cls: 'yuji', name: 'Supernova', type: 'active', req: 32, max: 5, prereq: ['piercingBlood', 2], color: '#ff4a6a',
+  desc: lv => `Six blood orbs orbit you, then burst outward one by one, each exploding for ${pct(m(1.0, lv))} ATK.`,
+  ce: lv => 36 + lv * 3, cd: () => 16, anim: 'castUp', animDur: 0.5,
+  cast: (w, c, lv) => {
+    w.sfx('blood', c.x, c.z, 0.7, 0.8);
+    for (let i = 0; i < 6; i++) {
+      const ang = (i / 6) * Math.PI * 2;
+      w.schedule(0.15 + i * 0.12, () => {
+        const ox = c.x + Math.sin(ang) * 1.3, oz = c.z + Math.cos(ang) * 1.3;
+        w.fx.burst(ox, 1.3, oz, 0xff2a4a, 6, 1, 0.3, 0.3);
+        w.projectile({ x: ox, z: oz, dirX: Math.sin(ang), dirZ: Math.cos(ang), speed: 14, range: 6, radius: 0.6, mult: m(0.5, lv), visual: 'red', color: 0xff2a4a, team: 'player', opts: { kind: 'skill', quiet: true }, fromCaster: c,
+          onEnd: (x, z) => {
+            w.sfx('explosion', x, z, 0.5, 1.3);
+            w.fx.burst(x, 0.8, z, 0xff2a4a, 20, 5, 0.3);
+            w.fx.ring(x, z, 0xff4a6a, 1.8, 0.3, 0.4);
+            w.damageArea(c, x, z, 1.9, m(1.0, lv), { kind: 'skill', knock: 1.5 });
+          } });
+      });
+    }
+  },
+});
+
+reg({
+  id: 'dismantleY', cls: 'yuji', name: 'Dismantle', type: 'active', req: 38, max: 5, prereq: ['supernova', 1], color: '#e8e8f0',
+  desc: lv => `Borrow the King's technique: a fan of invisible cuts slices everything ahead ${pct(m(0.7, lv))} ATK ×5, ignoring defense.`,
+  ce: lv => 44 + lv * 3, cd: () => 18, anim: 'slash2', animDur: 0.45, range: 7,
+  cast: (w, c, lv, t, dx, dz) => {
+    const a = aim(c, t, dx, dz);
+    const dir = Math.atan2(a.x, a.z);
+    for (let i = 0; i < 5; i++) w.schedule(0.1 + i * 0.09, () => {
+      w.sfx('dismantle', c.x, c.z, 0.8, 0.9 + i * 0.08);
+      for (let k = 0; k < 3; k++) w.fx.slash(c.x + a.x * (1.5 + k * 1.6), c.z + a.z * (1.5 + k * 1.6), dir + (Math.random() - 0.5) * 1.2, 1.4, 0xffffff, 0.7, Math.random() * 2 - 1, 1);
+      w.damageCone(c, c.x, c.z, dir, 7, 1.3, m(0.7, lv), { kind: 'skill', ignoreDef: true, noBF: true, quiet: i < 4, color: '#ffffff' });
+    });
+  },
+});
+
+// ---- Megumi ---------------------------------------------------------------
+reg({
+  id: 'shadowCloak', cls: 'megumi', name: 'Shadow Veil', type: 'buff', req: 5, max: 5, color: '#4a4a8a',
+  desc: lv => `Wrap yourself in shadow for 8s: evasion +${12 + lv * 3}%, move speed +${8 + lv * 2}%.`,
+  ce: lv => 14 + lv * 2, cd: () => 22, anim: 'cast', animDur: 0.4,
+  cast: (w, c, lv) => {
+    w.sfx('shadow', c.x, c.z);
+    w.sfx('buff', c.x, c.z, 0.5, 0.7);
+    w.fx.smoke(c.x, c.z, 0x101018, 22);
+    w.fx.sigil(c.x, c.z, 1.4, 0x1a1a2a, 0.8);
+    c.addBuff('shadowCloak', 8, { evasion: 0.12 + lv * 0.03, moveSpd: 0.08 + lv * 0.02 });
+  },
+});
+
+reg({
+  id: 'shadowGuard', cls: 'megumi', name: 'Shadow Sink', type: 'reaction', req: 9, max: 5, color: '#6a6acc',
+  desc: lv => `When struck, ${8 + lv * 4}% chance to sink into your shadow: 1s of invulnerability and a ${pct(m(1.0, lv))} ATK counter-slash (every 4s at most).`,
+  react: { on: 'hit', chance: lv => 0.08 + lv * 0.04, icd: 4, run: (w, c, lv) => {
+    c.setInvuln(1);
+    w.sfx('shadow', c.x, c.z, 0.8, 1.2);
+    w.fx.smoke(c.x, c.z, 0x101018, 16);
+    w.schedule(0.25, () => {
+      c.model?.play('slash3', 0.3);
+      w.fx.slash(c.x, c.z, c.facing, 2.2, 0x9a9aff, Math.PI * 2, 0);
+      w.damageArea(c, c.x, c.z, 2.3, m(1.0, lv), { kind: 'skill', knock: 1.5 });
+    });
+  } },
+});
+
+reg({
+  id: 'tenShadows', cls: 'megumi', name: 'Ten Shadows Mastery', type: 'passive', req: 12, max: 5, color: '#9a9aff',
+  desc: lv => `Shikigami damage +${lv * 6}%, skill power +${lv * 3}%, max CE +${lv * 4}%.`,
+  passive: lv => ({ summonPow: lv * 0.06, skillPow: lv * 0.03, cePct: lv * 0.04 }),
+});
+
+reg({
+  id: 'roundDeer', cls: 'megumi', name: 'Round Deer', type: 'buff', req: 18, max: 5, color: '#b0ffd0',
+  desc: lv => `Summon Round Deer's reverse cursed energy: heal ${15 + lv * 4}% of max HP over 5s and HP regen +${lv * 4}/s while it lasts.`,
+  ce: lv => 24 + lv * 2, cd: () => 32, anim: 'summon', animDur: 0.55,
+  cast: (w, c, lv) => {
+    w.sfx('summon', c.x, c.z, 0.6, 1.2);
+    w.schedule(0.2, () => w.sfx('heal', c.x, c.z));
+    w.fx.sigil(c.x, c.z, 1.8, 0x2a4a3a, 1.2);
+    w.fx.ring(c.x, c.z, 0xb0ffd0, 1.6, 0.6, 0.3);
+    w.fx.burst(c.x, 0.6, c.z, 0xd8ffe8, 26, 2.5, 0.22, 1.0);
+    const total = c.maxHpValue() * (0.15 + lv * 0.04);
+    for (let i = 0; i < 5; i++) w.schedule(0.5 + i, () => { c.heal(total / 5); w.fx.burst(c.x, 1.2, c.z, 0xb0ffd0, 8, 2, 0.2, 0.6); });
+    c.addBuff('roundDeer', 5.5, { hpRegen: lv * 4 });
+  },
+});
+
+reg({
+  id: 'loyalHounds', cls: 'megumi', name: 'Loyal Hounds', type: 'reaction', req: 24, max: 5, color: '#f0f0f8',
+  desc: lv => `When an enemy falls, ${6 + lv * 3}% chance a Divine Dog leaps from the shadows to fight for 7s.`,
+  react: { on: 'kill', chance: lv => 0.06 + lv * 0.03, icd: 5, run: (w, c, lv, ctx) => {
+    const x = ctx.x ?? c.x, z = ctx.z ?? c.z;
+    w.fx.smoke(x, z, 0x15151f, 12);
+    w.sfx('bark', x, z, 0.6);
+    w.summon(Math.random() < 0.5 ? 'dogWhite' : 'dogBlack', x, z, { dur: 7, power: m(0.5, lv), owner: c });
+  } },
+});
+
+reg({
+  id: 'orochi', cls: 'megumi', name: 'Great Serpent', type: 'active', req: 26, max: 5, prereq: ['toad', 2], color: '#8a7aff',
+  desc: lv => `The Great Serpent erupts beneath the enemy, crushing for ${pct(m(2.6, lv))} ATK and binding it for 2s.`,
+  ce: lv => 32 + lv * 3, cd: () => 13, anim: 'summon', animDur: 0.55, range: 11,
+  cast: (w, c, lv, t, dx, dz) => {
+    const a = aim(c, t, dx, dz);
+    const x = t ? t.x : c.x + a.x * 4, z = t ? t.z : c.z + a.z * 4;
+    w.fx.sigil(x, z, 1.8, 0x1a1a2a, 1.2);
+    w.sfx('rumble', x, z);
+    w.schedule(0.3, () => {
+      w.summon('serpent', x, z, { dur: 1.8, power: m(2.6, lv), owner: c });
+      w.sfx('hiss', x, z);
+      w.fx.spikes(x, z, 1.4, 0x2a2a3a, 8);
+      w.fx.shake(0.35);
+      w.damageArea(c, x, z, 1.9, m(2.6, lv), { kind: 'skill', stun: 2, knock: 0.5 });
+    });
+  },
+});
+
+reg({
+  id: 'shadowArsenal', cls: 'megumi', name: 'Shadow Arsenal', type: 'passive', req: 30, max: 5, prereq: ['swordsman', 3], color: '#c8d0e8',
+  desc: lv => `Tools pulled from your shadow: attack +${lv * 5}%, crit damage +${lv * 8}%.`,
+  passive: lv => ({ atkPct: lv * 0.05, critDmg: lv * 0.08 }),
+});
+
+reg({
+  id: 'piercingOx', cls: 'megumi', name: 'Piercing Ox', type: 'active', req: 30, max: 5, prereq: ['shadowStep', 2], color: '#d8a86a',
+  desc: lv => `Piercing Ox charges in a straight line, goring everything in its path for ${pct(m(2.2, lv))} ATK. The longer the run, the harder it hits.`,
+  ce: lv => 30 + lv * 3, cd: () => 12, anim: 'summon', animDur: 0.45, range: 12,
+  cast: (w, c, lv, t, dx, dz) => {
+    const a = aim(c, t, dx, dz);
+    const x0 = c.x - a.x * 2, z0 = c.z - a.z * 2;
+    w.fx.smoke(x0, z0, 0x15151f, 14);
+    w.sfx('summon', x0, z0, 0.6, 0.8);
+    w.summon('ox', x0, z0, { dur: 1.2, power: m(2.2, lv), owner: c });
+  },
+});
+
+reg({
+  id: 'totality', cls: 'megumi', name: 'Divine Dog: Totality', type: 'active', req: 36, max: 5, prereq: ['orochi', 1], color: '#e0e0f0',
+  desc: lv => `Fuse the Divine Dogs into Totality, a giant wolf that hunts for 9s. Its maul hits an area for ${pct(m(1.4, lv))} ATK.`,
+  ce: lv => 44 + lv * 3, cd: () => 26, anim: 'summon', animDur: 0.7,
+  cast: (w, c, lv) => {
+    const x = c.x + Math.sin(c.facing) * 2, z = c.z + Math.cos(c.facing) * 2;
+    w.fx.sigil(x, z, 2.4, 0x1a1a2a, 1.4);
+    w.fx.smoke(x, z, 0x101018, 26);
+    w.sfx('summon', x, z);
+    w.schedule(0.3, () => { w.sfx('howl', x, z); w.summon('totality', x, z, { dur: 9, power: m(1.4, lv), owner: c }); });
+  },
+});
+
+// ---- Nobara ---------------------------------------------------------------
+reg({
+  id: 'steadyAim', cls: 'nobara', name: 'Steady Aim', type: 'buff', req: 5, max: 5, color: '#ffb05a',
+  desc: lv => `Breathe and focus for 8s: projectile damage +${15 + lv * 5}%, crit rate +${4 + lv * 2}%.`,
+  ce: lv => 14 + lv * 2, cd: () => 22, anim: 'pointUp', animDur: 0.4,
+  cast: (w, c, lv) => {
+    w.sfx('buff', c.x, c.z, 0.6, 1.2);
+    w.fx.ring(c.x, c.z, 0xffb05a, 1.6, 0.4, 0.4);
+    w.fx.burst(c.x, 1.4, c.z, 0xffd08a, 16, 2, 0.2, 0.6);
+    c.addBuff('steadyAim', 8, { projPow: 0.15 + lv * 0.05, crit: 0.04 + lv * 0.02 });
+  },
+});
+
+reg({
+  id: 'thornDoll', cls: 'nobara', name: 'Straw Doll Retort', type: 'reaction', req: 9, max: 5, color: '#e0a04a',
+  desc: lv => `When struck, ${10 + lv * 5}% chance the doll strikes back: the attacker takes ${pct(m(1.4, lv))} ATK, ignoring defense (every 2s at most).`,
+  react: { on: 'hit', chance: lv => 0.1 + lv * 0.05, icd: 2, run: (w, c, lv, ctx) => {
+    const tg = ctx.src;
+    if (!tg || !tg.alive || tg.team !== 'enemy') return;
+    w.sfx('resonance', tg.x, tg.z, 0.6, 1.3);
+    w.fx.spikes(tg.x, tg.z, 0.5, 0x111111, 4);
+    w.fx.burst(tg.x, 1, tg.z, 0xff2a5a, 12, 4, 0.25);
+    w.damageTarget(c, tg, m(1.4, lv), { kind: 'skill', ignoreDef: true, mark: true });
+  } },
+});
+
+reg({
+  id: 'dollCraft', cls: 'nobara', name: 'Doll Craft', type: 'passive', req: 12, max: 5, color: '#d8b05a',
+  desc: lv => `Nail-marked enemies take ${lv * 6}% more damage from everything you do. Skill power +${lv * 3}%.`,
+  passive: lv => ({ markDmg: lv * 0.06, skillPow: lv * 0.03 }),
+});
+
+reg({
+  id: 'ironGirl', cls: 'nobara', name: 'Kugisaki Pride', type: 'buff', req: 18, max: 5, color: '#ff8a6a',
+  desc: lv => `"I'm Nobara Kugisaki!" For 8s defense +${20 + lv * 6}% and HP regen +${lv * 5}/s.`,
+  ce: lv => 20 + lv * 2, cd: () => 30, anim: 'victory', animDur: 0.5,
+  cast: (w, c, lv) => {
+    w.sfx('buff', c.x, c.z);
+    w.sfx('hammer', c.x, c.z, 0.5, 1.3);
+    w.fx.shockwave(c.x, c.z, 2.2, 0xff8a6a);
+    w.fx.text(c.x, 2.6, c.z, 'PRIDE', '#ff8a6a', 18);
+    c.addBuff('ironGirl', 8, { defPct: 0.2 + lv * 0.06, hpRegen: lv * 5 });
+  },
+});
+
+reg({
+  id: 'finalNail', cls: 'nobara', name: 'Final Nail', type: 'reaction', req: 24, max: 5, color: '#c8c8d0',
+  desc: lv => `When an enemy falls, ${15 + lv * 5}% chance three nails fly from its body into nearby foes for ${pct(m(0.8, lv))} ATK each.`,
+  react: { on: 'kill', chance: lv => 0.15 + lv * 0.05, icd: 1.5, run: (w, c, lv, ctx) => {
+    const x = ctx.x ?? c.x, z = ctx.z ?? c.z;
+    const ts = w.targetsNear('enemy', x, z, 9).slice(0, 3);
+    if (!ts.length) return;
+    w.sfx('nail', x, z, 0.6, 1.2);
+    ts.forEach((tg, i) => {
+      const d = Math.hypot(tg.x - x, tg.z - z) || 1;
+      w.schedule(i * 0.05, () => w.projectile({ x, z, dirX: (tg.x - x) / d, dirZ: (tg.z - z) / d, speed: 24, range: 10, radius: 0.4, mult: m(0.8, lv), visual: 'nail', team: 'player', opts: { kind: 'skill', mark: true }, fromCaster: c, homing: 5 }));
+    });
+  } },
+});
+
+reg({
+  id: 'nailLance', cls: 'nobara', name: 'Nail Lance', type: 'active', req: 26, max: 5, prereq: ['volley', 3], color: '#e8e8f0',
+  desc: lv => `Hammer one giant cursed nail forward: it pierces every enemy in a line for ${pct(m(2.4, lv))} ATK and marks them.`,
+  ce: lv => 28 + lv * 3, cd: () => 10, anim: 'hammer', animDur: 0.5, range: 14,
+  cast: (w, c, lv, t, dx, dz) => {
+    const a = aim(c, t, dx, dz);
+    w.sfx('swingHeavy', c.x, c.z);
+    w.schedule(0.22, () => {
+      w.sfx('hammer', c.x, c.z, 1, 0.8);
+      w.sfx('nail', c.x, c.z, 1, 0.6);
+      w.fx.shake(0.25);
+      w.projectile({ x: c.x + a.x * 0.6, z: c.z + a.z * 0.6, dirX: a.x, dirZ: a.z, speed: 30, range: 14, radius: 0.9, mult: m(2.4, lv), pierce: 99, visual: 'knife', color: 0xd8d8e0, team: 'player', opts: { kind: 'skill', mark: true, knock: 2 }, fromCaster: c });
+    });
+  },
+});
+
+reg({
+  id: 'heavyHitter', cls: 'nobara', name: 'Heavy Hitter', type: 'passive', req: 30, max: 5, prereq: ['grit', 2], color: '#ff9a5a',
+  desc: lv => `Attack +${lv * 5}%, crit damage +${lv * 8}%.`,
+  passive: lv => ({ atkPct: lv * 0.05, critDmg: lv * 0.08 }),
+});
+
+reg({
+  id: 'chainResonance', cls: 'nobara', name: 'Chain Resonance', type: 'active', req: 32, max: 5, prereq: ['resonance', 3], color: '#ff4a7a',
+  desc: lv => `Resonance leaps between up to 8 enemies, starting with the marked ones, each jump dealing ${pct(m(1.5, lv))} ATK and spreading marks.`,
+  ce: lv => 34 + lv * 3, cd: () => 14, anim: 'hammer', animDur: 0.5, range: 14,
+  cast: (w, c, lv) => {
+    w.sfx('hammer', c.x, c.z);
+    w.fx.sigil(c.x, c.z, 1.3, 0xff2a5a, 0.7);
+    const ts = w.targetsNear('enemy', c.x, c.z, 14).sort((p, q) => q.marked - p.marked).slice(0, 8);
+    let px = c.x, pz = c.z;
+    ts.forEach((tg, i) => w.schedule(0.2 + i * 0.1, () => {
+      if (!tg.alive) return;
+      w.fx.lightning(px, 1, pz, tg.x, 1, tg.z, 0xff2a5a, 0.1);
+      w.fx.spikes(tg.x, tg.z, 0.5, 0x111111, 4);
+      w.sfx('resonance', tg.x, tg.z, 0.5, 1 + i * 0.06);
+      w.damageTarget(c, tg, m(1.5, lv), { kind: 'skill', mark: true, vsMarked: 1.3, quiet: true });
+      px = tg.x; pz = tg.z;
+    }));
+  },
+});
+
+reg({
+  id: 'bloodResonance', cls: 'nobara', name: 'Blood Resonance', type: 'active', req: 38, max: 5, prereq: ['chainResonance', 1], color: '#c80a3a',
+  desc: lv => `Spend 12% of your HP to drive a nail through the doll with your own blood: every marked enemy takes ${pct(m(3.2, lv))} ATK, ignoring defense, and you gain 15% lifesteal for 6s.`,
+  ce: lv => 40 + lv * 3, cd: () => 20, anim: 'hammer', animDur: 0.6, range: 16,
+  cast: (w, c, lv) => {
+    c.payHp(0.12);
+    w.sfx('blood', c.x, c.z);
+    w.fx.sigil(c.x, c.z, 2.2, 0xc80a3a, 1);
+    w.fx.flash('#c80a3a', 0.25, 0.3);
+    c.addBuff('bloodResonance', 6, { lifesteal: 0.15 });
+    w.schedule(0.3, () => {
+      const ts = w.targetsNear('enemy', c.x, c.z, 16);
+      const marked = ts.filter(tg => tg.marked > 0);
+      w.sfx('resonance', c.x, c.z, 1, 0.7);
+      w.fx.shake(0.4);
+      for (const tg of (marked.length ? marked : ts.slice(0, 1))) {
+        w.fx.spikes(tg.x, tg.z, 0.8, 0x2a0008, 6);
+        w.fx.burst(tg.x, 1, tg.z, 0xc80a3a, 22, 5, 0.3);
+        w.damageTarget(c, tg, m(marked.length ? 3.2 : 2.0, lv), { kind: 'skill', ignoreDef: true, consumeMark: true });
+      }
+    });
+  },
+});
+
+/** Fires every learned reaction listening for this event (respecting chance and internal cooldown). */
+const reactReady: Record<string, number> = {};
+export function triggerReactions(on: 'hit' | 'kill' | 'lowHp', w: WorldAPI, c: Caster, learned: Record<string, number>, ctx: ReactCtx = {}) {
+  for (const [id, lv] of Object.entries(learned)) {
+    const s = SKILLS[id];
+    if (!s?.react || s.react.on !== on || lv <= 0) continue;
+    const ready = reactReady[id] ?? 0;
+    if (ready > w.time && ready - w.time <= s.react.icd) continue;
+    if (Math.random() >= s.react.chance(lv)) continue;
+    reactReady[id] = w.time + s.react.icd;
+    s.react.run(w, c, lv, ctx);
+  }
+}
 
 export function classSkills(cls: ClassId) {
   return Object.values(SKILLS).filter(s => s.cls === cls);

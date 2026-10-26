@@ -48,6 +48,9 @@ export interface Caster extends DamageSource {
   setInvuln(t: number): void;
   addBuff(id: string, dur: number, stats: Record<string, number>): void;
   heal(amount: number): void;
+  maxHpValue(): number;
+  /** spend a fraction of max HP (never lethal) */
+  payHp(frac: number): void;
   model: { play(a: string, d: number): void } | null;
 }
 

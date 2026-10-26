@@ -417,6 +417,34 @@ const SFX: Record<string, SfxFn> = {
     os.connect(f); f.connect(g); g.connect(d);
     os.start(t); lfo.start(t); os.stop(t + 0.55); lfo.stop(t + 0.55);
   },
+  // wet, pressurised blood technique: a squelch then a hiss of release
+  blood: (a, t, p, o) => {
+    const d = a.out({ ...o, vol: 0.6, wet: 0.35 });
+    a.noiseBurst(t, 0.16, d, { type: 'bandpass', f0: 400 * p, f1: 1400 * p, q: 5, vol: 0.6 });
+    a.osc('sine', 180 * p, 60 * p, t, 0.18, d, 0.35);
+    a.noiseBurst(t + 0.08, 0.45, d, { type: 'highpass', f0: 3000 * p, f1: 6000 * p, vol: 0.35, attack: 0.02 });
+  },
+  hiss: (a, t, p, o) => {
+    const d = a.out({ ...o, vol: 0.55, wet: 0.4 });
+    a.noiseBurst(t, 0.9, d, { type: 'highpass', f0: 4000 * p, f1: 2500 * p, vol: 0.45, attack: 0.08 });
+    a.osc('sawtooth', 70 * p, 45 * p, t, 0.6, d, 0.25, 0.05);
+  },
+  rumble: (a, t, p, o) => {
+    const d = a.out({ ...o, vol: 0.7, wet: 0.5 });
+    a.noiseBurst(t, 0.8, d, { type: 'lowpass', f0: 220 * p, f1: 90, vol: 0.9, pink: true, attack: 0.2 });
+    a.osc('sine', 48 * p, 32, t, 0.8, d, 0.5, 0.2);
+  },
+  howl: (a, t, p, o) => {
+    const d = a.out({ ...o, vol: 0.55, wet: 0.7 });
+    const ctx = a.ctx!;
+    const os = ctx.createOscillator(); os.type = 'sawtooth';
+    os.frequency.setValueAtTime(260 * p, t); os.frequency.linearRampToValueAtTime(520 * p, t + 0.4); os.frequency.linearRampToValueAtTime(430 * p, t + 1.3);
+    const vib = ctx.createOscillator(); vib.frequency.value = 6; const vg = ctx.createGain(); vg.gain.value = 9; vib.connect(vg); vg.connect(os.frequency);
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 1.5;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.25); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+    os.connect(f); f.connect(g); g.connect(d);
+    os.start(t); vib.start(t); os.stop(t + 1.45); vib.stop(t + 1.45);
+  },
   bark: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.5 }); a.osc('sawtooth', 500 * p, 220 * p, t, 0.12, d, 0.3); a.noiseBurst(t, 0.1, d, { type: 'bandpass', f0: 900 * p, q: 2, vol: 0.4 }); },
   screech: (a, t, p, o) => {
     const d = a.out({ ...o, vol: 0.4, wet: 0.3 });

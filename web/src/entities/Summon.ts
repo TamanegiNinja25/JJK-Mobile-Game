@@ -46,6 +46,9 @@ export class Summon extends Actor {
   stateT = 0;
   tgt: Actor | null = null;
   struck = false;
+  chargeDir = 0;
+  chargeDist = 0;
+  hitIds: Set<number> | null = null;
 
   constructor(world: World, kind: string, x: number, z: number, owner: Caster, dur: number, power: number) {
     super(world);
@@ -63,13 +66,17 @@ export class Summon extends Actor {
       m = buildCreature(kind as CreatureKind);
       if (kind === 'elephant') scale = 1.3;
       if (kind === 'toad') scale = 1.2;
+      if (kind === 'serpent') scale = 1.15;
+      if (kind === 'totality') scale = 1.6;
     }
     this.setModel(m, scale);
-    this.targetable = kind === 'dogWhite' || kind === 'dogBlack' || kind === 'rabbit';
-    this.radius = kind === 'elephant' ? 1.6 : kind === 'rabbit' ? 0.25 : 0.45;
-    this.maxHp = this.hp = Math.max(50, (world.player.maxHp ?? 100) * (kind === 'rabbit' ? 0.08 : 0.45));
+    this.targetable = kind === 'dogWhite' || kind === 'dogBlack' || kind === 'rabbit' || kind === 'totality';
+    this.radius = kind === 'elephant' ? 1.6 : kind === 'rabbit' ? 0.25 : kind === 'totality' ? 1.3 : kind === 'ox' ? 0.8 : 0.45;
+    this.maxHp = this.hp = Math.max(50, (world.player.maxHp ?? 100) * (kind === 'rabbit' ? 0.08 : kind === 'totality' ? 0.9 : 0.45));
     if (kind === 'elephant') this.hover = 7;
     if (kind === 'nue') this.hover = 0.6;
+    if (kind === 'serpent') this.hover = -3.2;
+    if (kind === 'ox') { this.chargeDir = owner.facing; this.hitIds = new Set(); }
     this.atkCd = rand(0.1, 0.4);
   }
 
@@ -91,6 +98,13 @@ export class Summon extends Actor {
       case 'nue': this.nueAI(dt); break;
       case 'elephant': this.hover = Math.max(0, this.hover - dt * 14); break;
       case 'rabbit': this.rabbitAI(dt); break;
+      case 'serpent':
+        // rise out of the shadow, hold, then sink back
+        this.hover = this.life < 0.45 ? Math.max(-3.5, this.hover - dt * 9) : Math.min(0, this.hover + dt * 16);
+        if (this.stateT < 0.4) this.model?.play('bite', 0.4);
+        break;
+      case 'ox': this.oxAI(dt); break;
+      case 'totality': this.totalityAI(dt); break;
       default: break;
     }
     this.syncModel(dt);
@@ -151,6 +165,57 @@ export class Summon extends Actor {
     } else {
       this.hover += dt * 6;
       if (this.stateT > 0.6) this.life = 0;
+    }
+  }
+
+  /** Piercing Ox: charges straight ahead; damage grows with the distance covered. */
+  private oxAI(dt: number) {
+    const sx = Math.sin(this.chargeDir), sz = Math.cos(this.chargeDir);
+    const spd = 19;
+    this.facing = this.chargeDir;
+    this.move(sx * spd, sz * spd, dt);
+    this.chargeDist += spd * dt;
+    if (Math.random() < 0.7) this.world.fx.smoke(this.x - sx, this.z - sz, 0x2a2420, 2);
+    if (this.stateT > 0.12) { this.stateT = 0; this.world.sfx('land', this.x, this.z, 0.35, 1.4); }
+    for (const e of this.world.enemies) {
+      if (!e.alive || this.hitIds!.has(e.id) || Math.hypot(e.x - this.x, e.z - this.z) > 1.4 + e.radius) continue;
+      this.hitIds!.add(e.id);
+      this.world.fx.burst(e.x, 1, e.z, 0xd8a86a, 14, 5, 0.25);
+      this.world.fx.shake(0.15);
+      this.world.sfx('punch', e.x, e.z, 0.8, 0.7);
+      this.world.damageTargetActor(this, e, 1 + this.chargeDist * 0.04, { kind: 'summon', knock: 4 });
+    }
+  }
+
+  /** Divine Dog: Totality: a giant wolf that pounces and mauls in an area. */
+  private totalityAI(dt: number) {
+    const o = this.owner;
+    const t = this.world.nearestEnemyActor(this.x, this.z, 16);
+    if (t) {
+      const d = Math.hypot(t.x - this.x, t.z - this.z);
+      if (d > 2.2 + t.radius) {
+        const s = 10;
+        this.move((t.x - this.x) / d * s, (t.z - this.z) / d * s, dt);
+        this.faceTowards(t.x, t.z, dt, 10);
+      } else {
+        this.faceTowards(t.x, t.z, dt, 10);
+        if (this.atkCd <= 0) {
+          this.atkCd = 1.0;
+          this.model?.play('bite', 0.5);
+          this.world.schedule(0.22, () => {
+            if (!this.alive) return;
+            const fx = this.x + Math.sin(this.facing) * 1.6, fz = this.z + Math.cos(this.facing) * 1.6;
+            this.world.sfx('growl', fx, fz, 0.7, 0.7);
+            this.world.sfx('slash', fx, fz, 0.6, 0.8);
+            this.world.fx.slash(fx, fz, this.facing, 2, 0xe8e8f0, 1.6);
+            this.world.fx.burst(fx, 0.8, fz, 0xffffff, 14, 5, 0.25);
+            this.world.damageArea(this, fx, fz, 2.2, 1, { kind: 'summon', knock: 2 });
+          });
+        }
+      }
+    } else {
+      const d = Math.hypot(o.x - this.x, o.z - this.z);
+      if (d > 3) { const s = Math.min(10, d * 2); this.move((o.x - this.x) / d * s, (o.z - this.z) / d * s, dt); this.faceTowards(o.x, o.z, dt, 8); }
     }
   }
 

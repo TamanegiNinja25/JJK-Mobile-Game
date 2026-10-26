@@ -3,19 +3,20 @@
 import type { Game } from '../Game';
 import { el, escapeHtml, formatNum } from '../core/util';
 import { itemIcon, skillIcon } from './Icons';
-import { ITEMS, RARITY_COLOR, RARITY_NAME, itemName, itemStats, formatStat, isGear, sellPrice, enhanceCost, makeItem, ItemBase, uniquesForLevel } from '../rpg/items';
-import { Attr, ItemInstance, Slot, StatKey, PCT_KEYS } from '../rpg/types';
-import { SKILLS, classSkills } from '../rpg/skills';
+import { ITEMS, RARITY_COLOR, RARITY_NAME, itemName, itemStats, formatStat, isGear, sellPrice, enhanceCost, makeItem, ItemBase, uniquesForLevel, SLOT_ORDER, SLOT_NAMES, KIND_NAME, CATEGORIES, sortItems } from '../rpg/items';
+import { Attr, ItemInstance, ItemKind, Slot, StatKey, PCT_KEYS } from '../rpg/types';
+import { SKILLS, classSkills, SKILL_TYPES, SkillDef } from '../rpg/skills';
 import { CLASSES, expToNext } from '../rpg/classes';
 import { QUESTS, QUEST_BY_ID } from '../data/story';
 import { MAPS, TRAVEL_LIST, travelUnlocked } from '../world/maps';
 import { audio } from '../audio/Audio';
 import { music } from '../audio/Music';
 import { INV_SIZE, objCount } from '../rpg/PlayerState';
+import { CHEAT_TOGGLES, CHEAT_ACTIONS, cheatOn, toggleCheat, runCheat } from '../rpg/Cheats';
 
-const TABS: [string, string, string][] = [['status', '状', 'Status'], ['bag', '袋', 'Bag'], ['skills', '術', 'Skills'], ['quests', '任', 'Quests'], ['map', '図', 'Map'], ['system', '設', 'System']];
-const SLOT_NAMES: Record<Slot, string> = { weapon: 'Weapon', outfit: 'Uniform', charm: 'Charm', shoes: 'Shoes' };
-const KIND_NAME: Record<string, string> = { weapon: 'Weapon', outfit: 'Uniform', charm: 'Charm', shoes: 'Shoes', consumable: 'Consumable', material: 'Material', quest: 'Quest Item' };
+const TABS: [string, string, string][] = [['status', '状', 'Status'], ['bag', '袋', 'Bag'], ['skills', '術', 'Skills'], ['quests', '任', 'Quests'], ['map', '図', 'Map'], ['cheats', '秘', 'Cheats'], ['system', '設', 'System']];
+/** Placeholder glyphs shown in empty equipment slots. */
+const SLOT_GLYPH: Record<Slot, string> = { weapon: '武', head: '冠', outfit: '衣', charm: '符', ring: '環', shoes: '靴' };
 
 export class Menus {
   root: HTMLDivElement;
@@ -26,8 +27,10 @@ export class Menus {
   private selItem: number | null = null;
   private selSlot: Slot | null = null;
   private selSkill: string | null = null;
+  private skillFilter: 'all' | SkillDef['type'] = 'all';
   private selQuest: string | null = null;
-  private bagFilter: 'all' | 'gear' | 'use' | 'mat' = 'all';
+  private bagFilter: 'all' | ItemKind = 'all';
+  private shopCat: 'all' | ItemKind = 'all';
   // shop state
   shop: { kind: string; npc: string } | null = null;
   private shopTab: 'buy' | 'sell' = 'buy';
@@ -69,6 +72,7 @@ export class Menus {
   openShop(kind: string, npc: string) {
     this.shop = { kind, npc };
     this.shopTab = 'buy';
+    this.shopCat = 'all';
     this.open = true;
     this.selItem = null;
     this.root.classList.remove('hidden');
@@ -102,6 +106,7 @@ export class Menus {
       case 'skills': this.body.innerHTML = this.renderSkills(); break;
       case 'quests': this.body.innerHTML = this.renderQuests(); break;
       case 'map': this.body.innerHTML = this.renderMap(); this.drawWorldMap(); break;
+      case 'cheats': this.body.innerHTML = this.renderCheats(); break;
       case 'system': this.body.innerHTML = this.renderSystem(); this.bindSystem(); break;
     }
   }
@@ -115,7 +120,7 @@ export class Menus {
     const need = expToNext(d.level);
     const attrs: [Attr, string, string][] = [['str', 'STR', 'Physical power'], ['dex', 'DEX', 'Crit, speed, evasion'], ['vit', 'VIT', 'HP and defence'], ['ce', 'CE', 'Cursed energy and skill power']];
     const rows = attrs.map(([a, n, h]) => `<div class="attr"><div class="attr-n">${n}<small>${h}</small></div><div class="attr-v">${ps.totalAttr(a)}</div>
-      ${d.statPoints > 0 ? `<button class="btn small" data-act="stat" data-a="${a}" data-n="1">+1</button><button class="btn small" data-act="stat" data-a="${a}" data-n="5">+5</button>` : ''}</div>`).join('');
+      ${d.statPoints > 0 ? `<button class="btn small" data-act="stat" data-a="${a}" data-n="1">+1</button><button class="btn small" data-act="stat" data-a="${a}" data-n="5">+5</button><button class="btn small" data-act="stat" data-a="${a}" data-n="10">+10</button>` : ''}</div>`).join('');
     const sv = (k: keyof typeof st, label: string, fmt: 'n' | 'p' | 'r' = 'n') => `<div class="stat"><span>${label}</span><b>${fmt === 'p' ? (st[k] * 100).toFixed(1) + '%' : fmt === 'r' ? st[k].toFixed(1) + '/s' : formatNum(st[k] as number)}</b></div>`;
     const mins = Math.floor(d.playTime / 60);
     return `<div class="status">
@@ -153,25 +158,29 @@ export class Menus {
   private renderBag() {
     const ps = this.game.ps!;
     const d = ps.d;
-    const slots: Slot[] = ['weapon', 'outfit', 'charm', 'shoes'];
-    const eq = slots.map(s => `<div class="eq-slot"><div class="eq-label">${SLOT_NAMES[s]}</div>${this.itemCell(d.equip[s], `data-act="selslot" data-slot="${s}"`, `<span class="ph">${SLOT_NAMES[s][0]}</span>`).replace('class="cell', `class="cell ${this.selSlot === s ? 'sel' : ''}`)}</div>`).join('');
-    const filt = (it: ItemInstance) => {
-      const k = ITEMS[it.base].kind;
-      if (this.bagFilter === 'gear') return isGear(ITEMS[it.base]);
-      if (this.bagFilter === 'use') return k === 'consumable';
-      if (this.bagFilter === 'mat') return k === 'material' || k === 'quest';
-      return true;
-    };
-    const items = d.inventory.filter(filt);
+    const eq = SLOT_ORDER.map(s => `<div class="eq-slot"><div class="eq-label">${SLOT_NAMES[s]}</div>${this.itemCell(d.equip[s], `data-act="selslot" data-slot="${s}"`, `<span class="ph">${SLOT_GLYPH[s]}</span>`).replace('class="cell', `class="cell ${this.selSlot === s ? 'sel' : ''}`)}</div>`).join('');
+    const counts = new Map<ItemKind, number>();
+    for (const it of d.inventory) { const k = ITEMS[it.base].kind; counts.set(k, (counts.get(k) ?? 0) + 1); }
+    const sorted = sortItems(d.inventory);
+    const items = this.bagFilter === 'all' ? sorted : sorted.filter(it => ITEMS[it.base].kind === this.bagFilter);
+    const cell = (it: ItemInstance) => this.itemCell(it, `data-act="selitem" data-uid="${it.uid}"`).replace('class="cell', `class="cell ${this.selItem === it.uid ? 'sel' : ''}`);
     const cells: string[] = [];
-    for (let i = 0; i < Math.max(INV_SIZE, items.length); i++) {
-      const it = items[i];
-      cells.push(it ? this.itemCell(it, `data-act="selitem" data-uid="${it.uid}"`).replace('class="cell', `class="cell ${this.selItem === it.uid ? 'sel' : ''}`) : `<div class="cell empty"></div>`);
+    let lastKind: ItemKind | null = null;
+    for (const it of items) {
+      const k = ITEMS[it.base].kind;
+      if (this.bagFilter === 'all' && k !== lastKind) {
+        cells.push(`<div class="cat-head">${CATEGORIES.find(c => c.id === k)!.label}<small>${counts.get(k)}</small></div>`);
+        lastKind = k;
+      }
+      cells.push(cell(it));
     }
+    const free = INV_SIZE - d.inventory.length;
+    for (let i = 0; i < (this.bagFilter === 'all' ? free : Math.max(0, 18 - items.length)); i++) cells.push('<div class="cell empty"></div>');
+    if (!items.length && this.bagFilter !== 'all') cells.unshift(`<div class="cat-empty">No ${CATEGORIES.find(c => c.id === this.bagFilter)!.label.toLowerCase()} yet</div>`);
     let detail = '<div class="detail-empty">Select an item</div>';
     const sel = this.selItem !== null ? d.inventory.find(x => x.uid === this.selItem) : this.selSlot ? d.equip[this.selSlot] : undefined;
     if (sel) detail = this.itemDetail(sel, !!this.selSlot);
-    const fb = (id: string, label: string) => `<button class="chip ${this.bagFilter === id ? 'on' : ''}" data-act="filter" data-f="${id}">${label}</button>`;
+    const fb = (id: 'all' | ItemKind, label: string, n: number) => `<button class="chip ${this.bagFilter === id ? 'on' : ''} ${n ? '' : 'zero'}" data-act="filter" data-f="${id}">${label}<span class="n">${n}</span></button>`;
     return `<div class="bag">
       <div class="bag-left">
         <div class="panel-title">Equipment</div>
@@ -179,7 +188,7 @@ export class Menus {
         <div class="detail">${detail}</div>
       </div>
       <div class="bag-right">
-        <div class="bag-head"><div class="filters">${fb('all', 'All')}${fb('gear', 'Gear')}${fb('use', 'Consumables')}${fb('mat', 'Materials')}</div><div class="cap">${d.inventory.length}/${INV_SIZE} · ¥${formatNum(d.gold)}</div></div>
+        <div class="bag-head"><div class="filters">${fb('all', 'All', d.inventory.length)}${CATEGORIES.map(c => fb(c.id, c.label, counts.get(c.id) ?? 0)).join('')}</div><div class="cap">${d.inventory.length}/${INV_SIZE} · ¥${formatNum(d.gold)}</div></div>
         <div class="grid">${cells.join('')}</div>
       </div>
     </div>`;
@@ -244,38 +253,64 @@ export class Menus {
   private renderSkills() {
     const ps = this.game.ps!;
     const d = ps.d;
-    const list = classSkills(d.cls);
-    const grid: string[] = [];
-    for (let row = 0; row < 4; row++) {
-      for (let col = 0; col < 3; col++) {
-        const s = list.find(x => x.row === row && x.col === col);
-        if (!s) { grid.push('<div class="sk empty"></div>'); continue; }
-        const lv = ps.skillLevel(s.id);
-        const can = !ps.canLearn(s.id);
-        grid.push(`<div class="sk ${lv ? 'learned' : 'locked'} ${this.selSkill === s.id ? 'sel' : ''} ${s.type}" data-act="selskill" data-id="${s.id}">
-          <img src="${skillIcon(s.id, 80)}"><div class="sk-lv">${lv}/${s.max}</div>${can ? '<div class="sk-up">▲</div>' : ''}<div class="sk-n">${escapeHtml(s.name.replace(/^.*?: /, ''))}</div></div>`);
+    const order = new Map(SKILL_TYPES.map((t, i) => [t.id, i]));
+    const all = classSkills(d.cls).sort((a, b) => (order.get(a.type)! - order.get(b.type)!) || a.req - b.req);
+    const list = this.skillFilter === 'all' ? all : all.filter(x => x.type === this.skillFilter);
+    const typeLabel = (t: SkillDef['type']) => SKILL_TYPES.find(x => x.id === t)!.label;
+    const tiles: string[] = [];
+    let last: SkillDef['type'] | null = null;
+    for (const s of list) {
+      if (this.skillFilter === 'all' && s.type !== last) {
+        const learned = all.filter(x => x.type === s.type && ps.skillLevel(x.id) > 0).length;
+        tiles.push(`<div class="cat-head">${typeLabel(s.type)}<small>${learned}/${all.filter(x => x.type === s.type).length} learned</small></div>`);
+        last = s.type;
       }
-    }
-    let detail = '<div class="detail-empty">Select a technique</div>';
-    const s = this.selSkill ? SKILLS[this.selSkill] : null;
-    if (s) {
       const lv = ps.skillLevel(s.id);
-      const err = ps.canLearn(s.id);
-      const cur = lv > 0 ? s.desc(lv) : '';
-      const next = lv < s.max ? s.desc(lv + 1) : '';
-      const slotBtns = s.type === 'active' && lv > 0 ? [0, 1, 2, 3, 4].map(i => `<button class="btn small ${d.quick[i] === s.id ? 'on' : ''}" data-act="quick" data-id="${s.id}" data-i="${i}">${i + 1}</button>`).join('') : s.type === 'ultimate' && lv > 0 ? `<button class="btn small ${d.quick[5] === s.id ? 'on' : ''}" data-act="quick" data-id="${s.id}" data-i="5">ULT</button>` : '';
+      const can = !ps.canLearn(s.id);
+      const lockLv = !lv && d.level < s.req;
+      const slot = d.quick.indexOf(s.id);
+      tiles.push(`<div class="sk ${lv ? 'learned' : 'locked'} ${this.selSkill === s.id ? 'sel' : ''} ${s.type}" data-act="selskill" data-id="${s.id}">
+        <img src="${skillIcon(s.id, 80)}">${lockLv ? `<div class="sk-lock">Lv ${s.req}</div>` : ''}<div class="sk-lv">${lv}/${s.max}</div>${can ? '<div class="sk-up">▲</div>' : ''}${slot >= 0 ? `<div class="sk-slot">${slot === 5 ? 'U' : slot + 1}</div>` : ''}<div class="sk-n">${escapeHtml(s.name.replace(/^.*?: /, ''))}</div></div>`);
+    }
+    // quick slot strip: tap a slot to assign the selected technique (or to select what is in it)
+    const sel = this.selSkill ? SKILLS[this.selSkill] : null;
+    const assignable = !!sel && ps.skillLevel(sel.id) > 0 && (sel.type === 'active' || sel.type === 'buff' || sel.type === 'ultimate');
+    const quick = d.quick.slice(0, 6).map((id, i) => {
+      const ok = assignable && (sel!.type === 'ultimate' ? i === 5 : i < 5);
+      return `<button class="qs ${i === 5 ? 'ult' : ''} ${ok ? 'can' : ''} ${id && id === this.selSkill ? 'on' : ''}" data-act="qslot" data-i="${i}">
+        ${id ? `<img src="${skillIcon(id, 64)}">` : `<span>${i === 5 ? 'ULT' : i + 1}</span>`}<em>${i === 5 ? 'U' : i + 1}</em></button>`;
+    }).join('');
+    const counts = (t: SkillDef['type']) => all.filter(x => x.type === t).length;
+    const fb = (id: 'all' | SkillDef['type'], label: string, n: number) => `<button class="chip ${this.skillFilter === id ? 'on' : ''}" data-act="skfilter" data-f="${id}">${label}<span class="n">${n}</span></button>`;
+    let detail = '<div class="detail-empty">Select a technique to see what it does, learn it, or put it in a quick slot.</div>';
+    if (sel) {
+      const lv = ps.skillLevel(sel.id);
+      const err = ps.canLearn(sel.id);
+      const cur = lv > 0 ? sel.desc(lv) : '';
+      const next = lv < sel.max ? sel.desc(lv + 1) : '';
+      const castable = sel.type === 'active' || sel.type === 'buff' || sel.type === 'ultimate';
+      const reqLv = sel.req + lv * (sel.type === 'ultimate' ? 0 : 3);
+      const reqs: string[] = [`<span class="${d.level >= reqLv ? 'ok' : 'no'}">Character Lv ${reqLv}</span>`];
+      if (sel.prereq) reqs.push(`<span class="${ps.skillLevel(sel.prereq[0]) >= sel.prereq[1] ? 'ok' : 'no'}">${escapeHtml(SKILLS[sel.prereq[0]].name)} Lv ${sel.prereq[1]}</span>`);
+      const slot = d.quick.indexOf(sel.id);
       detail = `<div class="skill-detail">
-        <div class="id-head"><img src="${skillIcon(s.id, 96)}"><div><div class="id-name" style="color:${s.color}">${escapeHtml(s.name)}</div>
-        <div class="id-sub">${s.type === 'passive' ? 'Passive' : s.type === 'ultimate' ? 'Ultimate' : 'Active'} · Lv ${lv}/${s.max}${s.ce && s.type === 'active' ? ` · CE ${s.ce(Math.max(1, lv))}` : ''}${s.cd && s.type !== 'passive' ? ` · CD ${s.cd(Math.max(1, lv))}s` : ''}</div></div></div>
+        <div class="id-head"><img src="${skillIcon(sel.id, 96)}"><div><div class="id-name" style="color:${sel.color}">${escapeHtml(sel.name)}</div>
+        <div class="id-sub"><span class="type-badge ${sel.type}">${typeLabel(sel.type)}</span> Lv ${lv}/${sel.max}${sel.ce && castable && sel.type !== 'ultimate' ? ` · CE ${sel.ce(Math.max(1, lv))}` : ''}${sel.cd && castable ? ` · Cooldown ${sel.cd(Math.max(1, lv))}s` : ''}${sel.react ? ` · Rearms in ${sel.react.icd}s` : ''}</div></div></div>
         ${cur ? `<div class="sd-cur"><b>Current</b>${escapeHtml(cur)}</div>` : ''}
-        ${next ? `<div class="sd-next"><b>${lv ? 'Next level' : 'Learn'}</b>${escapeHtml(next)}</div>` : ''}
-        <div class="sd-req">${s.prereq ? `Requires ${SKILLS[s.prereq[0]].name} Lv ${s.prereq[1]} · ` : ''}Unlocks at Lv ${s.req}</div>
-        <div class="id-actions"><button class="btn primary" data-act="learn" data-id="${s.id}" ${err ? 'disabled' : ''}>${lv ? 'Level up' : 'Learn'}</button>${err && lv < s.max ? `<span class="id-err">${err}</span>` : ''}</div>
-        ${slotBtns ? `<div class="slots"><small>Quick slot:</small> ${slotBtns}</div>` : ''}
+        ${next ? `<div class="sd-next"><b>${lv ? 'Next level' : 'When learned'}</b>${escapeHtml(next)}</div>` : '<div class="sd-cur"><b>Mastered</b>This technique is at its highest level.</div>'}
+        ${lv < sel.max ? `<div class="sd-req">${reqs.join(' · ')}</div>` : ''}
+        <div class="id-actions">${lv < sel.max ? `<button class="btn primary" data-act="learn" data-id="${sel.id}" ${err ? 'disabled' : ''}>${lv ? 'Level up' : 'Learn'} <small>1 SP</small></button>` : ''}${err && lv < sel.max ? `<span class="id-err">${err}</span>` : ''}</div>
+        ${castable && lv > 0 ? `<div class="slots"><small>${slot >= 0 ? `In quick slot ${slot === 5 ? 'U' : slot + 1}.` : 'Not in a quick slot.'} ${sel.type === 'ultimate' ? 'Ultimates live in slot U.' : 'Tap a numbered slot above to assign it.'}</small></div>` : ''}
+        ${!castable ? `<div class="slots"><small>${sel.type === 'passive' ? 'Always active once learned.' : 'Triggers by itself in battle once learned.'}</small></div>` : ''}
       </div>`;
     }
     return `<div class="skills">
-      <div class="skills-left"><div class="panel-title">${CLASSES[d.cls].title} Techniques <span class="pts">${d.skillPoints} SP</span></div><div class="sk-grid">${grid.join('')}</div></div>
+      <div class="skills-left">
+        <div class="sk-top"><div class="panel-title">${CLASSES[d.cls].title} Techniques <span class="pts">${d.skillPoints} SP</span></div>
+          <div class="quickbar">${quick}</div></div>
+        <div class="filters sk-filters">${fb('all', 'All', all.length)}${SKILL_TYPES.map(t => fb(t.id, t.label, counts(t.id))).join('')}</div>
+        <div class="sk-grid">${tiles.join('')}</div>
+      </div>
       <div class="skills-right">${detail}</div>
     </div>`;
   }
@@ -412,6 +447,20 @@ export class Menus {
   }
 
   // ------------------------------------------------------------------
+  // Cheats
+  // ------------------------------------------------------------------
+  private renderCheats() {
+    const toggles = CHEAT_TOGGLES.map(t => `<button class="cheat-toggle ${cheatOn(this.game, t.id) ? 'on' : ''}" data-act="cheat-t" data-id="${t.id}">
+      <span class="sw"><i></i></span><span class="ct"><b>${t.label}</b><small>${t.desc}</small></span></button>`).join('');
+    const groups = [...new Set(CHEAT_ACTIONS.map(a => a.group))].map(gname => `<div class="panel-title">${gname}</div>
+      <div class="cheat-actions">${CHEAT_ACTIONS.filter(a => a.group === gname).map(a => `<button class="btn" data-act="cheat-a" data-id="${a.id}">${a.label}</button>`).join('')}</div>`).join('');
+    return `<div class="cheats">
+      <div class="cheat-note">秘 Cheats apply to this save slot only. Toggles stay on until you switch them off.</div>
+      <div class="cheat-cols"><div><div class="panel-title">Toggles</div><div class="cheat-toggles">${toggles}</div></div><div>${groups}</div></div>
+    </div>`;
+  }
+
+  // ------------------------------------------------------------------
   // Shops
   // ------------------------------------------------------------------
   private stock(kind: string): ItemBase[] {
@@ -435,27 +484,36 @@ export class Menus {
     const title = kind === 'potions' ? "Shoko's Infirmary" : kind === 'armory' ? "Maki's Armory" : "Mei Mei's Exchange";
     const sub = kind === 'potions' ? 'Remedies, tonics and talismans' : kind === 'armory' ? 'Cursed tools and gear' : 'Rare goods. Rarer prices.';
     let rows = '';
+    const catOf = (k: ItemKind) => CATEGORIES.find(c => c.id === k)!;
+    const pool = this.shopTab === 'buy' ? this.stock(kind).map(b => b.kind) : ps.d.inventory.filter(it => !ITEMS[it.base].questItem).map(it => ITEMS[it.base].kind);
+    const present = CATEGORIES.filter(c => pool.includes(c.id));
+    if (this.shopCat !== 'all' && !present.some(c => c.id === this.shopCat)) this.shopCat = 'all';
+    const want = (k: ItemKind) => this.shopCat === 'all' || this.shopCat === k;
+    let lastCat: ItemKind | null = null;
+    const head = (k: ItemKind) => { if (k === lastCat || present.length < 2) return ''; lastCat = k; return `<div class="shop-cat">${catOf(k).label}</div>`; };
     if (this.shopTab === 'buy') {
-      rows = this.stock(kind).map(b => {
+      const order = new Map(CATEGORIES.map((c, i) => [c.id, i]));
+      rows = this.stock(kind).filter(b => want(b.kind)).sort((a, b) => (order.get(a.kind)! - order.get(b.kind)!) || a.req - b.req).map(b => {
         const p = this.price(b);
         const lock = b.req > ps.d.level + (kind === 'armory' ? 0 : 3);
         const stack = (b.stack ?? 1) > 1;
-        return `<div class="shop-row ${lock ? 'locked' : ''}"><img src="${itemIcon(b.icon, 64)}" class="r${b.unique ? 3 : 0}"><div class="sr-info"><b style="color:${b.unique ? RARITY_COLOR[3] : '#fff'}">${escapeHtml(b.name)}</b><small>${escapeHtml(b.desc ?? this.statSummary(b))}${b.req > 1 ? ` · Lv ${b.req}` : ''}</small></div>
+        return head(b.kind) + `<div class="shop-row ${lock ? 'locked' : ''}"><img src="${itemIcon(b.icon, 64)}" class="r${b.unique ? 3 : 0}"><div class="sr-info"><b style="color:${b.unique ? RARITY_COLOR[3] : '#fff'}">${escapeHtml(b.name)}</b><small>${escapeHtml(b.desc ?? this.statSummary(b))}${b.req > 1 ? ` · Lv ${b.req}` : ''}</small></div>
           <div class="sr-price">¥${formatNum(p)}</div>
           <button class="btn small primary" data-act="buy" data-id="${b.id}" data-n="1" ${ps.d.gold < p ? 'disabled' : ''}>Buy</button>${stack ? `<button class="btn small" data-act="buy" data-id="${b.id}" data-n="10" ${ps.d.gold < p * 10 ? 'disabled' : ''}>×10</button>` : ''}</div>`;
       }).join('');
     } else {
-      rows = ps.d.inventory.filter(it => !ITEMS[it.base].questItem).map(it => {
+      rows = sortItems(ps.d.inventory.filter(it => !ITEMS[it.base].questItem && want(ITEMS[it.base].kind))).map(it => {
         const b = ITEMS[it.base];
         const p = sellPrice(it);
-        return `<div class="shop-row"><img src="${itemIcon(b.icon, 64)}" class="r${it.rarity}"><div class="sr-info"><b style="color:${RARITY_COLOR[it.rarity]}">${escapeHtml(itemName(it))}${it.qty > 1 ? ' ×' + it.qty : ''}</b><small>${RARITY_NAME[it.rarity]} ${KIND_NAME[b.kind]}</small></div>
+        return head(b.kind) + `<div class="shop-row"><img src="${itemIcon(b.icon, 64)}" class="r${it.rarity}"><div class="sr-info"><b style="color:${RARITY_COLOR[it.rarity]}">${escapeHtml(itemName(it))}${it.qty > 1 ? ' ×' + it.qty : ''}</b><small>${RARITY_NAME[it.rarity]} ${KIND_NAME[b.kind]}</small></div>
           <div class="sr-price">¥${formatNum(p)}</div><button class="btn small" data-act="sell" data-uid="${it.uid}" data-n="1">Sell</button>${it.qty > 1 ? `<button class="btn small" data-act="sell" data-uid="${it.uid}" data-n="${it.qty}">All</button>` : ''}</div>`;
       }).join('') || '<div class="none">Nothing to sell.</div>';
     }
     return `<div class="shop">
       <div class="shop-head"><div class="shop-portrait" style="background-image:url(${this.game.portraits.get(this.shop!.npc)})"></div><div><div class="id-name">${title}</div><div class="id-sub">${sub}</div></div>
         <div class="shop-gold">¥${formatNum(ps.d.gold)}</div></div>
-      <div class="chips"><button class="chip ${this.shopTab === 'buy' ? 'on' : ''}" data-act="shoptab" data-t="buy">Buy</button><button class="chip ${this.shopTab === 'sell' ? 'on' : ''}" data-act="shoptab" data-t="sell">Sell</button></div>
+      <div class="chips"><button class="chip ${this.shopTab === 'buy' ? 'on' : ''}" data-act="shoptab" data-t="buy">Buy</button><button class="chip ${this.shopTab === 'sell' ? 'on' : ''}" data-act="shoptab" data-t="sell">Sell</button>
+        ${present.length > 1 ? `<span class="chip-sep"></span><button class="chip ${this.shopCat === 'all' ? 'on' : ''}" data-act="shopcat" data-c="all">All</button>${present.map(c => `<button class="chip ${this.shopCat === c.id ? 'on' : ''}" data-act="shopcat" data-c="${c.id}">${c.label}</button>`).join('')}` : ''}</div>
       <div class="shop-list">${rows}</div>
     </div>`;
   }
@@ -516,7 +574,7 @@ export class Menus {
     switch (a) {
       case 'stat': ps.spendStat(t.dataset.a as Attr, +(t.dataset.n ?? 1)); audio.play('click'); break;
       case 'selitem': this.selItem = uid; this.selSlot = null; audio.play('click', { vol: 0.5 }); break;
-      case 'selslot': this.selSlot = t.dataset.slot as Slot; this.selItem = null; audio.play('click', { vol: 0.5 }); break;
+      case 'selslot': this.selSlot = t.dataset.slot as Slot; this.selItem = null; this.bagFilter = this.selSlot; audio.play('click', { vol: 0.5 }); break;
       case 'filter': this.bagFilter = t.dataset.f as any; break;
       case 'equip': if (uid !== null && ps.equip(uid)) { audio.play('equip'); this.selItem = null; } break;
       case 'unequip': if (ps.unequip(t.dataset.slot as Slot)) { audio.play('equip', { pitch: 0.8 }); this.selSlot = null; } break;
@@ -533,13 +591,12 @@ export class Menus {
       }
       case 'selskill': this.selSkill = t.dataset.id!; audio.play('click', { vol: 0.5 }); break;
       case 'learn': if (ps.learn(t.dataset.id!)) { audio.play('skillUp'); } else audio.play('error'); break;
-      case 'quick': {
+      case 'skfilter': this.skillFilter = t.dataset.f as any; audio.play('click', { vol: 0.5 }); break;
+      case 'qslot': {
         const i = +t.dataset.i!;
-        const id = t.dataset.id!;
-        const prev = ps.d.quick.indexOf(id);
-        if (prev >= 0) ps.d.quick[prev] = null;
-        ps.d.quick[i] = id;
-        audio.play('equip');
+        if (this.selSkill && ps.assignQuick(this.selSkill, i)) audio.play('equip');
+        else if (ps.d.quick[i]) { this.selSkill = ps.d.quick[i]; audio.play('click', { vol: 0.5 }); }
+        else audio.play('error');
         break;
       }
       case 'selquest': this.selQuest = t.dataset.id!; audio.play('click', { vol: 0.5 }); break;
@@ -547,7 +604,20 @@ export class Menus {
       case 'title': this.game.save(false); this.close(); this.game.toTitle(); return;
       case 'quality': this.game.settings.quality = t.dataset.q as any; this.game.settings.autoQ = false; this.game.applySettings(); break;
       case 'zoom': this.game.settings.zoom = +t.dataset.z!; this.game.applySettings(); break;
-      case 'shoptab': this.shopTab = t.dataset.t as any; break;
+      case 'cheat-t': {
+        const on = toggleCheat(this.game, t.dataset.id as any);
+        audio.play(on ? 'equip' : 'click');
+        this.game.toast(`${CHEAT_TOGGLES.find(c => c.id === t.dataset.id)!.label} ${on ? 'ON' : 'OFF'}`, on ? 'good' : 'info', 1.2);
+        break;
+      }
+      case 'cheat-a': {
+        const msg = runCheat(this.game, t.dataset.id!);
+        audio.play('coin');
+        if (msg) this.game.toast(msg, 'good', 1.8);
+        break;
+      }
+      case 'shoptab': this.shopTab = t.dataset.t as any; this.shopCat = 'all'; break;
+      case 'shopcat': this.shopCat = t.dataset.c as any; audio.play('click', { vol: 0.5 }); break;
       case 'buy': {
         const b = ITEMS[t.dataset.id!];
         const n = +(t.dataset.n ?? 1);

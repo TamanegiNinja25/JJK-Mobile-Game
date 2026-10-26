@@ -28,6 +28,8 @@ export class Hud {
   private ultBtn!: HTMLDivElement;
   private dodgeBtn!: HTMLDivElement; private dodgeCd!: HTMLDivElement;
   private statDot!: HTMLDivElement;
+  private buffRow!: HTMLDivElement;
+  private buffEls = new Map<string, HTMLDivElement>();
   private hpLagV = 1;
   private bossLagV = 1;
   private lastTrack = '';
@@ -69,9 +71,30 @@ export class Hud {
     this.domWrap = el('div', 'bar dom');
     this.domFill = el('div', 'bar-fill');
     this.domWrap.append(this.domFill, el('div', 'bar-label', 'DOMAIN'));
-    bars.append(this.nameEl, hp, ce, this.domWrap);
+    this.buffRow = el('div', 'buff-row');
+    bars.append(this.nameEl, hp, ce, this.domWrap, this.buffRow);
     v.append(this.portrait, bars);
     this.root.appendChild(v);
+  }
+
+  /** Active buffs as icons with a draining ring; built-in buffs map to the skill that grants them. */
+  private updateBuffs() {
+    const ps = this.game.ps!;
+    const alias: Record<string, string> = { zone: 'blackflash', sukuna: 'shrine', garden: 'garden', rabbit: 'rabbits' };
+    for (const [id, b] of ps.buffs) {
+      let e = this.buffEls.get(id);
+      if (!e) {
+        const icon = SKILLS[alias[id] ?? id] ? skillIcon(alias[id] ?? id, 48) : '';
+        e = el('div', 'hbuff', icon ? `<img src="${icon}">` : '<span>呪</span>');
+        e.title = SKILLS[alias[id] ?? id]?.name ?? id;
+        this.buffRow.appendChild(e);
+        this.buffEls.set(id, e);
+      }
+      const left = Math.max(0, b.until - ps.time);
+      e.style.setProperty('--p', String(Math.min(1, left / Math.max(0.1, b.dur))));
+      e.classList.toggle('ending', left < 2);
+    }
+    for (const [id, e] of this.buffEls) if (!ps.buffs.has(id)) { e.remove(); this.buffEls.delete(id); }
   }
 
   private buildTopRight() {
@@ -271,6 +294,7 @@ export class Hud {
     if (!ps || !w.player) return;
     const st = ps.stats;
     const d = ps.d;
+    this.updateBuffs();
     const hpK = Math.max(0, d.hp / st.maxHp);
     this.hpFill.style.width = (hpK * 100).toFixed(1) + '%';
     this.hpLagV = this.hpLagV > hpK ? Math.max(hpK, this.hpLagV - dt * 0.6) : hpK;

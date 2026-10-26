@@ -7,7 +7,7 @@ import { itemIcon } from './Icons';
 import { IconSpec } from '../rpg/items';
 import { CLASSES } from '../rpg/classes';
 import { ClassId } from '../rpg/types';
-import { PlayerState } from '../rpg/PlayerState';
+import { PlayerState, STAT_POINTS_PER_LEVEL } from '../rpg/PlayerState';
 import { MAPS } from '../world/maps';
 import { audio } from '../audio/Audio';
 
@@ -81,7 +81,7 @@ export class UI {
 
   levelUp(lv: number) {
     this.banner('LEVEL UP', `Level ${lv}`, '#ffd23a', 2.2);
-    this.toast('+5 stat points, +1 skill point', 'good', 2.5);
+    this.toast(`+${STAT_POINTS_PER_LEVEL} stat points, +1 skill point`, 'good', 2.5);
   }
 
   // ------------------------------------------------------------------

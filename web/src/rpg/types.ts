@@ -2,7 +2,7 @@
 
 export type ClassId = 'yuji' | 'megumi' | 'nobara';
 export type Attr = 'str' | 'dex' | 'vit' | 'ce';
-export type Slot = 'weapon' | 'outfit' | 'charm' | 'shoes';
+export type Slot = 'weapon' | 'head' | 'outfit' | 'charm' | 'ring' | 'shoes';
 export type ItemKind = Slot | 'consumable' | 'material' | 'quest';
 
 export interface Stats {
@@ -26,6 +26,8 @@ export interface Stats {
   goldBonus: number;
   summonPow: number;
   projPow: number;
+  /** extra damage vs nail-marked enemies */
+  markDmg: number;
 }
 
 export type StatKey = keyof Stats | Attr | 'hpPct' | 'atkPct' | 'cePct' | 'defPct';
@@ -34,12 +36,12 @@ export const STAT_LABEL: Record<string, string> = {
   maxHp: 'Max HP', maxCe: 'Max CE', atk: 'Attack', def: 'Defense', crit: 'Crit Rate', critDmg: 'Crit Damage',
   atkSpd: 'Attack Speed', moveSpd: 'Move Speed', ceRegen: 'CE Regen', hpRegen: 'HP Regen', evasion: 'Evasion',
   skillPow: 'Skill Power', bfChance: 'Black Flash', dmgReduce: 'Damage Reduction', lifesteal: 'Lifesteal', cdr: 'Cooldown Reduction',
-  expBonus: 'EXP Bonus', goldBonus: 'Yen Bonus', summonPow: 'Shikigami Power', projPow: 'Projectile Power',
+  expBonus: 'EXP Bonus', goldBonus: 'Yen Bonus', summonPow: 'Shikigami Power', projPow: 'Projectile Power', markDmg: 'Damage vs Marked',
   str: 'STR', dex: 'DEX', vit: 'VIT', ce: 'CE', hpPct: 'Max HP', atkPct: 'Attack', cePct: 'Max CE', defPct: 'Defense',
 };
 
 /** Keys displayed as percentages. */
-export const PCT_KEYS = new Set(['crit', 'critDmg', 'atkSpd', 'moveSpd', 'evasion', 'skillPow', 'bfChance', 'dmgReduce', 'lifesteal', 'cdr', 'expBonus', 'goldBonus', 'summonPow', 'projPow', 'hpPct', 'atkPct', 'cePct', 'defPct']);
+export const PCT_KEYS = new Set(['crit', 'critDmg', 'atkSpd', 'moveSpd', 'evasion', 'skillPow', 'bfChance', 'dmgReduce', 'lifesteal', 'cdr', 'expBonus', 'goldBonus', 'summonPow', 'projPow', 'markDmg', 'hpPct', 'atkPct', 'cePct', 'defPct']);
 
 export interface Affix { k: StatKey; v: number }
 
@@ -56,6 +58,8 @@ export interface QuestState {
   state: 'active' | 'ready' | 'done';
   progress: number[];
 }
+
+export interface CheatFlags { god?: boolean; infCe?: boolean; oneHit?: boolean; noCd?: boolean; speed?: boolean; dblExp?: boolean; travel?: boolean }
 
 export interface SaveData {
   version: number;
@@ -85,4 +89,5 @@ export interface SaveData {
   kills: number;
   uidCounter: number;
   savedAt: number;
+  cheats?: CheatFlags;
 }

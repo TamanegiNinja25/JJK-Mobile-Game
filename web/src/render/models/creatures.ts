@@ -496,6 +496,8 @@ interface QuadSpec {
   bodyLen: number; bodyR: number; legLen: number; legR: number; neck: number; headR: number; snout: number;
   ears: 'pointy' | 'long' | 'elephant' | 'none'; tail: 'long' | 'short' | 'none'; trunk?: boolean;
   color: number; belly: number; dark: number; eye: number; eyeGlow: number; spikes?: boolean; mask?: number;
+  /** horn colour (Piercing Ox) */
+  horns?: number;
 }
 
 function quadruped(q: QuadSpec): ModelHandle {
@@ -526,6 +528,10 @@ function quadruped(q: QuadSpec): ModelHandle {
     if (q.ears === 'pointy') r.part('head', G.cone(q.headR * 0.32, q.headR * 0.9, 5), q.color, { pos: [sx * q.headR * 0.5, q.headR * 0.9, -q.headR * 0.1], rot: [-0.2, 0, -sx * 0.25] });
     if (q.ears === 'long') r.part('head', G.ellipsoid(q.headR * 0.22, q.headR * 1.2, q.headR * 0.12), q.color, { pos: [sx * q.headR * 0.35, q.headR * 1.3, -q.headR * 0.2], rot: [-0.25, 0, -sx * 0.15] });
     if (q.ears === 'elephant') r.part('head', G.ellipsoid(q.headR * 0.1, q.headR * 0.9, q.headR * 0.8), darken(q.color, 0.9), { pos: [sx * q.headR * 1.0, q.headR * 0.05, -q.headR * 0.2], rot: [0, sx * 0.3, 0] });
+  }
+  if (q.horns !== undefined) for (const sx of [1, -1]) {
+    r.part('head', G.cone(q.headR * 0.16, q.headR * 0.9, 6), q.horns, { pos: [sx * q.headR * 0.75, q.headR * 0.45, q.headR * 0.15], rot: [0.9, 0, -sx * 1.1], topColor: 0xffffff });
+    r.part('head', G.cone(q.headR * 0.1, q.headR * 0.55, 6), q.horns, { pos: [sx * q.headR * 1.25, q.headR * 0.85, q.headR * 0.45], rot: [1.3, 0, -sx * 0.35] });
   }
   r.part('jaw', G.ellipsoid(q.headR * 0.45, q.headR * 0.15, q.snout > 0 ? q.snout * 0.9 : q.headR * 0.4), q.belly, { pos: [0, -q.headR * 0.05, q.headR * 0.3] });
   if (q.trunk) {
@@ -560,6 +566,46 @@ function quadruped(q: QuadSpec): ModelHandle {
     b.jaw.rotation.x = Math.max(0, a) * 0.7;
     b.body.position.z += a * 0.3;
     if (c.hitT > 0) b.body.rotation.x = -c.hitT;
+  });
+}
+
+/** Megumi's Great Serpent: a masked serpent rising out of the shadow. */
+function serpent(): ModelHandle {
+  const r = new RigBuilder();
+  const segs = 6;
+  let parent = 'root';
+  for (let i = 0; i < segs; i++) {
+    r.bone('s' + i, parent, [0, i === 0 ? 0 : 0.42, 0]);
+    parent = 's' + i;
+  }
+  r.bone('head', parent, [0, 0.4, 0.05]);
+  r.bone('jaw', 'head', [0, -0.08, 0.12]);
+  const skin = 0x2e2a40, belly = 0xb8b0c8, mark = 0xe8e4f0;
+  for (let i = 0; i < segs; i++) {
+    const rad = 0.42 - i * 0.035;
+    r.part('s' + i, G.ellipsoid(rad, 0.3, rad * 0.92, 12, 8), skin, { pos: [0, 0.18, 0], topColor: 0x4a4466 });
+    r.part('s' + i, G.ellipsoid(rad * 0.7, 0.26, rad * 0.5, 10, 6), belly, { pos: [0, 0.18, rad * 0.52] });
+    r.part('s' + i, G.cone(0.06, 0.18, 4), mark, { pos: [0, 0.22, -rad * 0.9], rot: [-1.2, 0, 0] });
+  }
+  r.part('head', G.ellipsoid(0.36, 0.24, 0.5, 12, 8), skin, { topColor: 0x4a4466 });
+  // ceremonial mask with the Ten Shadows markings
+  r.part('head', G.ellipsoid(0.3, 0.12, 0.32), mark, { pos: [0, 0.12, 0.12] });
+  for (const sx of [1, -1]) {
+    r.part('head', G.sphere(0.06, 8, 6), 0xffd04a, { pos: [sx * 0.2, 0.12, 0.3], glow: 1.6 });
+    r.part('head', G.cone(0.05, 0.3, 4), mark, { pos: [sx * 0.22, 0.2, -0.25], rot: [-1.0, 0, -sx * 0.3] });
+  }
+  r.part('jaw', G.ellipsoid(0.3, 0.08, 0.42), belly, { pos: [0, -0.02, 0.12] });
+  for (const sx of [1, -1]) r.part('jaw', G.cone(0.03, 0.14, 4), 0xffffff, { pos: [sx * 0.15, 0.08, 0.38], rot: [Math.PI, 0, 0] });
+  const rig = r.build({ outline: 0.02 });
+  return new Creature(rig, (c) => {
+    const b = c.b;
+    for (let i = 0; i < segs; i++) {
+      b['s' + i].rotation.z = Math.sin(c.t * 3 + i * 0.7) * 0.12;
+      b['s' + i].rotation.x = Math.sin(c.t * 2.2 + i * 0.5) * 0.08 + (i > 3 ? 0.18 : 0);
+    }
+    const a = Math.max(0, c.atk);
+    b.head.rotation.x = 0.5 - a * 0.6;
+    b.jaw.rotation.x = 0.15 + a * 0.8;
   });
 }
 
@@ -875,7 +921,7 @@ export type CreatureKind =
   | 'flyhead' | 'crawler' | 'lanky' | 'glutton' | 'womb' | 'wretch' | 'hound' | 'fingerBearer'
   | 'transfigured' | 'bloated' | 'leech' | 'rootCurse' | 'bud' | 'hanami' | 'hand' | 'fish'
   | 'pumpkin' | 'dagon' | 'jogo' | 'mahoraga' | 'dummy'
-  | 'dogWhite' | 'dogBlack' | 'nue' | 'toad' | 'elephant' | 'rabbit';
+  | 'dogWhite' | 'dogBlack' | 'nue' | 'toad' | 'elephant' | 'rabbit' | 'serpent' | 'ox' | 'totality';
 
 let seedCounter = 1;
 
@@ -908,6 +954,9 @@ export function buildCreature(kind: CreatureKind): ModelHandle {
     case 'nue': return nue();
     case 'toad': return toad();
     case 'rabbit': return rabbit();
+    case 'serpent': return serpent();
+    case 'ox': return quadruped({ bodyLen: 1.5, bodyR: 0.5, legLen: 0.62, legR: 0.12, neck: 0.12, headR: 0.34, snout: 0.22, ears: 'none', tail: 'long', horns: 0xe8dcc0, color: 0x2a2630, belly: 0x3a3442, dark: 0x16131c, eye: 0xffb04a, eyeGlow: 1.5, mask: 0xe8e4f0 });
+    case 'totality': return quadruped({ bodyLen: 1.8, bodyR: 0.5, legLen: 0.85, legR: 0.11, neck: 0.32, headR: 0.36, snout: 0.34, ears: 'pointy', tail: 'long', color: 0x1c1c24, belly: 0xe8e8f0, dark: 0x101016, eye: 0xffffff, eyeGlow: 1.2, spikes: true, mask: 0xf0f0f6 });
   }
 }
 

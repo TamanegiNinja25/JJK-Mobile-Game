@@ -426,6 +426,6 @@ export const TRAVEL_LIST: { id: string; need?: string; level: string }[] = [
 export function travelUnlocked(ps: PlayerState, id: string) {
   const t = TRAVEL_LIST.find(x => x.id === id);
   if (!t) return false;
-  if (!t.need) return true;
+  if (!t.need || ps.d.cheats?.travel) return true;
   return !!ps.questState(t.need);
 }

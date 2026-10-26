@@ -7,6 +7,7 @@ import { UI } from './ui/UI';
 import { Dialogue } from './ui/Dialogue';
 import { Portraits } from './ui/Portraits';
 import { PlayerState } from './rpg/PlayerState';
+import { runCheat, toggleCheat } from './rpg/Cheats';
 import { ClassId } from './rpg/types';
 import { CLASSES } from './rpg/classes';
 import { QUEST_BY_ID, QUESTS, IDLE, Line, NPC_NAMES } from './data/story';
@@ -354,6 +355,10 @@ export class Game {
     n?.model.play(emote, 0.9);
     if (who === 'player') this.world.player.model?.play(emote, 0.9);
   }
+
+  /** Cheat hooks (also handy for automated playtests). */
+  cheat(id: string) { return runCheat(this, id); }
+  cheatToggle(id: string) { return toggleCheat(this, id as any); }
 
   toast(msg: string, kind: 'info' | 'warn' | 'good' | 'item' | 'boss' | 'quest' = 'info', dur = 2, color?: string, icon?: IconSpec) {
     this.ui.toast(msg, kind, dur, color, icon);
