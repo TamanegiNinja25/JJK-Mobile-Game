@@ -65,6 +65,7 @@ export class Enemy extends Actor {
   zigT = Math.random() * 10;
   lungeV: { x: number; z: number; t: number } | null = null;
   hitPlayerThisLunge = false;
+  private swung = false;
   /** damage taken per source skill (Mahoraga adaptation) */
   adapt: Record<string, number> = {};
   noLoot = false;
@@ -84,6 +85,14 @@ export class Enemy extends Actor {
     this.homeX = x; this.homeZ = z;
     this.facing = rand(0, Math.PI * 2);
     this.setModel(buildEnemyModel(def), def.scale);
+    if (this.model && !def.flying && def.speed > 0) {
+      const heavy = def.scale >= 1.4 || def.ai === 'boss';
+      this.model.onStep = () => {
+        const p = this.world.player;
+        if (!p || Math.hypot(p.x - this.x, p.z - this.z) > (heavy ? 18 : 10)) return;
+        this.world.sfx(heavy ? 'stomp' : 'pad', this.x, this.z, heavy ? 0.6 : 0.3, (heavy ? 0.9 : 1) + Math.random() * 0.2);
+      };
+    }
     this.atkCd = rand(0.5, 1.5);
     if (def.boss) this.boss = createBoss(def.boss, this);
   }
@@ -230,7 +239,9 @@ export class Enemy extends Actor {
     this.state = 'windup';
     this.stateT = 0;
     this.hitPlayerThisLunge = false;
-    const dur = a.windup + 0.3;
+    // stretch the animation so its contact frame lands exactly when the strike resolves
+    const dur = a.windup / (this.model?.impactFrac ?? 0.5);
+    this.swung = false;
     if (a.anim) this.model?.play(a.anim, dur);
     else this.model?.play('attack', dur);
     if (a.kind === 'aoe') this.world.telegraph('circle', this.x, this.z, (a.radius ?? 2.5) * Math.max(1, this.d.scale * 0.8), a.windup, 0xff3a3a);
@@ -246,6 +257,11 @@ export class Enemy extends Actor {
     const t = this.target;
     if (this.state === 'windup') {
       if (t && a.kind !== 'explode') this.faceTowards(t.x, t.z, dt, a.kind === 'projectile' ? 8 : 4);
+      // the whoosh starts just before contact so it reads as part of the same blow
+      if (!this.swung && a.kind === 'melee' && this.stateT >= a.windup - 0.12) {
+        this.swung = true;
+        this.world.sfx(this.d.scale >= 1.4 || this.isBoss ? 'swingHeavy' : 'swing', this.x, this.z, 0.5, 0.9 + Math.random() * 0.2);
+      }
       if (a.kind === 'explode') { this.flashT = 0.12 * (0.5 + 0.5 * Math.sin(this.stateT * 30)); }
       if (this.stateT >= a.windup) {
         this.state = 'strike';
@@ -273,7 +289,6 @@ export class Enemy extends Actor {
     const fx = Math.sin(this.facing), fz = Math.cos(this.facing);
     switch (a.kind) {
       case 'melee': {
-        if (a.sfx) w.sfx('swing', this.x, this.z, 0.5);
         w.damageCone(this, this.x, this.z, this.facing, a.range * Math.max(1, this.d.scale * 0.7) + 0.3, 1.6, a.mult, { kind: 'melee', hitSfx: a.sfx });
         break;
       }

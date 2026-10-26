@@ -6,6 +6,7 @@ import { PlayerState } from '../rpg/PlayerState';
 import { Input, Action } from '../core/Input';
 import { buildCharacter } from '../render/models/characters';
 import { wrapHumanoid } from '../render/models/model';
+import { ACTION_TIMING } from '../render/models/humanoid';
 import { weaponMesh } from '../render/models/weapons';
 import { ITEMS } from '../rpg/items';
 import { SKILLS, triggerReactions } from '../rpg/skills';
@@ -25,7 +26,6 @@ export class Player extends Actor implements Caster {
   dodgeCd = 0;
   dashS: { vx: number; vz: number; t: number } | null = null;
   lastDamageT = -99;
-  private stepAcc = 0;
   private weaponObjs: THREE.Object3D[] = [];
   controlsLocked = false;
   domainFlash = 0;
@@ -41,6 +41,8 @@ export class Player extends Actor implements Caster {
     const m = wrapHumanoid(buildCharacter(ps.cls.model));
     this.setModel(m, 1);
     m.setStance?.(ps.cls.stance);
+    // footsteps land exactly when a foot plants in the walk cycle
+    m.onStep = () => { if (!this.dashS) audio.step(this.world.surfaceAt(this.x, this.z), { vol: 0.8 }); };
     this.refreshWeapon();
     ps.on((ev) => { if (ev === 'equip') this.refreshWeapon(); });
   }
@@ -151,8 +153,6 @@ export class Player extends Actor implements Caster {
         const spd = st.moveSpd * (this.slowT > 0 ? this.slowMul : 1) * (busy ? 0.25 : 1) * clamp(mag, 0.35, 1);
         this.move((mx / mag) * spd, (mz / mag) * spd, dt);
         if (!busy) this.faceTowards(this.x + mx, this.z + mz, dt, 16);
-        this.stepAcc += spd * dt;
-        if (this.stepAcc > 1.15) { this.stepAcc = 0; audio.step(this.world.surfaceAt(this.x, this.z), { vol: 0.8 }); }
       }
     }
 
@@ -214,9 +214,9 @@ export class Player extends Actor implements Caster {
       this.facing = Math.atan2(dirX, dirZ);
     }
     this.model?.play(hit.anim, dur);
-    if (hit.swingSfx) this.world.sfx(hit.swingSfx, this.x, this.z, 0.8, 0.9 + Math.random() * 0.2);
+    if (hit.swingSfx) { const sfx = hit.swingSfx; this.world.schedule(dur * ACTION_TIMING.strike, () => this.world.sfx(sfx, this.x, this.z, 0.8, 0.9 + Math.random() * 0.2)); }
     const idx = this.comboIdx;
-    this.world.schedule(dur * 0.42, () => {
+    this.world.schedule(dur * ACTION_TIMING.impact, () => {
       if (!this.alive) return;
       const fdx = Math.sin(this.facing), fdz = Math.cos(this.facing);
       if (hit.projectile) {

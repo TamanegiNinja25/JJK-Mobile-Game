@@ -350,6 +350,9 @@ export class Creature implements ModelHandle {
   deadT = 0;
   hand?: THREE.Object3D;
   head?: THREE.Object3D;
+  onStep: (() => void) | null = null;
+  /** the `atk` curve pulls back until 0.4 and connects around 0.58 */
+  impactFrac = 0.58;
   private anim: AnimFn;
 
   constructor(rig: RigModel, anim: AnimFn) {
@@ -364,7 +367,11 @@ export class Creature implements ModelHandle {
   update(dt: number) {
     resetPose(this.rig);
     this.t += dt;
-    if (this.speed > 0.2) this.phase += dt * (5 + this.speed * 1.4);
+    if (this.speed > 0.2) {
+      const before = Math.floor(this.phase / Math.PI);
+      this.phase += dt * (5 + this.speed * 1.4);
+      if (Math.floor(this.phase / Math.PI) !== before && !this.dead) this.onStep?.();
+    }
     if (this.action) {
       this.actionT += dt / this.actionDur;
       if (this.actionT >= 1) { this.action = null; this.actionT = 0; }

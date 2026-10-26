@@ -445,6 +445,15 @@ const SFX: Record<string, SfxFn> = {
     os.connect(f); f.connect(g); g.connect(d);
     os.start(t); vib.start(t); os.stop(t + 1.45); vib.stop(t + 1.45);
   },
+  stomp: (a, t, p, o) => {
+    const d = a.out({ ...o, vol: 0.55, wet: 0.3 });
+    a.osc('sine', 85 * p, 38 * p, t, 0.2, d, 0.7);
+    a.noiseBurst(t, 0.16, d, { type: 'lowpass', f0: 500 * p, f1: 120, vol: 0.55, pink: true });
+  },
+  pad: (a, t, p, o) => {
+    const d = a.out({ ...o, vol: 0.3 });
+    a.noiseBurst(t, 0.05, d, { type: 'bandpass', f0: 900 * p, q: 1.2, vol: 0.5, pink: true });
+  },
   bark: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.5 }); a.osc('sawtooth', 500 * p, 220 * p, t, 0.12, d, 0.3); a.noiseBurst(t, 0.1, d, { type: 'bandpass', f0: 900 * p, q: 2, vol: 0.4 }); },
   screech: (a, t, p, o) => {
     const d = a.out({ ...o, vol: 0.4, wet: 0.3 });
