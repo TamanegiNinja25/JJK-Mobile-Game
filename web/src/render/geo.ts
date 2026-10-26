@@ -15,7 +15,17 @@ export interface PartOpts {
   colorFn?: (x: number, y: number, z: number, out: THREE.Color) => void;
   /** Smooth vertical gradient: colour at the top of the part's local bounds. */
   topColor?: number;
+  /** keep smooth normals (faces, eyes); everything else is shaded flat per facet */
+  smooth?: boolean;
 }
+
+/**
+ * Art direction: low-poly, faceted. Curved primitives are built with fewer segments and every
+ * triangle is lit with its own face normal, so the cel ramp paints crisp planes instead of
+ * soft gradients. A copy of the smooth normal is kept in `snormal` for the outline hull.
+ */
+export const LOW_POLY = { factor: 0.55, faceted: true };
+const lp = (n: number, min: number) => Math.max(min, Math.round(n * LOW_POLY.factor));
 
 export interface Part {
   geo: THREE.BufferGeometry;
@@ -72,11 +82,31 @@ export function bakePart(src: THREE.BufferGeometry, color: number, o: PartOpts =
   }
   for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal') g.deleteAttribute(name);
   if (!g.getAttribute('normal')) g.computeVertexNormals();
+  g.setAttribute('snormal', (g.getAttribute('normal') as THREE.BufferAttribute).clone());
+  if (LOW_POLY.faceted && !o.smooth) facet(g);
   g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   g.setAttribute('glow', new THREE.BufferAttribute(glow, 1));
   g.applyMatrix4(partMatrix(o));
   if (extraMatrix) g.applyMatrix4(extraMatrix);
   return g;
+}
+
+/** Replace vertex normals with per-triangle face normals (geometry must be non-indexed). */
+function facet(g: THREE.BufferGeometry) {
+  const pos = g.getAttribute('position') as THREE.BufferAttribute;
+  const nor = g.getAttribute('normal') as THREE.BufferAttribute;
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3(), avg = new THREE.Vector3();
+  for (let i = 0; i + 2 < pos.count; i += 3) {
+    a.fromBufferAttribute(pos, i); b.fromBufferAttribute(pos, i + 1); c.fromBufferAttribute(pos, i + 2);
+    n.subVectors(c, b).cross(a.sub(b));
+    if (n.lengthSq() < 1e-14) continue; // degenerate (pole) triangles keep their smooth normals
+    n.normalize();
+    // keep the winding's intent: face normals point the same way as the smooth ones
+    avg.set(nor.getX(i) + nor.getX(i + 1) + nor.getX(i + 2), nor.getY(i) + nor.getY(i + 1) + nor.getY(i + 2), nor.getZ(i) + nor.getZ(i + 1) + nor.getZ(i + 2));
+    if (avg.dot(n) < 0) n.negate();
+    for (let k = 0; k < 3; k++) nor.setXYZ(i + k, n.x, n.y, n.z);
+  }
+  nor.needsUpdate = true;
 }
 
 /** Merge baked, non-indexed parts. If `bones` is given, rigid skin attributes are added. */
@@ -85,6 +115,7 @@ export function mergeParts(parts: { geo: THREE.BufferGeometry; bone?: number }[]
   for (const p of parts) total += p.geo.getAttribute('position').count;
   const position = new Float32Array(total * 3);
   const normal = new Float32Array(total * 3);
+  const snormal = new Float32Array(total * 3);
   const color = new Float32Array(total * 3);
   const glow = new Float32Array(total);
   const skinIndex = skinned ? new Uint16Array(total * 4) : null;
@@ -95,6 +126,7 @@ export function mergeParts(parts: { geo: THREE.BufferGeometry; bone?: number }[]
     const n = g.getAttribute('position').count;
     position.set((g.getAttribute('position') as THREE.BufferAttribute).array as Float32Array, o * 3);
     normal.set((g.getAttribute('normal') as THREE.BufferAttribute).array as Float32Array, o * 3);
+    snormal.set(((g.getAttribute('snormal') ?? g.getAttribute('normal')) as THREE.BufferAttribute).array as Float32Array, o * 3);
     color.set((g.getAttribute('color') as THREE.BufferAttribute).array as Float32Array, o * 3);
     glow.set((g.getAttribute('glow') as THREE.BufferAttribute).array as Float32Array, o);
     if (skinIndex && skinWeight) {
@@ -108,6 +140,7 @@ export function mergeParts(parts: { geo: THREE.BufferGeometry; bone?: number }[]
   const out = new THREE.BufferGeometry();
   out.setAttribute('position', new THREE.BufferAttribute(position, 3));
   out.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
+  out.setAttribute('snormal', new THREE.BufferAttribute(snormal, 3));
   out.setAttribute('color', new THREE.BufferAttribute(color, 3));
   out.setAttribute('glow', new THREE.BufferAttribute(glow, 1));
   if (skinIndex && skinWeight) {
@@ -122,16 +155,16 @@ export function mergeParts(parts: { geo: THREE.BufferGeometry; bone?: number }[]
 // ---- Primitive shorthands (all centred at origin unless noted) ----
 
 export const G = {
-  sphere: (r = 1, ws = 14, hs = 10) => new THREE.SphereGeometry(r, ws, hs),
+  sphere: (r = 1, ws = 14, hs = 10) => new THREE.SphereGeometry(r, lp(ws, 6), lp(hs, 4)),
   ellipsoid: (rx: number, ry: number, rz: number, ws = 14, hs = 10) => {
-    const g = new THREE.SphereGeometry(1, ws, hs);
+    const g = new THREE.SphereGeometry(1, lp(ws, 6), lp(hs, 4));
     g.scale(rx, ry, rz);
     return g;
   },
-  hemi: (r = 1, ws = 14, hs = 6) => new THREE.SphereGeometry(r, ws, hs, 0, Math.PI * 2, 0, Math.PI / 2),
+  hemi: (r = 1, ws = 14, hs = 6) => new THREE.SphereGeometry(r, lp(ws, 6), lp(hs, 3), 0, Math.PI * 2, 0, Math.PI / 2),
   /** Capsule along Y from y=0 to y=len (base at origin) */
   capsuleUp: (r: number, len: number, seg = 10) => {
-    const g = new THREE.CapsuleGeometry(r, Math.max(0.001, len - r * 2), 4, seg);
+    const g = new THREE.CapsuleGeometry(r, Math.max(0.001, len - r * 2), 2, lp(seg, 6));
     g.translate(0, len / 2, 0);
     return g;
   },
@@ -139,21 +172,22 @@ export const G = {
   limb: (r1: number, r2: number, len: number, seg = 10) => {
     // tapered limb: cylinder with spherical caps
     const parts: THREE.BufferGeometry[] = [];
+    seg = lp(seg, 6);
     const cyl = new THREE.CylinderGeometry(r1, r2, len, seg, 1, true);
     cyl.translate(0, -len / 2, 0);
-    const top = new THREE.SphereGeometry(r1, seg, 6, 0, Math.PI * 2, 0, Math.PI / 2);
-    const bot = new THREE.SphereGeometry(r2, seg, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
+    const top = new THREE.SphereGeometry(r1, seg, 2, 0, Math.PI * 2, 0, Math.PI / 2);
+    const bot = new THREE.SphereGeometry(r2, seg, 2, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
     bot.translate(0, -len, 0);
     parts.push(cyl.toNonIndexed(), top.toNonIndexed(), bot.toNonIndexed());
     return concat(parts);
   },
-  cyl: (rt: number, rb: number, h: number, seg = 12, open = false) => new THREE.CylinderGeometry(rt, rb, h, seg, 1, open),
-  cone: (r: number, h: number, seg = 8) => new THREE.ConeGeometry(r, h, seg),
+  cyl: (rt: number, rb: number, h: number, seg = 12, open = false) => new THREE.CylinderGeometry(rt, rb, h, lp(seg, 5), 1, open),
+  cone: (r: number, h: number, seg = 8) => new THREE.ConeGeometry(r, h, lp(seg, 4)),
   box: (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d),
-  torus: (r: number, t: number, rs = 6, ts = 14, arc = Math.PI * 2) => new THREE.TorusGeometry(r, t, rs, ts, arc),
+  torus: (r: number, t: number, rs = 6, ts = 14, arc = Math.PI * 2) => new THREE.TorusGeometry(r, t, lp(rs, 3), lp(ts, 8), arc),
   ring: (ri: number, ro: number, seg = 24) => new THREE.RingGeometry(ri, ro, seg),
   plane: (w: number, h: number) => new THREE.PlaneGeometry(w, h),
-  lathe: (pts: [number, number][], seg = 14) => new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p[0], p[1])), seg),
+  lathe: (pts: [number, number][], seg = 14) => new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p[0], p[1])), lp(seg, 6)),
   icosa: (r: number, d = 0) => new THREE.IcosahedronGeometry(r, d),
   dodeca: (r: number) => new THREE.DodecahedronGeometry(r, 0),
   octa: (r: number) => new THREE.OctahedronGeometry(r, 0),

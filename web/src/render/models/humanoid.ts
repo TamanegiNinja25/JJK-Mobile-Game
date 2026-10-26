@@ -26,7 +26,8 @@ export interface HumanoidSpec {
   bulk?: number;        // 1 = standard build
   head?: number;        // head size multiplier
   glasses?: 'round' | 'goggles' | 'shades' | 'blindfold' | 'none';
-  extras?: ('scars' | 'stitches' | 'collar' | 'tie' | 'braid' | 'eyepatch' | 'mask' | 'facescar' | 'sukunaMarks' | 'cursedEyes' | 'gloves' | 'bloodStripe' | 'browStitch' | 'bandage')[];
+  extras?: ('scars' | 'stitches' | 'collar' | 'tie' | 'braid' | 'eyepatch' | 'mask' | 'facescar' | 'sukunaMarks' | 'cursedEyes' | 'gloves' | 'bloodStripe' | 'browStitch' | 'bandage'
+    | 'goatee' | 'leopardTie' | 'eyeBags' | 'mole' | 'backPolearm' | 'hairpin' | 'zipper')[];
   outline?: number;
 }
 
@@ -119,7 +120,21 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
     r.part('hips', G.cyl(torsoW * 0.98, torsoW * 1.65, 0.3 * H, 16, true), bottom, { pos: [0, -0.12 * H, 0], scale: [1, 1, 0.85] });
   }
   if (spec.extras?.includes('tie')) {
-    r.part('chest', G.box(0.05, torsoLen * 0.4, 0.025), inner, { pos: [0, torsoLen * 0.12, torsoW * 0.8], rot: [-0.1, 0, 0] });
+    // Nanami's tie is leopard print: dark rosettes over the base colour
+    const leopard = spec.extras.includes('leopardTie');
+    r.part('chest', G.box(0.05, torsoLen * 0.4, 0.025), inner, { pos: [0, torsoLen * 0.12, torsoW * 0.8], rot: [-0.1, 0, 0],
+      colorFn: leopard ? (x, y, _z, c) => { if (Math.sin(x * 160 + y * 37) * Math.sin(y * 90) > 0.35) c.setHex(0x2a1a10); } : undefined });
+    if (leopard) for (let i = 0; i < 4; i++) r.part('chest', G.box(0.014, 0.014, 0.01), 0x2a1a10, { pos: [(i % 2 ? 0.012 : -0.012), torsoLen * (0.27 - i * 0.07), torsoW * 0.8 + 0.014] });
+  }
+  if (spec.extras?.includes('backPolearm')) {
+    // Maki: a cursed polearm slung across her back
+    r.part('chest', G.cyl(0.016, 0.016, 1.5, 6), 0x5a3a24, { pos: [0, torsoLen * 0.1, -torsoW * 0.95], rot: [0, 0, 0.7] });
+    // the shaft is tilted +0.7 rad about Z, so its upper end sits up and to -X
+    const ux = -Math.sin(0.7), uy = Math.cos(0.7);
+    r.part('chest', G.cone(0.035, 0.26, 4), 0xc8ccd4, { pos: [ux * 0.88, torsoLen * 0.1 + uy * 0.88, -torsoW * 0.95], rot: [0, 0, 0.7], glow: 0.08 });
+    r.part('chest', G.box(0.045, 0.06, 0.045), 0x2a2a30, { pos: [ux * 0.72, torsoLen * 0.1 + uy * 0.72, -torsoW * 0.95], rot: [0, 0, 0.7] });
+    // carrying strap across the chest
+    r.part('chest', G.box(0.03, torsoLen * 0.75, 0.014), 0x3a2a20, { pos: [0, torsoLen * 0.16, torsoW * 0.8], rot: [-0.1, 0, -0.7] });
   }
 
   // ---- Arms ----
@@ -146,11 +161,11 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
   }
 
   // ---- Head ----
-  r.part('neck', G.cyl(0.055, 0.06, 0.12, 10), skin, { pos: [0, 0.02, 0] });
+  r.part('neck', G.cyl(0.055, 0.06, 0.12, 10), skin, { pos: [0, 0.02, 0], smooth: true });
   const hc: V3 = [0, headR * 0.95, 0.01];
-  r.part('head', G.ellipsoid(headR * 0.94, headR * 1.02, headR * 0.98, 18, 14), skin, { pos: hc });
+  r.part('head', G.ellipsoid(headR * 0.94, headR * 1.02, headR * 0.98, 18, 14), skin, { pos: hc, smooth: true });
   // jaw / chin
-  r.part('head', G.ellipsoid(headR * 0.62, headR * 0.5, headR * 0.6, 12, 8), skin, { pos: [0, headR * 0.5, headR * 0.28] });
+  r.part('head', G.ellipsoid(headR * 0.62, headR * 0.5, headR * 0.6, 12, 8), skin, { pos: [0, headR * 0.5, headR * 0.28], smooth: true });
   // ears
   r.part('head', G.ellipsoid(0.03, 0.05, 0.022, 8, 6), skin, { pos: [headR * 0.92, headR * 0.92, 0] });
   r.part('head', G.ellipsoid(0.03, 0.05, 0.022, 8, 6), skin, { pos: [-headR * 0.92, headR * 0.92, 0] });
@@ -161,9 +176,9 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
   if (glasses !== 'blindfold') {
     for (const sx of [1, -1]) {
       const yaw = sx * 0.35;
-      r.part('head', G.ellipsoid(0.05, 0.06, 0.022, 12, 8), 0xf9f7f2, { pos: [sx * eyeX, eyeY, eyeZ], rot: [0, yaw, 0] });
-      r.part('head', G.ellipsoid(0.037, 0.05, 0.02, 12, 8), spec.eyes, { pos: [sx * eyeX * 0.98, eyeY - 0.004, eyeZ + 0.01], rot: [0, yaw, 0], glow: spec.extras?.includes('cursedEyes') ? 0.55 : 0.12, topColor: darken(spec.eyes, 0.55) });
-      r.part('head', G.ellipsoid(0.018, 0.026, 0.01, 8, 6), 0x08080e, { pos: [sx * eyeX * 0.97, eyeY - 0.006, eyeZ + 0.02], rot: [0, yaw, 0] });
+      r.part('head', G.ellipsoid(0.05, 0.06, 0.022, 12, 8), 0xf9f7f2, { pos: [sx * eyeX, eyeY, eyeZ], rot: [0, yaw, 0], smooth: true });
+      r.part('head', G.ellipsoid(0.037, 0.05, 0.02, 12, 8), spec.eyes, { pos: [sx * eyeX * 0.98, eyeY - 0.004, eyeZ + 0.01], rot: [0, yaw, 0], smooth: true, glow: spec.extras?.includes('cursedEyes') ? 0.55 : 0.12, topColor: darken(spec.eyes, 0.55) });
+      r.part('head', G.ellipsoid(0.018, 0.026, 0.01, 8, 6), 0x08080e, { pos: [sx * eyeX * 0.97, eyeY - 0.006, eyeZ + 0.02], rot: [0, yaw, 0], smooth: true });
       r.part('head', G.sphere(0.011, 6, 4), 0xffffff, { pos: [sx * eyeX * 0.95 + 0.013, eyeY + 0.017, eyeZ + 0.027], glow: 0.25 });
       // upper lash line
       r.part('head', G.box(0.11, 0.016, 0.02), 0x15121a, { pos: [sx * eyeX, eyeY + 0.056, eyeZ + 0.004], rot: [0, yaw, sx * -0.1] });
@@ -179,7 +194,7 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
     }
   }
   // nose + mouth
-  r.part('head', G.ellipsoid(0.014, 0.02, 0.016, 6, 5), darken(skin, 0.9), { pos: [0, eyeY - 0.07, eyeZ + 0.03] });
+  r.part('head', G.ellipsoid(0.014, 0.02, 0.016, 6, 5), darken(skin, 0.9), { pos: [0, eyeY - 0.07, eyeZ + 0.03], smooth: true });
   if (!spec.extras?.includes('collar') && !spec.extras?.includes('mask')) {
     r.part('head', G.box(0.055, 0.009, 0.012), 0x6a2a2a, { pos: [0, eyeY - 0.13, headR * 0.84] });
   }
@@ -204,6 +219,24 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
   }
   if (spec.extras?.includes('facescar') || spec.extras?.includes('scars')) {
     r.part('head', G.box(0.012, 0.11, 0.01), darken(skin, 0.6), { pos: [-eyeX - 0.01, eyeY - 0.02, eyeZ + 0.03], rot: [0, 0, 0.3] });
+  }
+  if (spec.extras?.includes('goatee')) {
+    r.part('head', G.ellipsoid(0.05, 0.05, 0.03, 8, 6), darken(spec.hair, 0.9), { pos: [0, eyeY - 0.19, headR * 0.86] });
+    r.part('head', G.box(0.09, 0.012, 0.012), darken(spec.hair, 0.9), { pos: [0, eyeY - 0.11, headR * 0.9] });
+  }
+  if (spec.extras?.includes('eyeBags')) {
+    for (const sx of [1, -1]) r.part('head', G.box(0.06, 0.008, 0.008), darken(skin, 0.68), { pos: [sx * eyeX, eyeY - 0.068, eyeZ + 0.012], rot: [0, sx * 0.35, sx * -0.12] });
+  }
+  if (spec.extras?.includes('mole')) {
+    r.part('head', G.sphere(0.008, 5, 4), 0x2a1a18, { pos: [-eyeX - 0.012, eyeY - 0.075, eyeZ + 0.014], smooth: true });
+  }
+  if (spec.extras?.includes('zipper')) {
+    r.part('head', G.box(0.012, 0.15, 0.012), 0xb8bcc4, { pos: [0, headR * 0.47, headR * 0.82] });
+    r.part('head', G.box(0.026, 0.03, 0.014), 0xd8dce4, { pos: [0, headR * 0.56, headR * 0.84] });
+  }
+  if (spec.extras?.includes('hairpin')) {
+    r.part('head', G.box(0.07, 0.014, 0.014), 0xe8d06a, { pos: [-headR * 0.55, hc[1] + headR * 0.55, headR * 0.7], rot: [0, -0.5, 0.4], glow: 0.15 });
+    r.part('head', G.box(0.07, 0.014, 0.014), 0xe8d06a, { pos: [-headR * 0.6, hc[1] + headR * 0.47, headR * 0.68], rot: [0, -0.5, 0.4], glow: 0.15 });
   }
   if (spec.extras?.includes('bloodStripe')) {
     // Choso: a band of blood across the bridge of the nose, cheek to cheek
@@ -258,7 +291,7 @@ function buildHair(r: RigBuilder, spec: HumanoidSpec, headR: number, hc: V3) {
   const shell = (p0: number, p1: number, backSpan: number, col = c, scale = 1.0, yOff = 0) => {
     const span = Math.min(Math.PI * 2, backSpan);
     // three's phi=0 is -x; front (+z) is phi = PI/2, back is 3PI/2.
-    const g = new THREE.SphereGeometry(R * scale, 20, 12, 1.5 * Math.PI - span / 2, span, p0, p1 - p0);
+    const g = new THREE.SphereGeometry(R * scale, 12, 7, 1.5 * Math.PI - span / 2, span, p0, p1 - p0);
     r.part('head', g, col, { pos: [hc[0], hc[1] + yOff, hc[2] - 0.005], topColor: lighten(col, 1.2) });
   };
   /** Cone spike rooted on the scalp, pointing along (surface normal + bias). */

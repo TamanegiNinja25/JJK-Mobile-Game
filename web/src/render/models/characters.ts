@@ -18,7 +18,7 @@ export const SPECS: Record<string, HumanoidSpec> = {
   },
   nobara: {
     skin: 0xf7d5bb, hair: 0xd9773a, hairStyle: 'nobara', eyes: 0x8c5a2e, outfit: 'uniformSkirt',
-    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0x4a2e22, height: 0.95, bulk: 0.9,
+    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0x4a2e22, height: 0.95, bulk: 0.9, extras: ['hairpin'],
   },
   gojo: {
     skin: 0xf6dcc8, hair: 0xf3f6fb, hairStyle: 'gojo', eyes: 0x7fdcff, outfit: 'uniformHigh',
@@ -27,23 +27,23 @@ export const SPECS: Record<string, HumanoidSpec> = {
   nanami: {
     skin: 0xf0cfb0, hair: 0xe9d07b, hairStyle: 'nanami', eyes: 0x5a6a3a, outfit: 'suit',
     top: 0xd2c9ab, bottom: 0xd2c9ab, accent: 0xd2c9ab, shoes: 0x3a2a22, inner: 0xc7973a,
-    glasses: 'goggles', height: 1.1, bulk: 1.18, extras: ['tie'],
+    glasses: 'goggles', height: 1.1, bulk: 1.18, extras: ['tie', 'leopardTie'],
   },
   maki: {
     skin: 0xf2d4b8, hair: 0x2b4a3c, hairStyle: 'maki', eyes: 0x6a5a2a, outfit: 'uniform',
-    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0x1a1a1e, glasses: 'round',
+    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0x1a1a1e, glasses: 'round', extras: ['backPolearm'],
   },
   inumaki: {
     skin: 0xf3d8c2, hair: 0xe9e6de, hairStyle: 'inumaki', eyes: 0x7a6aa0, outfit: 'uniformHigh',
-    top: NAVY, bottom: NAVY, accent: NAVY, shoes: 0x1a1a1e, extras: ['collar'], height: 0.96,
+    top: NAVY, bottom: NAVY, accent: NAVY, shoes: 0x1a1a1e, extras: ['collar', 'zipper'], height: 0.96,
   },
   shoko: {
     skin: 0xf1d6c0, hair: 0x5a3b2c, hairStyle: 'shoko', eyes: 0x4a3a32, outfit: 'labcoat',
-    top: 0xeeeeea, bottom: 0x24242a, accent: 0xdddddd, shoes: 0x1e1e22, inner: 0x2a2a30,
+    top: 0xeeeeea, bottom: 0x24242a, accent: 0xdddddd, shoes: 0x1e1e22, inner: 0x2a2a30, extras: ['eyeBags', 'mole'],
   },
   yaga: {
     skin: 0xd9b090, hair: 0x2a2420, hairStyle: 'yaga', eyes: 0x222222, outfit: 'casual',
-    top: 0x2a2a2e, bottom: 0x22222a, accent: 0x2a2a2e, shoes: 0x111111, glasses: 'shades', height: 1.12, bulk: 1.4,
+    top: 0x2a2a2e, bottom: 0x22222a, accent: 0x2a2a2e, shoes: 0x111111, glasses: 'shades', height: 1.12, bulk: 1.4, extras: ['goatee'],
   },
   ijichi: {
     skin: 0xf0d4bc, hair: 0x2a2620, hairStyle: 'ijichi', eyes: 0x333333, outfit: 'suit',
@@ -60,7 +60,7 @@ export const SPECS: Record<string, HumanoidSpec> = {
   },
   junpei: {
     skin: 0xefd6c4, hair: 0x2a2a34, hairStyle: 'junpei', eyes: 0x3a3a48, outfit: 'casual',
-    top: 0x23232b, bottom: 0x23232b, accent: 0x23232b, shoes: 0x2a2a30,
+    top: 0x23232b, bottom: 0x23232b, accent: 0x23232b, shoes: 0x2a2a30, extras: ['eyeBags'],
   },
   miwa: {
     skin: 0xf6dccb, hair: 0x5f8fd8, hairStyle: 'miwa', eyes: 0x3a5a9a, outfit: 'suit',
