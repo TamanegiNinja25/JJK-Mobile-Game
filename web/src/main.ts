@@ -1,5 +1,8 @@
 // Entry point.
 import { Game } from './Game';
+import { skillIcon, itemIcon } from './ui/Icons';
+import { SKILLS } from './rpg/skills';
+import { ITEMS } from './rpg/items';
 
 function showFatal(msg: string) {
   const d = document.createElement('div');
@@ -17,3 +20,6 @@ document.addEventListener('gesturestart', (e) => e.preventDefault());
 const game = new Game();
 (window as any).game = game;
 game.start();
+
+// debugging/test hooks
+(window as any).__dbg = { skillIcon, itemIcon, SKILLS, ITEMS };
