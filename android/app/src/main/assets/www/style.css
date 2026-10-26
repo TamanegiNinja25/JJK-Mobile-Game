@@ -211,7 +211,7 @@ button { font-family: inherit; color: inherit; }
 .eq-slot { text-align: center; }
 .eq-label { font-size: 11px; color: var(--dim); margin-bottom: 2px; }
 .cell { position: relative; aspect-ratio: 1; background: linear-gradient(#1e1832, #110d1e); border: 2px solid #2e2648; border-radius: 9px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.cell img { width: 82%; height: 82%; }
+.cell img { width: 100%; height: 100%; border-radius: 7px; }
 .cell.empty { cursor: default; opacity: .5; }
 .cell .ph { font-family: var(--serif); font-size: 22px; color: #3a3058; }
 .cell.r1 { border-color: #5ab4ff; box-shadow: inset 0 0 12px #5ab4ff44; }
