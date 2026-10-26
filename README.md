@@ -24,7 +24,8 @@
 Play as Yuji, Megumi or Nobara and fight through the story from the Sugisawa High
 rooftop to the Shibuya Incident. Combat is real-time with combos, skills, dodges and
 Black Flashes, wrapped in a classic Zenonia-style RPG loop: quests, loot, stat points,
-skill trees, gear upgrades and boss fights.
+skill trees, gear upgrades and boss fights. Schools, cinemas and stations can be
+entered, and their halls are laid out fresh every time you walk in.
 
 Every model, building, texture, icon, portrait, music track and sound effect is
 generated in code. The game ships no art or audio files, so the APK is under 2 MB
@@ -54,6 +55,10 @@ and runs without an internet connection.
     <td width="50%"><img src="docs/screenshots/jujutsu-high.jpg" alt="Jujutsu High"><br><sub><b>Tokyo Jujutsu High</b>: the hub, with shops, quests and fast travel</sub></td>
   </tr>
   <tr>
+    <td><img src="docs/screenshots/interior.jpg" alt="Sugisawa High corridors"><br><sub><b>Enterable buildings</b>: Sugisawa High's corridors, rebuilt on every visit</sub></td>
+    <td><img src="docs/screenshots/cinema.jpg" alt="Kawasaki cinema"><br><sub><b>The Kawasaki cinema</b>, where Mahito's victims were found</sub></td>
+  </tr>
+  <tr>
     <td><img src="docs/screenshots/combat-megumi.jpg" alt="Megumi in combat"><br><sub><b>Megumi</b> fights alongside his shikigami</sub></td>
     <td><img src="docs/screenshots/combat-yuji.jpg" alt="Yuji in combat"><br><sub><b>Yuji</b> brawls through the Eishu detention yard</sub></td>
   </tr>
@@ -67,7 +72,11 @@ and runs without an internet connection.
   </tr>
   <tr>
     <td><img src="docs/screenshots/domain-clash.jpg" alt="Domain clash"><br><sub><b>Domain clash</b>: cast your ultimate inside an enemy domain to shatter it</sub></td>
-    <td><img src="docs/screenshots/skills.jpg" alt="Skill tree"><br><sub><b>Skill trees</b> with active skills, passives and an ultimate</sub></td>
+    <td><img src="docs/screenshots/choso.jpg" alt="Choso boss fight"><br><sub><b>Choso</b> guards the Prison Realm on Shibuya Station's B5F platform</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/skills.jpg" alt="Skills menu"><br><sub><b>Skills</b>: actives, buffs, passives, reactions and an ultimate, with a quick bar</sub></td>
+    <td><img src="docs/screenshots/bag.jpg" alt="Bag"><br><sub><b>Bag</b>: six equipment slots, items grouped by category</sub></td>
   </tr>
 </table>
 
@@ -89,14 +98,22 @@ you can also set it under **Settings**.
 
 ### Three sorcerers
 
-| | Style | Skills | Ultimate |
+| | Style | Signature skills | Ultimate |
 |---|---|---|---|
-| **Yuji Itadori** | Close-range brawler with the best Black Flash odds | Divergent Fist · Manji Kick · Cursed Rush · Meteor Slam · Black Flash · Slaughter Demon | King of Curses: Malevolent Shrine |
-| **Megumi Fushiguro** | Shikigami summoner and swordsman | Divine Dogs · Nue · Toad · Shadow Step · Max Elephant · Rabbit Escape | Domain Expansion: Chimera Shadow Garden |
-| **Nobara Kugisaki** | Mid-range nails, hammer and Resonance | Hairpin · Nail Volley · Resonance · Hammer Smash · Straw Doll Curse · Cursed Nail Rain | Resonance: Thousand Nails |
+| **Yuji Itadori** | Close-range brawler with the best Black Flash odds | Divergent Fist · Manji Kick · Black Flash · Piercing Blood · Supernova · Dismantle | King of Curses: Malevolent Shrine |
+| **Megumi Fushiguro** | Shikigami summoner and swordsman | Divine Dogs · Nue · Max Elephant · Great Serpent · Piercing Ox · Divine Dog: Totality | Domain Expansion: Chimera Shadow Garden |
+| **Nobara Kugisaki** | Mid-range nails, hammer and Resonance | Hairpin · Resonance · Straw Doll Curse · Nail Lance · Chain Resonance · Blood Resonance | Resonance: Thousand Nails |
 
-Each class also has four passives. Every level gives 5 stat points (STR, DEX, VIT, CE)
-and 1 skill point, up to level 50.
+Each class has about twenty techniques of five kinds:
+
+- **Active:** attacks, summons and movement skills on the quick bar.
+- **Buff:** timed boosts such as Cursed Energy Surge, Round Deer or Steady Aim.
+- **Passive:** always-on bonuses.
+- **Reaction:** triggers by itself when you are hit, land a kill or drop to low HP
+  (Counter Stance, Loyal Hounds, Final Nail and more).
+- **Ultimate:** spends a full domain gauge.
+
+Every level gives 10 stat points (STR, DEX, VIT, CE) and 1 skill point, up to level 50.
 
 ### The RPG loop
 
@@ -105,47 +122,72 @@ and 1 skill point, up to level 50.
 - **Black Flash:** a ×2.5 critical with hit-stop. It fills your domain gauge and grants
   a short "zone" buff.
 - **Loot:** four rarities (Common, Graded, Special Grade, Cursed Tool) with random
-  bonus stats. Gear covers class weapons, uniforms, charms and shoes.
+  bonus stats. Gear fills six slots: weapon, headgear, uniform, charm, accessory and
+  shoes. The bag and the shops group items by category.
 - **Infusion:** Yaga's workshop upgrades gear from +1 to +10. Higher levels can fail
   and drop a level.
 - **Towns and travel:** Shoko sells potions, Maki runs the armory and Mei Mei trades
   materials. Ijichi drives you between unlocked areas.
-- **Saves:** three slots with autosave.
+- **Saves:** three slots with autosave. Older saves are upgraded automatically.
+- **Cheats tab:** god mode, infinite cursed energy, one-hit kills, no cooldowns, extra
+  speed, double EXP, all areas unlocked, plus one-tap level-ups, gear, items and quest
+  completion. Toggles are saved per slot.
+
+### Enterable buildings
+
+Sugisawa High, the Jujutsu High dorm, Eishu's admin block, the Kawasaki cinema and
+Shibuya Station each have a lit doorway. Inside, the floor plan is generated on every
+visit: a random network of halls and rooms with a few loops, themed furniture
+(classrooms, cells, screening rooms, platforms, tatami bedrooms) and cutaway walls on
+the camera side. The story beat for each building sits in the room farthest from the
+door. Some rooms hide sealed caches with yen and gear, and the minimap starts dark and
+fills in as you explore.
 
 ### The story
 
-Five chapters, 14 main quests and 11 side quests, across seven maps:
+Five chapters plus an epilogue, with 16 main quests and 14 side quests across seven
+areas and five interiors. Key moments follow the anime and manga:
 
-1. **Sugisawa Third High.** A finger, a rooftop curse and a first meeting with Gojo.
-2. **Eishu Juvenile Detention Center.** A rescue in the rain, and the Finger Bearer.
-3. **Kawasaki.** Nanami, Junpei and Mahito, from the riverbank down into the sewers.
+1. **Sugisawa Third High.** Yuji's grandfather's last words, the Occult Research Club
+   seniors who broke the seal, and the finger Yuji swallows.
+2. **Eishu Juvenile Detention Center.** A rescue in the rain, the Finger Bearer,
+   Sukuna's binding vow, and Tadashi Okazaki's name tag for his mother.
+3. **Kawasaki.** Nanami, Screen 3 of the cinema, Junpei and Mahito, and movie training
+   with Yaga's cursed dolls while Yuji is "dead".
 4. **Kyoto Goodwill Event.** Todo asks what your type is, then Hanami invades.
-5. **Shibuya Incident.** Veil anchors, Dagon, Jogo and the King of Curses.
-   Afterwards there is an optional fight against Mahoraga, who adapts to the damage
-   you deal.
+5. **Shibuya Incident.** Veil anchors, the Prison Realm on B5F guarded by Choso, then
+   Dagon, Jogo and the King of Curses.
+6. **Epilogue.** Mahoraga, who adapts to your damage, and a Soul Resonance rematch with
+   Mahito alongside Todo. That fight ends with the man wearing Geto's face.
 
 ### Bosses and domains
 
-Nine bosses, each with its own move set, telegraphs, HP phases and summons. Mahito,
+Ten bosses, each with its own move set, telegraphs, HP phases and summons. Mahito,
 Dagon, Jogo and Sukuna expand their **domains**: everyone inside takes sure-hit damage.
 Survive it, or cast your ultimate inside it to start a **domain clash** and break it.
 A boss expanding its domain also charges your gauge.
 
 ### Look and sound
 
-- Cel-shaded characters with ink outlines, rim light and glowing cursed energy, plus bloom.
+- Low-poly, faceted models: every surface is lit as flat planes on a 4-band cel ramp,
+  while faces stay smooth. Ink outlines, rim light, glowing cursed energy and bloom.
+- Characters carry their trademarks: Gojo's blindfold, Nanami's goggles and
+  leopard-print tie, Maki's glasses and polearm, Inumaki's zipped collar, Todo's scar,
+  Choso's blood stripe.
 - Day and night lighting, dynamic lights and weather: rain, sakura, falling leaves, ash
   and fireflies.
 - Trees, roofs and walls fade out when they would hide your character.
-- Synthesized sound for every action. Footsteps change with the surface, and every
-  hit, skill, shikigami and domain has its own sound.
+- Synthesized sound for every action, timed to the animation: footsteps land on each
+  foot plant and change with the surface, swings sound on the wind-up and hits on the
+  contact frame, for players, curses, shikigami and bosses alike.
 - A music theme for each area and for bosses, layered over ambience such as rain,
   crickets, city noise and wind.
 
 ## Controls
 
 **Touch:** a floating joystick on the left, and action buttons on the right for
-attack, five skills, ultimate, dodge, two potions and talk. Menus are at the top right.
+attack, five skills, ultimate, dodge, two potions and talk. Menus are at the top right;
+the Cheats tab is in the main menu. Walk into a lit doorway to enter or leave a building.
 
 **Keyboard** (in a browser, or on a phone with a keyboard):
 
@@ -207,8 +249,13 @@ offline. There are no third-party Android dependencies.
   rigid-skinned mesh with a shared skeleton, animated by a procedural animator with
   attack, cast and reaction poses for each move.
 - Materials use a 4-band toon ramp and per-vertex glow, with inverted-hull outlines
-  and a shared rim light. A dither shader hides scenery standing between the camera
+  and a shared rim light. Parts are built with few segments and lit with per-face
+  normals for the low-poly look; a copy of the smooth normal drives the outline hull so
+  ink lines stay unbroken. A dither shader hides scenery standing between the camera
   and your character.
+- Interiors come from `src/world/interiors.ts`: a seeded spanning tree over a grid of
+  rooms, extra links for loops, breadth-first distance to pick the story room, then
+  walls, doors, furniture, lights and spawners per cell.
 - Buildings and props are merged or instanced meshes. Terrain blends four canvas
   textures with a painted splat map. Skill icons, item icons and portraits are drawn
   at runtime.
