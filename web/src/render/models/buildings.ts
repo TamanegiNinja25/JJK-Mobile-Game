@@ -226,7 +226,7 @@ function gym(o: BuildOpts): BuildingDef {
   const W = 16, D = 12, H = 6;
   const rng = new Rng(5);
   b.add(G.box(W, H, D), 0xd8d4c8, { pos: [0, H / 2, 0] });
-  const roof = new THREE.CylinderGeometry(D / 2 + 0.4, D / 2 + 0.4, W + 0.6, 24, 1, false, -Math.PI / 2, Math.PI);
+  const roof = new THREE.CylinderGeometry(D / 2 + 0.4, D / 2 + 0.4, W + 0.6, 10, 1, false, -Math.PI / 2, Math.PI);
   roof.rotateZ(Math.PI / 2);
   roof.scale(1, 0.35, 1);
   b.add(roof, 0x4a6a8a, { pos: [0, H, 0], topColor: 0x6a8aaa });

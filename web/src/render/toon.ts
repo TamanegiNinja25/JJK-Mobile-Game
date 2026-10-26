@@ -118,10 +118,13 @@ export function outlineMaterial(width = 0.022, color = 0x07060c): THREE.MeshBasi
   if (!m) {
     m = new THREE.MeshBasicMaterial({ color, side: THREE.BackSide });
     m.onBeforeCompile = (shader) => {
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>\ntransformed += normalize(normal) * ${width.toFixed(4)};`,
-      );
+      // expand along the smooth normal so faceted models keep an unbroken ink line
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute vec3 snormal;')
+        .replace(
+          '#include <begin_vertex>',
+          `#include <begin_vertex>\nvec3 hullN = dot(snormal, snormal) > 0.0 ? normalize(snormal) : normalize(normal);\ntransformed += hullN * ${width.toFixed(4)};`,
+        );
       injectOcclusion(shader, true);
     };
     m.customProgramCacheKey = () => key;
