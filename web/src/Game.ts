@@ -264,14 +264,14 @@ export class Game {
     await this.ui.fadeIn(400);
   }
 
-  async travel(map: string, x?: number, z?: number) {
+  async travel(map: string, x?: number, z?: number, facing?: number) {
     if (this.state === 'loading') return;
     const prev = this.state;
     this.state = 'loading';
     this.input.enabled = false;
     this.input.releaseAll();
     await this.ui.fadeOut(350);
-    this.world.loadMap(map, x, z);
+    this.world.loadMap(map, x, z, facing);
     this.ui.hud?.buildMinimap();
     this.state = prev === 'dialogue' ? 'dialogue' : 'play';
     this.input.enabled = this.state === 'play';

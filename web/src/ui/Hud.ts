@@ -211,7 +211,7 @@ export class Hud {
     const x = c.getContext('2d')!;
     const sp = w.map.splat;
     const night = w.mapDef.night;
-    const palette = [[60, 90, 50], [130, 128, 120], [120, 100, 74], [70, 70, 78]];
+    const palette = w.mapDef.terrain.minimap ?? [[60, 90, 50], [130, 128, 120], [120, 100, 74], [70, 70, 78]];
     const img = x.createImageData(c.width, c.height);
     for (let py = 0; py < c.height; py++) for (let px = 0; px < c.width; px++) {
       const u = px / c.width, v = py / c.height;

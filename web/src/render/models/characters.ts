@@ -75,6 +75,32 @@ export const SPECS: Record<string, HumanoidSpec> = {
     top: 0xeeeae0, bottom: 0xeeeae0, accent: 0x111111, shoes: 0x1a1a1a, height: 1.35, bulk: 1.35,
     extras: ['sukunaMarks', 'cursedEyes'],
   },
+  sasaki: {
+    skin: 0xf6dccb, hair: 0x1e1a22, hairStyle: 'bob', eyes: 0x3a2a2a, outfit: 'uniformSkirt',
+    top: 0x262a3a, bottom: 0x262a3a, accent: 0xd8d8d0, shoes: 0x3a2a22, height: 0.94, bulk: 0.88,
+  },
+  iguchi: {
+    skin: 0xf0d0b2, hair: 0x2a2018, hairStyle: 'short', eyes: 0x333333, outfit: 'uniformHigh',
+    top: 0x1c1c26, bottom: 0x1c1c26, accent: 0xd8d8d0, shoes: 0x222222, glasses: 'round', extras: ['bandage'],
+  },
+  choso: {
+    skin: 0xe8c8b0, hair: 0x1a1418, hairStyle: 'choso', eyes: 0x6a3a2a, outfit: 'robe',
+    top: 0x3a2836, bottom: 0x2a1e26, accent: 0xe8e0d8, shoes: 0x16121a, inner: 0xe8e0d8, height: 1.1, bulk: 1.08,
+    extras: ['bloodStripe'],
+  },
+  kenjaku: {
+    skin: 0xf0d4bc, hair: 0x1a1a20, hairStyle: 'geto', eyes: 0x4a3a2a, outfit: 'kimono',
+    top: 0x2a2a2e, bottom: 0x2a2a2e, accent: 0x8a7a5a, shoes: 0x111111, height: 1.12, bulk: 1.05, extras: ['browStitch'],
+  },
+  tsukamoto: {
+    skin: 0xc89a6a, hair: 0x6a4a2a, hairStyle: 'bald', eyes: 0x111111, outfit: 'patchwork',
+    top: 0x8a6a4a, bottom: 0x6a4a2a, accent: 0x6a4a2a, shoes: 0x4a3420, height: 0.55, head: 1.7, bulk: 1.35,
+    extras: ['stitches', 'gloves'],
+  },
+  grandpa: {
+    skin: 0xe6c4a4, hair: 0xc8c4bc, hairStyle: 'short', eyes: 0x3a3030, outfit: 'casual',
+    top: 0xc8d6de, bottom: 0xb8c6ce, accent: 0xc8d6de, shoes: 0x5a5a5a, height: 0.96, bulk: 0.95,
+  },
   civilianA: { skin: 0xf0d0b0, hair: 0x2a2420, hairStyle: 'short', eyes: 0x333333, outfit: 'casual', top: 0x5a6a8a, bottom: 0x2a2e3a, accent: 0x5a6a8a, shoes: 0x333333 },
   civilianB: { skin: 0xe8c8a8, hair: 0x6a4a30, hairStyle: 'long', eyes: 0x4a3020, outfit: 'casual', top: 0xb05a6a, bottom: 0x302a2a, accent: 0xb05a6a, shoes: 0x3a2a2a, bulk: 0.9 },
   civilianC: { skin: 0xd8b090, hair: 0x111111, hairStyle: 'bun', eyes: 0x222222, outfit: 'suit', top: 0x3a3a40, bottom: 0x3a3a40, accent: 0x3a3a40, shoes: 0x111111, inner: 0x7a2a2a, extras: ['tie'] },

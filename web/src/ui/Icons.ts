@@ -445,7 +445,7 @@ const ITEM_TINT: Record<string, string> = {
   fist: '#5a6a8a', blade: '#5a6a8a', knife: '#5a6a8a', spear: '#5a6a8a', hammer: '#5a6a8a',
   headband: '#3a7a7a', glasses: '#3a7a7a', mask: '#3a7a7a', hood: '#3a7a7a', circlet: '#3a7a7a', blindfold: '#3a7a7a',
   uniform: '#4a4290', charm: '#8a6a3a', bead: '#8a6a3a', eye: '#8a6a3a', bracelet: '#8a7a2a', ring: '#8a7a2a', shoes: '#7a3a4a',
-  potion: '#7a2a4a', potionCe: '#2a4a8a', onigiri: '#5a6a3a', crystal: '#5a3a8a', finger: '#4a2a2a', cotton: '#3a6a4a', leaf: '#3a6a3a', ticket: '#6a4a2a',
+  potion: '#7a2a4a', potionCe: '#2a4a8a', onigiri: '#5a6a3a', crystal: '#5a3a8a', finger: '#4a2a2a', cotton: '#3a6a4a', leaf: '#3a6a3a', ticket: '#6a4a2a', nametag: '#3a4a6a',
 };
 
 type ItemArt = (x: Ctx, c1: string, c2: string) => void;
@@ -498,6 +498,13 @@ const ITEM_ART: Record<string, ItemArt> = {
   cotton: (x, c1, c2) => { const p = new Path2D(); for (const [a, b, r] of [[40, 50, 18], [60, 45, 20], [50, 62, 20], [35, 65, 14], [66, 64, 15]] as const) circ(p, a, b, r); cel(x, p, c1); x.save(); x.strokeStyle = c2; x.lineWidth = 2.4; x.beginPath(); x.arc(50, 52, 30, 0.3, 2.5); x.stroke(); x.restore(); },
   leaf: (x, c1, c2) => { cel(x, G.leaf(), c2); strokeLine(x, [22, 80, 76, 22], tint(c1, 0.6), 1.8); },
   ticket: (x, c1, c2) => at(x, 50, 50, -0.25, 1, () => { const p = new Path2D(); rr(p, 14, 30, 72, 40, 5); cel(x, p, c1); x.save(); x.fillStyle = c2; x.font = '900 15px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('ADMIT', 50, 50); x.setLineDash([3, 3]); x.strokeStyle = c2; x.lineWidth = 1.4; x.beginPath(); x.moveTo(70, 32); x.lineTo(70, 68); x.stroke(); x.restore(); }),
+  nametag: (x, c1, c2) => at(x, 50, 54, 0.12, 1, () => {
+    const p = new Path2D(); rr(p, 18, 30, 64, 46, 5); cel(x, p, c1);
+    const clip = new Path2D(); rr(clip, 40, 16, 20, 18, 4); cel(x, clip, '#9aa0a8', 2);
+    x.save(); x.fillStyle = c2; const bar = new Path2D(); rr(bar, 18, 30, 64, 12, 4); x.fill(bar);
+    x.strokeStyle = tint(c2, 0, 0.8); x.lineWidth = 2.6; for (const [y, w] of [[54, 40], [64, 28]] as const) { x.beginPath(); x.moveTo(28, y); x.lineTo(28 + w, y); x.stroke(); }
+    const ph = new Path2D(); rr(ph, 62, 48, 13, 18, 2); x.fillStyle = tint(c2, 0.4, 0.5); x.fill(ph); x.restore();
+  }),
   headband: (x, c1, c2) => { const p = new Path2D(); p.moveTo(10, 46); p.quadraticCurveTo(50, 30, 90, 46); p.lineTo(90, 58); p.quadraticCurveTo(50, 42, 10, 58); p.closePath(); cel(x, p, c1); const t = new Path2D(); poly(t, [76, 52, 92, 74, 84, 78, 72, 58]); poly(t, [72, 54, 78, 82, 70, 82, 66, 58]); cel(x, t, c1, 2.4); const m = new Path2D(); circ(m, 50, 42, 6); cel(x, m, c2, 2); },
   glasses: (x, c1, c2) => { x.save(); for (const cx of [32, 68]) { const l = new Path2D(); rr(l, cx - 16, 40, 32, 22, 7); x.fillStyle = tint(c2, 0.2, 0.55); x.fill(l); x.lineWidth = 4.5; x.strokeStyle = INK; x.stroke(l); x.lineWidth = 2.4; x.strokeStyle = c1; x.stroke(l); sparks(x, '#ffffff', [[cx - 6, 46, 3]]); } strokeLine(x, [48, 48, 52, 48], c1, 2.4); strokeLine(x, [16, 46, 6, 40], c1, 2.4); strokeLine(x, [84, 46, 94, 40], c1, 2.4); x.restore(); },
   mask: (x, c1, c2) => { const p = new Path2D(); p.moveTo(50, 12); p.quadraticCurveTo(86, 16, 82, 52); p.quadraticCurveTo(76, 84, 50, 90); p.quadraticCurveTo(24, 84, 18, 52); p.quadraticCurveTo(14, 16, 50, 12); p.closePath(); cel(x, p, c1); for (const ex of [36, 64]) { const e = new Path2D(); ell(e, ex, 44, 8, 5); x.fillStyle = INK; x.fill(e); } x.save(); x.strokeStyle = c2; x.lineWidth = 3; x.beginPath(); x.moveTo(30, 62); x.quadraticCurveTo(50, 70, 70, 62); x.stroke(); for (const k of [-1, 1]) { x.beginPath(); x.moveTo(50 + k * 14, 22); x.lineTo(50 + k * 20, 34); x.stroke(); } x.restore(); },

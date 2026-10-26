@@ -470,6 +470,70 @@ class Mahoraga extends BossBase {
   }
 }
 
+/** Choso: Blood Manipulation. Long telegraphed beams, blood-orb volleys and mines, then Flowing Red Scale. */
+class Choso extends BossBase {
+  moves(): Move[] {
+    const e = this.e;
+    const RED = 0xc8102a;
+    return [
+      { id: 'fists', cd: 1.7, dur: 1.1, max: 3, weight: 3, run: () => this.combo(3, 1.0, 0.32, ['punch1', 'punch2', 'kick'], 'punch', 2.6, 1.8) },
+      { id: 'piercing', cd: 5.5, dur: 1.5, min: 3, max: 20, weight: 2.5, run: () => {
+        // Piercing Blood: compress, aim, release a hairline beam
+        const dir = Math.atan2(this.t.x - e.x, this.t.z - e.z);
+        this.anim('clap', 1.2);
+        this.w.sfx('charge', e.x, e.z, 0.6, 1.4);
+        this.w.fx.burst(e.x, 1.3, e.z, RED, 14, 1.5, 0.3, 0.7);
+        this.line(dir, 20, 0.9, 2.2, 0.8, RED, 'blood', (x0, z0, x1, z1) => {
+          this.w.sfx('beam', x0, z0, 0.8, 1.5);
+          this.w.fx.lightning(x0, 1.3, z0, x1, 1.3, z1, 0xff1a3a, 0.3);
+          this.w.fx.lightning(x0, 1.3, z0, x1, 1.3, z1, 0xffd0d8, 0.08);
+          this.w.fx.shake(0.3);
+        });
+      } },
+      { id: 'convergence', cd: 4, dur: 1.0, min: 2.5, max: 14, weight: 2, run: () => {
+        this.strike('throw', 0.4);
+        this.w.schedule(0.4, () => { if (e.alive) { this.w.sfx('blood', e.x, e.z, 0.7, 1.2); this.volley(3, 0.5, 'red', 13, 1.0, RED); } });
+      } },
+      { id: 'supernova', cd: 8, dur: 1.6, phase: 1, weight: 2, run: () => {
+        // Supernova: six blood orbs settle around the target and burst
+        this.anim('castUp', 1.2);
+        this.w.sfx('blood', e.x, e.z, 0.8, 0.8);
+        const tx = this.t.x, tz = this.t.z;
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * TAU + rand(0, 0.5), r = i === 0 ? 0 : rand(1.6, 3.4);
+          const x = tx + Math.sin(a) * r, z = tz + Math.cos(a) * r;
+          this.w.schedule(i * 0.12, () => {
+            this.w.telegraph('circle', x, z, 1.5, 0.9, RED);
+            this.w.schedule(0.9, () => {
+              if (!e.alive) return;
+              this.w.fx.burst(x, 0.8, z, RED, 16, 4, 0.3, 0.8);
+              this.w.fx.shockwave(x, z, 1.5, RED);
+              this.w.sfx('explosion', x, z, 0.5, 1.3);
+              this.w.damageArea(e, x, z, 1.5, 1.3, { kind: 'skill' });
+            });
+          });
+        }
+      } },
+      { id: 'dash', cd: 5, dur: 1.1, min: 5, weight: 1.5, run: () => this.charge(15, 0.45, 1.5, 0.5) },
+    ];
+  }
+  phases() {
+    return [
+      { at: 0.55, id: 'scale', run: () => {
+        this.e.enrage = 1.3;
+        this.w.sfx('blood', this.e.x, this.e.z);
+        this.w.fx.ring(this.e.x, this.e.z, 0xc8102a, 3, 0.6);
+        this.w.game.toast('Flowing Red Scale — Choso\'s blood runs hot!', 'boss', 1.8);
+      } },
+      { at: 0.25, id: 'wing', run: () => {
+        this.anim('castUp', 1.0);
+        this.w.game.toast('"Wing King!"', 'boss', 1.4);
+        this.w.schedule(0.5, () => { if (this.e.alive) { this.w.sfx('blood', this.e.x, this.e.z, 1, 0.7); this.ringBurst(16, 'red', 9, 0.9, 0xc8102a); } });
+      } },
+    ];
+  }
+}
+
 export function createBoss(id: string, e: Enemy): BossScript | null {
   switch (id) {
     case 'glutton': return new Glutton(e);
@@ -481,6 +545,7 @@ export function createBoss(id: string, e: Enemy): BossScript | null {
     case 'jogo': return new Jogo(e);
     case 'sukuna': return new Sukuna(e);
     case 'mahoraga': return new Mahoraga(e);
+    case 'choso': return new Choso(e);
   }
   return null;
 }

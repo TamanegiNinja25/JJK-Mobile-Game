@@ -6,7 +6,8 @@ import { TAU, clamp, lerp } from '../../core/util';
 
 export type HairStyle =
   | 'yuji' | 'megumi' | 'nobara' | 'gojo' | 'nanami' | 'maki' | 'inumaki' | 'shoko' | 'todo'
-  | 'yaga' | 'ijichi' | 'junpei' | 'meimei' | 'mahito' | 'geto' | 'miwa' | 'bald' | 'short' | 'bun' | 'long';
+  | 'yaga' | 'ijichi' | 'junpei' | 'meimei' | 'mahito' | 'geto' | 'miwa' | 'bald' | 'short' | 'bun' | 'long'
+  | 'bob' | 'choso';
 
 export type Outfit = 'uniform' | 'uniformHood' | 'uniformSkirt' | 'suit' | 'labcoat' | 'casual' | 'robe' | 'tank' | 'patchwork' | 'kimono' | 'uniformHigh';
 
@@ -25,7 +26,7 @@ export interface HumanoidSpec {
   bulk?: number;        // 1 = standard build
   head?: number;        // head size multiplier
   glasses?: 'round' | 'goggles' | 'shades' | 'blindfold' | 'none';
-  extras?: ('scars' | 'stitches' | 'collar' | 'tie' | 'braid' | 'eyepatch' | 'mask' | 'facescar' | 'sukunaMarks' | 'cursedEyes' | 'gloves')[];
+  extras?: ('scars' | 'stitches' | 'collar' | 'tie' | 'braid' | 'eyepatch' | 'mask' | 'facescar' | 'sukunaMarks' | 'cursedEyes' | 'gloves' | 'bloodStripe' | 'browStitch' | 'bandage')[];
   outline?: number;
 }
 
@@ -203,6 +204,19 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
   }
   if (spec.extras?.includes('facescar') || spec.extras?.includes('scars')) {
     r.part('head', G.box(0.012, 0.11, 0.01), darken(skin, 0.6), { pos: [-eyeX - 0.01, eyeY - 0.02, eyeZ + 0.03], rot: [0, 0, 0.3] });
+  }
+  if (spec.extras?.includes('bloodStripe')) {
+    // Choso: a band of blood across the bridge of the nose, cheek to cheek
+    r.part('head', G.box(headR * 1.5, 0.026, 0.02), 0x5a0e16, { pos: [0, eyeY - 0.045, eyeZ + 0.02], scale: [1, 1, 1] });
+  }
+  if (spec.extras?.includes('browStitch')) {
+    // Kenjaku: the stitched seam across the forehead
+    r.part('head', G.box(headR * 1.3, 0.008, 0.01), 0x3a2a2a, { pos: [0, eyeY + 0.16, eyeZ - 0.03], rot: [-0.25, 0, 0] });
+    for (let i = 0; i < 7; i++) r.part('head', G.box(0.006, 0.03, 0.01), 0x3a2a2a, { pos: [-headR * 0.55 + i * headR * 0.18, eyeY + 0.16, eyeZ - 0.025], rot: [-0.25, 0, 0] });
+  }
+  if (spec.extras?.includes('bandage')) {
+    r.part('armUpL', G.cyl(0.08 * B, 0.08 * B, 0.12, 10), 0xf4f0e8, { pos: [0, -0.12, 0] });
+    r.part('armUpL', G.box(0.03, 0.05, 0.02), 0xc02a2a, { pos: [0.02, -0.1, 0.075] });
   }
   if (spec.extras?.includes('stitches')) {
     for (let i = 0; i < 6; i++) {
@@ -408,6 +422,25 @@ function buildHair(r: RigBuilder, spec: HumanoidSpec, headR: number, hc: V3) {
       shell(0.95, 2.6, Math.PI * 1.4, c, 1.05);
       r.part('head', G.ellipsoid(R * 0.95, R * 1.0, R * 0.4), c, { pos: [hc[0], hc[1] - R * 1.05, hc[2] - R * 0.6], topColor: hi });
       for (let i = -2; i <= 2; i++) lock(i * 0.25, 0.12, 0.035, 0.5, c, 0.86);
+      break;
+    }
+    case 'bob': {
+      // straight bob with blunt bangs (Sasaki)
+      shell(0, 1.25, TAUh, c, 1.03);
+      shell(0.9, 2.05, Math.PI * 1.45, c, 1.06);
+      for (let i = -3; i <= 3; i++) lock(i * 0.2, 0.12, 0.04, 0.25, c, 0.86);
+      for (const sx of [1, -1]) r.part('head', G.ellipsoid(0.05, 0.13, 0.08), c, { pos: [hc[0] + sx * R * 0.86, hc[1] - R * 0.35, hc[2] + R * 0.05], topColor: hi });
+      break;
+    }
+    case 'choso': {
+      // spiky dark hair gathered into two short tufts on top
+      shell(0, 1.2, TAUh, c, 1.02);
+      shell(1.05, 1.75, Math.PI * 1.3, c, 1.0);
+      for (const sx of [1, -1]) {
+        r.part('head', G.sphere(0.05, 8, 6), c, { pos: [hc[0] + sx * R * 0.42, hc[1] + R * 0.9, hc[2] - R * 0.15], topColor: hi });
+        for (let i = 0; i < 3; i++) spike(0.42, sx * (0.9 + i * 0.25), 0.14, 0.04, [sx * 0.6, 1.4, -0.3]);
+      }
+      for (let i = -2; i <= 2; i++) lock(i * 0.24, 0.13, 0.035, 0.55, c, 0.88);
       break;
     }
     case 'short':

@@ -150,13 +150,28 @@ export class Pickup {
   }
 }
 
-export interface PortalDef { x: number; z: number; r: number; to: string; toX: number; toZ: number; label: string; cond?: string; condText?: string; rot?: number }
+export interface PortalDef {
+  x: number; z: number; r: number; to: string; toX?: number; toZ?: number; label: string; cond?: string; condText?: string;
+  /** yaw of the doorway; a door faces +Z at 0 */
+  rot?: number;
+  /** facing on arrival */
+  toFacing?: number;
+  /** 'door' draws a lit doorway instead of a cursed-energy ring */
+  style?: 'ring' | 'door';
+}
 
 export class Portal {
   obj: THREE.Group;
   ring: THREE.Mesh;
   constructor(public world: World, public d: PortalDef) {
     this.obj = new THREE.Group();
+    if (d.style === 'door') {
+      this.ring = doorway(this.obj);
+      this.obj.position.set(d.x, 0, d.z);
+      this.obj.rotation.y = d.rot ?? 0;
+      world.root.add(this.obj);
+      return;
+    }
     const mat = new THREE.MeshBasicMaterial({ color: 0x8a6aff, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     this.ring = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.08, 8, 32), mat);
     this.ring.position.y = 1.4;
@@ -171,7 +186,50 @@ export class Portal {
     world.root.add(this.obj);
   }
   update(dt: number) {
+    if (this.d.style === 'door') {
+      // chevrons drift toward the doorway; the light breathes
+      const t = this.world.time;
+      this.ring.children.forEach((c, i) => { c.position.z = 0.9 - ((t * 0.8 + i / 3) % 1) * 1.2; ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.5 * Math.sin(((t * 0.8 + i / 3) % 1) * Math.PI); });
+      ((this.obj.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.55 + Math.sin(t * 2.2) * 0.12;
+      return;
+    }
     this.ring.rotation.z += dt * 1.5;
     if (Math.random() < 0.3) this.world.fx.burst(this.d.x + (Math.random() - 0.5) * 2, 0.2, this.d.z + (Math.random() - 0.5) * 2, 0x9a7aff, 1, 0.6, 0.15, 1.0);
   }
+}
+
+let doorTex: THREE.Texture | null = null;
+/** Vertical light gradient for doorways: bright at the floor, fading upward. */
+function doorTexture() {
+  if (doorTex) return doorTex;
+  const c = document.createElement('canvas');
+  c.width = 4; c.height = 64;
+  const x = c.getContext('2d')!;
+  const g = x.createLinearGradient(0, 64, 0, 0);
+  g.addColorStop(0, 'rgba(255,236,190,1)');
+  g.addColorStop(0.5, 'rgba(255,214,150,0.45)');
+  g.addColorStop(1, 'rgba(255,200,120,0)');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 4, 64);
+  doorTex = new THREE.CanvasTexture(c);
+  return doorTex;
+}
+
+/** Lit doorway: a light curtain across the opening plus floor chevrons pointing in. Returns the chevron group. */
+function doorway(obj: THREE.Group) {
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.6), new THREE.MeshBasicMaterial({ map: doorTexture(), transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  glow.position.set(0, 1.3, -0.35);
+  obj.add(glow);
+  const chev = new THREE.Group();
+  const shape = new THREE.Shape();
+  shape.moveTo(-0.45, 0.12); shape.lineTo(0, -0.22); shape.lineTo(0.45, 0.12); shape.lineTo(0.45, 0.32); shape.lineTo(0, -0.02); shape.lineTo(-0.45, 0.32); shape.closePath();
+  const geo = new THREE.ShapeGeometry(shape);
+  geo.rotateX(Math.PI / 2); // tip points at the doorway (-Z)
+  for (let i = 0; i < 3; i++) {
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffe0a0, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    m.position.y = 0.04;
+    chev.add(m);
+  }
+  obj.add(chev);
+  return chev as unknown as THREE.Mesh;
 }
