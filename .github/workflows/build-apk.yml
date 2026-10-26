@@ -10,9 +10,21 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Tag of an existing release to attach the APK to (leave empty to only build)'
+        description: 'Release tag to publish the APK to, e.g. v1.1.0 (created from this branch if new; leave empty to only build)'
         required: false
         default: ''
+      release_name:
+        description: 'Release title (optional; an existing release keeps its title)'
+        required: false
+        default: ''
+      release_notes:
+        description: 'Release notes in Markdown (optional; an existing release keeps its notes)'
+        required: false
+        default: ''
+      prerelease:
+        description: 'Mark as a pre-release'
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -65,7 +77,8 @@ jobs:
 
   release:
     # Attaches the APK to a release: one published on GitHub, one named when
-    # running the workflow by hand, or a new one created by pushing a v* tag.
+    # running the workflow by hand (created if it doesn't exist yet), or a new
+    # one created by pushing a v* tag.
     if: github.event_name == 'release' || inputs.release_tag != '' || startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
@@ -81,5 +94,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.release.tag_name || inputs.release_tag || github.ref_name }}
+          name: ${{ inputs.release_name }}
+          body: ${{ inputs.release_notes }}
+          prerelease: ${{ inputs.prerelease && 'true' || '' }}
           files: dist/CursedChronicles.apk
           generate_release_notes: ${{ github.event_name == 'push' }}

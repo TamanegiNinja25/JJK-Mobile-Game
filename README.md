@@ -182,9 +182,11 @@ To work on the game in a desktop browser, run `npm run serve` in `web/` and open
 
 **CI:** [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml)
 type-checks, bundles and builds debug and release APKs on every push and pull request.
-Pushing a tag such as `v1.0.0` also publishes the release APK to Releases. The release
-build is signed with the debug key so it can be sideloaded; use your own keystore
-before distributing it elsewhere.
+To ship a version, publish a release on GitHub (or run **Build APK** by hand from the
+Actions tab with a tag such as `v1.1.0`); the workflow builds the APK and attaches it
+to that release. Pushing a `v*` tag does the same. The release build is signed with
+the debug key so it can be sideloaded; use your own keystore before distributing it
+elsewhere.
 
 ## How it works
 
