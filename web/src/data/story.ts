@@ -46,6 +46,7 @@ export const NPC_NAMES: Record<string, string> = {
   ijichi: 'Kiyotaka Ijichi', nanami: 'Kento Nanami', junpei: 'Junpei Yoshino', todo: 'Aoi Todo', miwa: 'Kasumi Miwa', meimei: 'Mei Mei',
   yuji: 'Yuji Itadori', megumi: 'Megumi Fushiguro', nobara: 'Nobara Kugisaki', narrator: '', sukuna: 'Ryomen Sukuna', mahito: 'Mahito',
   hanami: 'Hanami', jogo: 'Jogo', dagon: 'Dagon', civilian: 'Civilian', student: 'Student', board: 'Notice Board',
+  sasaki: 'Sasaki (Occult Club)', iguchi: 'Iguchi (Occult Club)', choso: 'Choso', kenjaku: '???', grandpa: 'Wasuke Itadori',
 };
 
 export const QUESTS: QuestDef[] = [
@@ -55,6 +56,12 @@ export const QUESTS: QuestDef[] = [
     summary: 'Exorcise the curses swarming the courtyard of Sugisawa Third High.',
     objectives: [{ type: 'kill', target: 'any', count: 8, map: 'sugisawa', label: 'Exorcise curses' }],
     offer: [
+      { who: 'narrator', text: 'Earlier tonight. Sendai, a hospital room that smells of disinfectant.', only: ['yuji'] },
+      { who: 'grandpa', text: 'Yuji... you\'re strong, so help people. Not just some of them — as many as you can reach.', only: ['yuji'] },
+      { who: 'grandpa', text: 'And when you go, go surrounded by people. Don\'t end up alone like me...', only: ['yuji'] },
+      { who: 'narrator', text: 'Your grandfather never finished the sentence. An hour later, you remembered the Occult Club seniors were opening a "real" cursed talisman at school. At midnight.', only: ['yuji'] },
+      { who: 'narrator', text: 'Your assignment: recover a Special Grade cursed object that went missing in Sendai. The trail ends at a high school\'s Occult Research Club.', only: ['megumi'] },
+      { who: 'narrator', text: 'Your first real mission, three days after arriving in Tokyo from the countryside. Nobody told you it would be in Sendai.', only: ['nobara'] },
       { who: 'narrator', text: 'Sugisawa Third High, Sendai. 11:58 PM. The air tastes like rust and something rotten.' },
       { who: 'gojo', text: 'Okay, first-years! Pop quiz. A Special Grade cursed object is sitting somewhere in that school. What does that do to the neighbourhood?', emote: 'wave' },
       { who: 'player', text: 'It acts like a beacon. Every curse for miles gets drawn in.', only: ['megumi'] },
@@ -71,18 +78,48 @@ export const QUESTS: QuestDef[] = [
     rewards: { exp: 120, gold: 150, items: [{ id: 'hpS', qty: 5 }, { id: 'ceS', qty: 3 }] },
   },
   {
-    id: 'm2', name: 'The Rooftop Hunger', type: 'main', chapter: 1, giver: 'gojo', prereq: ['m1'], autoAccept: true,
+    id: 'm1c', name: 'The Occult Research Club', type: 'main', chapter: 1, giver: 'gojo', turnIn: 'sasaki', prereq: ['m1'], autoAccept: true,
+    summary: 'Two students broke the seal on the finger inside the school. Find them before the curses do.',
+    objectives: [
+      { type: 'reach', map: 'sugisawaIn', label: 'Enter the school building' },
+      { type: 'kill', target: 'any', count: 6, map: 'sugisawaIn', label: 'Clear the corridors' },
+    ],
+    offer: [
+      { who: 'gojo', text: 'Bad news! The seal on that object was peeled off from the inside. Two kids from the Occult Research Club snuck in tonight to "test" it.' },
+      { who: 'player', text: 'Sasaki-senpai and Iguchi-senpai! I told them this afternoon that talisman was fake!', only: ['yuji'] },
+      { who: 'player', text: 'Civilians inside. That\'s why every curse in the prefecture is converging on this building.', only: ['megumi'] },
+      { who: 'player', text: 'Of course somebody opened the cursed box. There\'s always somebody.', only: ['nobara'] },
+      { who: 'gojo', text: 'The doors are right behind me. Find them and keep them breathing. Fair warning — a barrier this thick warps the hallways. Don\'t trust your sense of direction.' },
+    ],
+    progress: [{ who: 'sasaki', text: 'There are still things crawling in the hallway... We can\'t carry Iguchi past them!' }],
+    complete: [
+      { who: 'sasaki', text: 'You came... I\'m so sorry. We only wanted to see if it was real. The paper just peeled off, and then everything went cold.' },
+      { who: 'iguchi', text: 'Something huge reached through the window and grabbed the box. Ow— it took it toward the sports field.' },
+      { who: 'sasaki', text: 'I heard it chewing. Box and all.' },
+      { who: 'player', text: 'Stay here and keep the door shut. I\'ll get it back.', only: ['yuji'] },
+      { who: 'player', text: 'Stay put. Someone will escort you out. The object is my job.', only: ['megumi'] },
+      { who: 'player', text: 'Sit tight, senpai. I\'ll go punch it in the stomach until it gives it back.', only: ['nobara'] },
+    ],
+    rewards: { exp: 220, gold: 200, items: [{ id: 'hpS', qty: 3 }, { id: 'ceS', qty: 2 }] },
+  },
+  {
+    id: 'm2', name: 'The Rooftop Hunger', type: 'main', chapter: 1, giver: 'sasaki', turnIn: 'gojo', prereq: ['m1c'], autoAccept: true,
     summary: 'Defeat the Grade 2 curse devouring the sports field and recover the cursed finger.',
     objectives: [{ type: 'boss', target: 'glutton', label: 'Defeat the Gluttonous Curse' }],
     offer: [
-      { who: 'gojo', text: 'The finger\'s out on the sports field behind the school. Something big already found it — and it\'s been snacking.' },
-      { who: 'gojo', text: 'Grade 2. If it gets ugly, back off and drink something. Shoko\'s salves taste awful but they work.' },
+      { who: 'iguchi', text: 'The field is past the gym. Just... follow the noise.' },
+      { who: 'sasaki', text: 'Please be careful. It was too big for the window. It went through the wall.' },
+      { who: 'narrator', text: 'Your phone buzzes. Gojo: "Grade 2. If it gets ugly, back off and drink something. Shoko\'s salves taste awful but they work."' },
     ],
     progress: [{ who: 'gojo', text: 'The field is past the gym. Follow the screaming.' }],
     complete: [
       { who: 'narrator', text: 'A shrivelled, blackened finger lies in the dirt. Even sealed, it hums with a malice that makes your teeth ache.' },
-      { who: 'sukuna', text: 'Heh... A sliver of me, held by such small hands. How amusing.', only: ['yuji'] },
-      { who: 'player', text: '...Did someone just talk?', only: ['yuji'] },
+      { who: 'narrator', text: 'In the trees, more curses are already twitching toward it. There is no time to seal it properly.', only: ['yuji'] },
+      { who: 'player', text: 'If it\'s the cursed energy they want... then nobody gets it.', only: ['yuji'] },
+      { who: 'narrator', text: 'You swallow the finger whole.', only: ['yuji'] },
+      { who: 'sukuna', text: 'Hah... HAHAHA! Flesh at last! Now, where to begin— ...What? Why won\'t this body move?', only: ['yuji'] },
+      { who: 'player', text: 'Huh. Tasted like nothing. Also there\'s a mouth on my cheek now. Is that normal?', only: ['yuji'] },
+      { who: 'gojo', text: 'You ATE it? ...And you\'re still you. Wow. Okay. The higher-ups are going to want you executed, so let\'s go make that complicated for them.', only: ['yuji'] },
       { who: 'gojo', text: 'One of Sukuna\'s twenty fingers. Seal it, keep it close, don\'t lick it. Long story.', not: ['yuji'] },
       { who: 'gojo', text: 'Okay! Field trip\'s over. Ijichi\'s car is at the gate. Let\'s go to school — the real one.' },
     ],
@@ -167,7 +204,11 @@ export const QUESTS: QuestDef[] = [
     progress: [{ who: 'ijichi', text: 'The inner block is through the gate past the guard tower.' }],
     complete: [
       { who: 'narrator', text: 'The curse collapses into ash. A second finger rolls from its chest, still twitching.' },
-      { who: 'sukuna', text: 'You survived that? You\'re less boring than you look, brat.', only: ['yuji'] },
+      { who: 'sukuna', text: 'You survived that? You\'re less boring than you look, brat. Now — lend me that body.', only: ['yuji'] },
+      { who: 'narrator', text: 'The world tilts. Sukuna steps forward in your skin, and to make sure you can never take it back, he crushes your heart.', only: ['yuji'] },
+      { who: 'narrator', text: 'Darkness. A shrine built from bones. The King of Curses lounges on a mountain of skulls and offers a binding vow: your life, in exchange for one minute of his choosing — and you forgetting the deal.', only: ['yuji'] },
+      { who: 'narrator', text: 'You wake up on a cold table in the school basement. Shoko drops her scalpel. Gojo starts laughing.', only: ['yuji'] },
+      { who: 'narrator', text: '"Welcome back," Gojo says. "Officially, you\'re dead. Let\'s keep it that way until the Goodwill Event."', only: ['yuji'] },
       { who: 'ijichi', text: 'Y-you actually won... I need to sit down. Mr. Gojo will be back at the school by now.' },
     ],
     rewards: { exp: 1800, gold: 1500, fingers: 1, items: [{ id: 'core', qty: 1 }, { id: 'fragment', qty: 8 }], classItems: { yuji: 'cursedKnuckle', megumi: 'shadowBlade', nobara: 'cursedHammer' } },
@@ -197,20 +238,44 @@ export const QUESTS: QuestDef[] = [
     rewards: { exp: 900, gold: 600, classItems: { yuji: 'cursedKnuckle', megumi: 'shadowBlade', nobara: 'cursedHammer' }, items: [{ id: 'fragment', qty: 4 }] },
   },
 
+  {
+    id: 's_okazaki', name: 'A Name Tag for His Mother', type: 'side', chapter: 2, giver: 'ijichi', prereq: ['m4'], level: 7,
+    summary: 'Search the Eishu admin block for any trace of the inmate Tadashi Okazaki.',
+    objectives: [{ type: 'collect', item: 'nameTag', count: 1, label: 'Find Okazaki\'s name tag in the admin block' }],
+    offer: [
+      { who: 'ijichi', text: 'There\'s a woman at the outer gate. Her son, Tadashi Okazaki, was one of the five inmates. She keeps asking whether he\'s all right.' },
+      { who: 'ijichi', text: 'The admin block door is on the west side of the yard. If you find anything of his... anything at all...' },
+      { who: 'player', text: 'Got it. I\'ll bring something back. I promise.', only: ['yuji'] },
+      { who: 'player', text: 'Understood.', only: ['megumi'] },
+      { who: 'player', text: 'Yeah. Leave it to me.', only: ['nobara'] },
+    ],
+    progress: [{ who: 'ijichi', text: 'The admin block is to the west. The womb\'s energy keeps rearranging the corridors — please don\'t get lost.' }],
+    complete: [
+      { who: 'ijichi', text: 'This is his... Thank you. I will give it to his mother personally.' },
+      { who: 'player', text: 'He didn\'t do anything to deserve that.', only: ['yuji'] },
+      { who: 'player', text: 'We can\'t save everyone. I know that. It doesn\'t make it easier.', only: ['megumi'] },
+      { who: 'player', text: 'Tell her he wasn\'t alone at the end. Even if you have to lie.', only: ['nobara'] },
+      { who: 'ijichi', text: 'Sorcerers carry this kind of weight every day. Please... don\'t carry it alone.' },
+    ],
+    rewards: { exp: 800, gold: 600, items: [{ id: 'wardCharm', rarity: 1 }, { id: 'hpM', qty: 2 }] },
+  },
+
   // ===================== Chapter 3: Idle Transfiguration =====================
   {
     id: 'm6', name: 'Overtime in Kawasaki', type: 'main', chapter: 3, giver: 'gojo', prereq: ['m5'], level: 11,
     summary: 'Meet Kento Nanami in Kawasaki and gather evidence from the transfigured victims.',
     objectives: [
       { type: 'talk', npc: 'nanami', label: 'Meet Nanami in Kawasaki' },
+      { type: 'reach', map: 'theaterIn', label: 'Investigate the cinema' },
       { type: 'collect', item: 'filmTicket', count: 5, label: 'Cinema Ticket Stubs' },
     ],
     offer: [
       { who: 'gojo', text: 'You came back from Eishu in one piece? See, I told everyone you\'d be fine. I told them... eventually.' },
       { who: 'gojo', text: 'Next lesson: the grown-up world of jujutsu. I\'m lending you to Nanami. He\'s in Kawasaki investigating a weird string of deaths at a cinema.' },
+      { who: 'gojo', text: 'Since you\'re officially dead, nobody will come looking for you. Perfect field trip!', only: ['yuji'] },
       { who: 'gojo', text: 'He\'s a total bore, but he\'s a Grade 1 and he\'ll keep you alive. Ijichi can drive you.' },
     ],
-    progress: [{ who: 'nanami', text: 'The victims were reshaped by someone\'s cursed technique. Gather what they dropped. Ticket stubs, specifically.' }],
+    progress: [{ who: 'nanami', text: 'The cinema is right behind me. Start with Screen 3. Then gather what the victims dropped — ticket stubs, specifically.' }],
     complete: [
       { who: 'nanami', text: 'Every stub is from the same screening. Whoever did this was in that theater — and they\'re not human.' },
       { who: 'nanami', text: 'Also. Someone was there who survived. A boy. Junpei Yoshino. He\'s by the river. Talk to him — gently.' },
@@ -266,6 +331,24 @@ export const QUESTS: QuestDef[] = [
     ],
     complete: [{ who: 'meimei', text: 'Pleasure doing business. My crows found this in a Grade 1 nest. Try not to die before you\'re a repeat customer.' }],
     rewards: { exp: 1200, gold: 0, items: [{ id: 'core', qty: 3 }, { id: 'cursedBead', rarity: 2 }] },
+  },
+
+  {
+    id: 's_movies', name: 'Movie Night', type: 'side', chapter: 3, giver: 'gojo', prereq: ['m5'], level: 9,
+    summary: 'Principal Yaga\'s cursed dolls are waiting in the first-year dorm. Keep your cursed energy steady and break three of them.',
+    objectives: [
+      { type: 'reach', map: 'dormIn', label: 'Go to the first-year dorm' },
+      { type: 'kill', target: ['tsukamoto'], count: 3, map: 'dormIn', label: 'Break the cursed dolls' },
+    ],
+    offer: [
+      { who: 'gojo', text: 'So! You\'re dead. Officially. Which means secret training! Movies, snacks, and one of the principal\'s cursed dolls in your lap.', only: ['yuji'] },
+      { who: 'gojo', text: 'Keep your cursed energy flowing steadily the whole time. If it flickers, the doll punches you. Very educational.', only: ['yuji'] },
+      { who: 'gojo', text: 'Yuji trained like this while everyone thought he was dead: bad movies, and a cursed doll that punches you whenever your energy flickers. Your turn!', not: ['yuji'] },
+      { who: 'gojo', text: 'The dorm is the wooden building on the west side. The principal left a few dolls in a room in there. Break them — gently. He\'s sensitive.' },
+    ],
+    progress: [{ who: 'gojo', text: 'Steady energy! Like a calm river. A calm river that punches dolls.' }],
+    complete: [{ who: 'gojo', text: 'Look at that, barely any bruises! The principal will be thrilled. Or devastated. It\'s hard to tell with those sunglasses.' }],
+    rewards: { exp: 900, gold: 500, items: [{ id: 'ceM', qty: 4 }, { id: 'fragment', qty: 4 }] },
   },
 
   // ===================== Chapter 4: Goodwill =====================
@@ -358,7 +441,29 @@ export const QUESTS: QuestDef[] = [
     unlock: ['shibuya'],
   },
   {
-    id: 'm12', name: 'The Drowning Platform', type: 'main', chapter: 5, giver: 'ijichi', prereq: ['m11'], autoAccept: true,
+    id: 'm11p', name: 'Prison Realm', type: 'main', chapter: 5, giver: 'ijichi', prereq: ['m11'], autoAccept: true,
+    summary: 'Gojo was sealed five floors beneath Shibuya Station. Fight down to B5F and break through whoever guards the platform.',
+    objectives: [
+      { type: 'reach', map: 'stationIn', label: 'Descend to B5F' },
+      { type: 'boss', target: 'choso', label: 'Defeat Choso' },
+    ],
+    offer: [
+      { who: 'ijichi', text: 'Mei Mei\'s crows confirmed it. Mr. Gojo was sealed on the Fukutoshin Line platform — B5F.' },
+      { who: 'ijichi', text: 'Something called the Prison Realm. A cursed object that can hold anyone... even him.' },
+      { who: 'player', text: 'Then we go down there and get him out.', only: ['yuji'] },
+      { who: 'player', text: 'They\'ll have someone guarding it. Let\'s move.', only: ['megumi'] },
+      { who: 'player', text: 'Five floors of curses. Wonderful. My favourite.', only: ['nobara'] },
+      { who: 'ijichi', text: 'The entrance is at the north end of the plaza. The barrier keeps reshaping the concourse — please don\'t trust any signs.' },
+    ],
+    progress: [{ who: 'ijichi', text: 'B5F. Please hurry.' }],
+    complete: [
+      { who: 'ijichi', text: 'A man with Suguru Geto\'s face...? That\'s impossible. Mr. Gojo killed Geto himself, last December.' },
+      { who: 'ijichi', text: 'Whoever he is, he has the Prison Realm. And the station plaza — the water is rising. Something is flooding it with fish.' },
+    ],
+    rewards: { exp: 14000, gold: 8000, items: [{ id: 'core', qty: 3 }, { id: 'hpL', qty: 3 }] },
+  },
+  {
+    id: 'm12', name: 'The Drowning Platform', type: 'main', chapter: 5, giver: 'ijichi', prereq: ['m11p'], autoAccept: true,
     summary: 'Defeat Dagon at the station plaza.',
     objectives: [{ type: 'boss', target: 'dagon', label: 'Defeat Dagon' }],
     offer: [{ who: 'ijichi', text: 'The station plaza to the north. A curse that commands the sea. Don\'t let the fish surround you!' }],
@@ -416,6 +521,29 @@ export const QUESTS: QuestDef[] = [
     complete: [{ who: 'gojo', text: 'Okay, wow. I take back everything I said about you being a first-year. Mostly.' }],
     rewards: { exp: 60000, gold: 40000, items: [{ id: 'core', qty: 10 }], classItems: { yuji: 'bfWraps', megumi: 'dragonBone', nobara: 'crownNail' } },
   },
+  {
+    id: 's_soul', name: 'Soul Resonance', type: 'side', chapter: 6, giver: 'todo', prereq: ['m14'], level: 38,
+    summary: 'Mahito has resurfaced at the Shibuya station plaza, stronger than ever. End it, with Aoi Todo at your side.',
+    objectives: [{ type: 'boss', target: 'mahito', label: 'Defeat Mahito at the station plaza' }],
+    offer: [
+      { who: 'todo', text: 'BROTHER! I came the moment I sensed you. That patchwork curse — Mahito — is still in Shibuya.' },
+      { who: 'todo', text: 'He has learned to reshape his own soul. But a soul can be struck, if your blow lands within a millionth of a second of your cursed energy.' },
+      { who: 'player', text: 'Black Flash. ...Todo, I need your help.', only: ['yuji'] },
+      { who: 'player', text: 'If he touches you, it\'s over. Keep your distance and hit him with everything.', only: ['megumi'] },
+      { who: 'player', text: 'Resonance hits souls. I\'ve been dying to nail that smile.', only: ['nobara'] },
+      { who: 'todo', text: 'I clap, you strike. He waits at the station plaza. Let us go, brother!', emote: 'clap' },
+    ],
+    progress: [{ who: 'todo', text: 'The station plaza, brother! Our souls are already in sync!' }],
+    complete: [
+      { who: 'todo', text: 'Hah... MAGNIFICENT! That last blow — I saw the black sparks!' },
+      { who: 'narrator', text: 'Mahito drags himself away across the plaza, smaller with every step, begging for one more chance.' },
+      { who: 'narrator', text: 'A man in monk\'s robes steps out of the smoke. Long black hair, a calm smile, and a line of stitches across his forehead.' },
+      { who: 'kenjaku', text: 'Thank you, Mahito. You\'ve ripened beautifully.' },
+      { who: 'narrator', text: 'Cursed Spirit Manipulation. He swallows the curse whole — and is gone before anyone can move.' },
+      { who: 'todo', text: 'That was Suguru Geto\'s face... but not his soul. Brother, the real enemy has only just shown himself.' },
+    ],
+    rewards: { exp: 50000, gold: 30000, items: [{ id: 'core', qty: 8 }, { id: 'hpL', qty: 5 }] },
+  },
 ];
 
 export const QUEST_BY_ID: Record<string, QuestDef> = Object.fromEntries(QUESTS.map(q => [q.id, q]));
@@ -435,6 +563,8 @@ export const IDLE: Record<string, Line[][]> = {
   ijichi: [[{ who: 'ijichi', text: 'W-where would you like to go? I can drive you anywhere the higher-ups have cleared.' }]],
   nanami: [[{ who: 'nanami', text: 'Labor is crap.' }], [{ who: 'nanami', text: 'My technique creates a weak point at a 7:3 ratio. Yours seems to be "hit it until it stops."' }]],
   junpei: [[{ who: 'junpei', text: 'Do you think... people can change? Like, actually change?' }]],
+  sasaki: [[{ who: 'sasaki', text: 'We\'re never touching anything cursed again. Probably. Maybe.' }]],
+  iguchi: [[{ who: 'iguchi', text: 'My arm\'s fine. Mostly. Is there a mouth on your— never mind.' }]],
   todo: [[{ who: 'todo', text: 'BROTHER! Our souls resonate even now!' }]],
   miwa: [[{ who: 'miwa', text: 'S-sorry! I\'m just practising my Simple Domain! Don\'t mind me!' }]],
   meimei: [[{ who: 'meimei', text: 'Money is the only thing that never betrays you. Well, money and crows.' }]],

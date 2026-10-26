@@ -87,6 +87,8 @@ reg({ id: 'mahoraga', name: 'Divine General Mahoraga', grade: 0, model: 'mahorag
 reg({ id: 'veilAnchor', name: 'Veil Anchor', grade: 2, model: 'static:veilAnchor', scale: 1, level: 26, hpMul: 3, atkMul: 0, defMul: 1, speed: 0, radius: 0.5, ai: 'dummy', attack: melee(0, 99, 0), aggro: 0, noKnock: true, drops: [{ item: 'veilTag', chance: 1 }] });
 
 // ---- Training ----
+reg({ id: 'tsukamoto', name: 'Cursed Doll', grade: 4, model: 'char:tsukamoto', scale: 0.9, level: 8, hpMul: 1.2, atkMul: 0.7, defMul: 0.8, speed: 3.4, radius: 0.4, ai: 'melee', attack: melee(1.3, 1.4, 0.8, 'punch1', 'punch'), aggro: 7, voice: 'pad' });
+reg({ id: 'choso', name: 'Choso', grade: 0, model: 'char:choso', scale: 1.05, level: 30, hpMul: 24, atkMul: 1.55, defMul: 1.45, speed: 4.6, radius: 0.7, ai: 'boss', boss: 'choso', attack: melee(2.2, 1.1, 1.3, 'punch1', 'punch'), aggro: 18, voice: 'blood', noKnock: true });
 reg({ id: 'dummy', name: 'Cursed Corpse (Training)', grade: 4, model: 'dummy', scale: 1.0, level: 1, hpMul: 6, atkMul: 0, defMul: 0, speed: 0, radius: 0.5, ai: 'dummy', attack: melee(0, 99, 0), aggro: 0 });
 
 export const ENEMIES = E;

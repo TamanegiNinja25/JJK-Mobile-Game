@@ -7,7 +7,7 @@ import { QUESTS, QUEST_BY_ID, QuestDef, Objective } from '../data/story';
 
 export const INV_SIZE = 48;
 const SAVE_KEY = 'cursedChronicles.save.';
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 /** Attribute points granted per level-up. */
 export const STAT_POINTS_PER_LEVEL = 10;
 
@@ -540,6 +540,14 @@ function migrate(d: SaveData) {
   if (v < 2) {
     // level-ups used to grant 5 attribute points; top up to the new rate
     d.statPoints += (STAT_POINTS_PER_LEVEL - 5) * (d.level - 1);
+  }
+  if (v < 3) {
+    // story quests inserted into the main line: saves already past them count them as done
+    const q = d.quests;
+    if (q.m2 && !q.m1c) q.m1c = { state: 'done', progress: [1, 6] };
+    if (q.m12 && !q.m11p) q.m11p = { state: 'done', progress: [1, 1] };
+    // m6 gained "investigate the cinema" as its second objective
+    if (q.m6 && q.m6.progress.length === 2) q.m6.progress.splice(1, 0, q.m6.progress[0] >= 1 ? 1 : 0);
   }
   d.version = SAVE_VERSION;
 }

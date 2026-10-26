@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { G, PartBag, V3 } from '../geo';
 import { Rng, TAU } from '../../core/util';
 import { darken, lighten } from './humanoid';
+import { INTERIOR_PROPS } from './interiorProps';
 
 export interface PropDef {
   geo: THREE.BufferGeometry;
@@ -510,6 +511,7 @@ export const PROP_BUILDERS: Record<string, Builder> = {
   postBox, utilityPole, trafficLight, trainingPost, dummyPost, goal, bikeRack, cocoon, pipe,
   signPink: () => billboardSign(0xff4aa8), signCyan: () => billboardSign(0x2ae0ff), signGold: () => billboardSign(0xffc02a, 2.0, 1.0), signPurple: () => billboardSign(0x9a4aff),
   hachiko, well, signboard, veilAnchor: wire, stairs, lilyPad, koi,
+  ...INTERIOR_PROPS,
 };
 
 const built = new Map<string, PropDef>();

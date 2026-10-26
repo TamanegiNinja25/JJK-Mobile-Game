@@ -2,6 +2,7 @@
 import { MapDef } from './MapBuilder';
 import { PlayerState } from '../rpg/PlayerState';
 import { QUEST_BY_ID } from '../data/story';
+import { INTERIORS } from './interiors';
 
 const done = (id: string) => (ps: PlayerState) => ps.questState(id)?.state === 'done';
 const active = (id: string) => (ps: PlayerState) => !!ps.questState(id) && ps.questState(id)!.state !== 'done';
@@ -19,6 +20,7 @@ const sugisawa: MapDef = {
     paint: (p) => {
       p.rect(1, 0, 11, 34, 18, 0.5);        // courtyard
       p.rect(1, 0, 24, 6, 12, 0.4);         // gate path
+      p.rect(1, 0, 0.6, 5, 4.4, 0.3);       // school entrance
       p.rect(1, 22, -6, 7, 26, 0.5);        // east passage
       p.rect(3, 0, 33, 64, 4, 0.3);         // street outside the gate
       p.circle(2, 0, -24, 12, 1.0);         // sports field track
@@ -71,6 +73,7 @@ const sugisawa: MapDef = {
       { who: 'player', text: 'Ugh, it\'s drooling. I\'m going to nail its face shut.', only: ['nobara'] },
     ] });
     b.portal({ x: 0, z: 32.5, r: 2.2, to: 'hub', toX: 0, toZ: 26, label: 'Jujutsu High (Ijichi\'s car)', cond: 'm2', condText: 'Gojo: "Not yet! There\'s a finger to find first."' });
+    b.portal({ x: 0, z: -0.8, r: 1.0, to: 'sugisawaIn', label: 'School building', style: 'door', cond: 'm1', condText: 'Gojo: "Courtyard first. Then we go inside."' });
   },
 };
 
@@ -88,6 +91,7 @@ const hub: MapDef = {
       p.rect(1, 0, -16, 22, 8, 0.4);          // hall forecourt
       p.circle(2, 0, 2, 9, 0.8);              // plaza
       p.rect(1, -10, 4, 18, 3.5, 0.3);        // west path
+      p.rect(1, -19, -1.2, 3, 10.5, 0.3);      // path to the dorm door
       p.rect(1, 10, 4, 18, 3.5, 0.3);         // east path
       p.rect(3, 19, 14, 14, 12, 0.6);         // training ground
       p.rect(2, -18, -8, 8, 22, 0.5);
@@ -101,6 +105,7 @@ const hub: MapDef = {
     b.keepClear(0, 8, 6, 54).keepClear(0, -16, 24, 8).keepClear(0, 2, 18, 18).keepClear(19, 14, 15, 13).keepClear(-10, 4, 18, 4).keepClear(10, 4, 18, 4);
     b.building('templeHall', 0, -27, 0);
     b.building('dorm', -24, -6, 1);
+    b.portal({ x: -20.1, z: -6, r: 1.0, to: 'dormIn', label: 'First-year dorm', style: 'door', rot: Math.PI / 2 });
     b.building('classroom', 25, -6, 3);
     b.building('infirmary', -22, 13, 1);
     b.building('pagoda', 26, -28, 0);
@@ -156,6 +161,7 @@ const eishu: MapDef = {
       p.rect(1, 0, 14, 40, 26, 0.5);
       p.patches(2, 0.1, 0.6, 0.8);
       p.circle(3, 0, -24, 10, 3, 0.8);
+      p.rect(1, -12, 16, 8, 4, 0.4);          // walkway to the admin block
     },
   },
   surfaces: ['concrete', 'concrete', 'dirt', 'flesh'],
@@ -163,6 +169,7 @@ const eishu: MapDef = {
   build: (b) => {
     b.keepClear(0, 14, 16, 30).keepClear(0, -24, 22, 22);
     b.building('prisonAdmin', -20, 16, 1);
+    b.portal({ x: -14.9, z: 16, r: 1.0, to: 'eishuIn', label: 'Admin block', style: 'door', rot: Math.PI / 2 });
     b.building('prisonBlock', 19, 14, 3);
     b.building('prisonBlock', -20, -2, 1);
     b.building('guardTower', -26, 30, 0);
@@ -211,6 +218,7 @@ const kawasaki: MapDef = {
       p.rect(2, -20, 22, 8, 3, 0.4);
       p.rect(0, 22, 27, 30, 8, 0.6);
       p.patches(0, 0.15, 0.7, 0.4);
+      p.rect(3, -16, -5.2, 5, 4, 0.2);        // cinema forecourt
     },
   },
   surfaces: ['grass', 'concrete', 'dirt', 'concrete'],
@@ -218,6 +226,7 @@ const kawasaki: MapDef = {
   build: (b) => {
     b.keepClear(0, 4, 72, 10).keepClear(0, -8, 10, 64).keepClear(14, 22, 40, 8);
     b.building('theater', -16, -12, 0);
+    b.portal({ x: -16, z: -6.9, r: 1.0, to: 'theaterIn', label: 'Cinema', style: 'door' });
     b.building('shopRow', 17, -12, 0, { seed: 2 });
     b.building('apartment', -27, -30, 0);
     b.building('office', 15, -30, 0);
@@ -364,6 +373,7 @@ const shibuya: MapDef = {
   build: (b) => {
     b.keepClear(0, 0, 36, 36).keepClear(0, -24, 28, 12).keepClear(-24, 22, 24, 20).keepClear(24, 22, 22, 20).keepClear(0, 36, 10, 10);
     b.building('station', 0, -36, 0);
+    b.portal({ x: 0, z: -30.4, r: 1.0, to: 'stationIn', label: 'Shibuya Station', style: 'door', cond: 'm11', condText: 'A second, smaller veil seals the station entrance. Break the outer veil first.' });
     for (const [x, s] of [[-30, 1], [-15, 2], [15, 3], [30, 4]] as const) b.building('skyscraper', x, -33, 0, { seed: s });
     b.building('shopRow', -36, -8, 1, { seed: 7 });
     b.building('shopRow', 36, -8, 3, { seed: 8 });
@@ -387,6 +397,7 @@ const shibuya: MapDef = {
     b.npc({ id: 'civilian', model: 'civilianB', x: -30, z: 30, facing: 1.2 });
     b.npc({ id: 'civilian', model: 'civilianC', x: 30, z: 30, facing: -1.2 });
     b.npc({ id: 'gojo', x: -3, z: 34, facing: Math.PI, cond: done('m14') });
+    b.npc({ id: 'todo', x: 9, z: 31, facing: -Math.PI * 0.75, cond: done('m14') });
     b.spawner({ enemies: [{ id: 'veilAnchor' }], x: 0, z: 0, w: 60, d: 50, count: 3, respawn: 9999, level: [26, 26], cond: active('m11') });
     b.spawner({ enemies: [{ id: 'hand' }, { id: 'pumpkin' }, { id: 'shibuyaTransfig', w: 2 }], x: 0, z: 0, w: 34, d: 30, count: 9, respawn: 10, level: [26, 30] });
     b.spawner({ enemies: [{ id: 'fish', w: 2 }, { id: 'hand' }], x: 0, z: -22, w: 30, d: 10, count: 6, respawn: 11, level: [28, 31] });
@@ -406,6 +417,11 @@ const shibuya: MapDef = {
       { who: 'player', text: 'You\'re not taking anyone else. Not today.' },
       { who: 'sukuna', text: 'Two… Oh, never mind. Come, brat. Show me what this era calls "strong".' },
     ] });
+    b.boss({ id: 'mahito', x: 0, z: -22, r: 10, quest: 's_soul', level: 42, intro: [
+      { who: 'mahito', text: 'There you are~! And you brought the big one. Did you come to watch me reshape your friend?' },
+      { who: 'todo', text: 'Brother! Remember: when I clap, nothing stays where it was. Not even you.', emote: 'clap' },
+      { who: 'mahito', text: 'Souls, bodies, it\'s all clay. Let\'s find out whose shape is better.' },
+    ] });
     b.boss({ id: 'mahoraga', x: 24, z: 22, r: 11, quest: 's_mahoraga', intro: [
       { who: 'narrator', text: 'A colossal figure crouches beneath a slowly turning golden wheel. As it rises, the wheel clicks once.' },
       { who: 'gojo', text: 'Remember: it adapts. Mix up your attacks — strikes, techniques, everything.' },
@@ -413,7 +429,7 @@ const shibuya: MapDef = {
   },
 };
 
-export const MAPS: Record<string, MapDef> = { sugisawa, hub, eishu, kawasaki, sewer, kyoto, shibuya };
+export const MAPS: Record<string, MapDef> = { sugisawa, hub, eishu, kawasaki, sewer, kyoto, shibuya, ...INTERIORS };
 /** Destinations Ijichi can drive to; `need` is the quest that must be accepted first. */
 export const TRAVEL_LIST: { id: string; need?: string; level: string }[] = [
   { id: 'hub', need: 'm2', level: 'Town' },

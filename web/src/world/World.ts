@@ -73,7 +73,8 @@ export class World implements WorldAPI {
     this.fx.onHitstop = (t) => { this.hitstopT = Math.max(this.hitstopT, t); };
     this.weather = new Weather(r);
     r.scene.add(this.root);
-    r.cameraBlocked = (x, z) => this.col.blocked(x, z, 1.2);
+    // indoors the walls are cut away, so the camera never needs to swing overhead
+    r.cameraBlocked = (x, z) => !this.mapDef?.interior && this.col.blocked(x, z, 1.2);
   }
 
   // ------------------------------------------------------------------
@@ -87,6 +88,7 @@ export class World implements WorldAPI {
     this.mapDef = def;
     const [W, D] = def.size;
     this.col.bounds = { x0: -W / 2, z0: -D / 2, x1: W / 2, z1: D / 2 };
+    def.prepare?.((Math.random() * 2 ** 31) | 0);
     const splat = new SplatPainter(W, D, 4);
     def.terrain.paint(splat);
     const b = new MapBuilder(def, this.col, this.r.quality, splat);
@@ -107,6 +109,8 @@ export class World implements WorldAPI {
     else this.root.add(this.player.model!.root);
     this.player.alive = true;
     this.player.model?.revive();
+    // interiors are rebuilt on every visit, so a saved position inside one means nothing: start at the door
+    if (def.interior) x = z = facing = undefined;
     const sx = x ?? def.spawn.x, sz = z ?? def.spawn.z;
     this.player.place(sx, sz);
     this.player.facing = facing ?? def.spawn.facing ?? Math.PI;
@@ -208,6 +212,7 @@ export class World implements WorldAPI {
     this.checkBosses();
     this.tickDomain(dt);
     this.checkPortals(dt);
+    this.checkScenes();
     this.fx.update(dt);
     this.weather.update(dt, this.player.x, this.player.z);
     tickWater(this.time);
@@ -514,8 +519,21 @@ export class World implements WorldAPI {
       }
       if (this.inBossFight()) { this.portalCooldown = 2; this.game.toast('You can\'t leave mid-fight!', 'warn'); return; }
       this.portalCooldown = 3;
-      audio.play('portal');
-      this.game.travel(d.to, d.toX, d.toZ);
+      audio.play(d.style === 'door' ? 'door' : 'portal');
+      this.game.travel(d.to, d.toX, d.toZ, d.toFacing);
+      return;
+    }
+  }
+
+  /** Story beats tied to a spot on the map play once, the first time the player walks in. */
+  private checkScenes() {
+    if (this.game.state !== 'play' || this.bossActive || this.bossStarting) return;
+    const p = this.player, ps = this.game.ps!;
+    for (const sc of this.map.scenes) {
+      if (ps.d.flags[sc.flag] || Math.hypot(p.x - sc.x, p.z - sc.z) > sc.r) continue;
+      if (sc.cond && !sc.cond(ps)) continue;
+      ps.d.flags[sc.flag] = true;
+      this.game.dialogue.play(sc.lines);
       return;
     }
   }

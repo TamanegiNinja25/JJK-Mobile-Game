@@ -114,6 +114,7 @@ reg(
   { id: 'kelp', name: 'Kelp Leaf', kind: 'quest', req: 1, price: 0, icon: { shape: 'leaf', c1: '#2a5a2a', c2: '#6aa04a' }, questItem: true, stack: 99, desc: 'Konbu!' },
   { id: 'miwaSword', name: "Miwa's Katana", kind: 'quest', req: 1, price: 0, icon: { shape: 'blade', c1: '#c8ccd4', c2: '#3a5a9a' }, questItem: true, stack: 1, desc: 'Kasumi Miwa lost it somewhere in the forest.' },
   { id: 'veilTag', name: 'Veil Talisman', kind: 'quest', req: 1, price: 0, icon: { shape: 'charm', c1: '#2a2a3a', c2: '#9a4aff' }, questItem: true, stack: 99, desc: 'Torn from a barrier anchor.' },
+  { id: 'nameTag', name: 'Inmate Name Tag', kind: 'quest', req: 1, price: 0, icon: { shape: 'nametag', c1: '#e8e4d8', c2: '#3a4a6a' }, questItem: true, stack: 1, desc: 'A laminated tag from Eishu. OKAZAKI TADASHI.' },
   { id: 'filmTicket', name: 'Cinema Ticket Stub', kind: 'quest', req: 1, price: 0, icon: { shape: 'ticket', c1: '#ffd04a', c2: '#8a2a2a' }, questItem: true, stack: 99, desc: 'Found near the scene of the incident.' },
 );
 
