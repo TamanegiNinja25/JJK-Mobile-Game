@@ -7,7 +7,9 @@ import { QUESTS, QUEST_BY_ID, QuestDef, Objective } from '../data/story';
 
 export const INV_SIZE = 48;
 const SAVE_KEY = 'cursedChronicles.save.';
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
+/** Attribute points granted per level-up. */
+export const STAT_POINTS_PER_LEVEL = 10;
 
 type Listener = (ev: string, data?: any) => void;
 
@@ -15,7 +17,7 @@ export class PlayerState {
   d: SaveData;
   stats!: Stats;
   /** temporary buffs from skills: id -> {until, stats} */
-  buffs = new Map<string, { until: number; stats: Record<string, number> }>();
+  buffs = new Map<string, { until: number; dur: number; stats: Record<string, number> }>();
   private listeners: Listener[] = [];
   time = 0;
 
@@ -42,7 +44,7 @@ export class PlayerState {
     ps.addItem(makeItem('hpS', 0, 5));
     ps.addItem(makeItem('ceS', 0, 3));
     // first skill learned for free
-    const first = classSkills(cls).find(s => s.row === 0 && s.col === 0)!;
+    const first = classSkills(cls).find(s => s.type === 'active' && s.req === 1)!;
     ps.d.skills[first.id] = 1;
     ps.d.skillPoints = 0;
     ps.d.quick[0] = first.id;
@@ -92,7 +94,7 @@ export class PlayerState {
       crit: Math.min(0.75, 0.05 + dex * 0.004 + (add.crit ?? 0)),
       critDmg: 0.5 + (add.critDmg ?? 0),
       atkSpd: Math.min(2, 1 + dex * 0.005 + (add.atkSpd ?? 0)),
-      moveSpd: 5.4 * (1 + Math.min(0.5, add.moveSpd ?? 0)),
+      moveSpd: 5.4 * (1 + Math.min(0.5, add.moveSpd ?? 0)) * (this.d.cheats?.speed ? 1.5 : 1),
       ceRegen: 1.2 + ce * 0.06 + L * 0.06 + (add.ceRegen ?? 0),
       hpRegen: 0.4 + vit * 0.05 + (add.hpRegen ?? 0),
       evasion: Math.min(0.6, dex * 0.0018 + (add.evasion ?? 0)),
@@ -105,6 +107,7 @@ export class PlayerState {
       goldBonus: add.goldBonus ?? 0,
       summonPow: 1 + (add.summonPow ?? 0),
       projPow: 1 + (add.projPow ?? 0),
+      markDmg: add.markDmg ?? 0,
     };
     s.maxHp = Math.round(s.maxHp);
     s.maxCe = Math.round(s.maxCe);
@@ -117,7 +120,7 @@ export class PlayerState {
   }
 
   addBuff(id: string, dur: number, stats: Record<string, number>) {
-    this.buffs.set(id, { until: this.time + dur, stats });
+    this.buffs.set(id, { until: this.time + dur, dur, stats });
     this.recalc();
   }
 
@@ -135,13 +138,13 @@ export class PlayerState {
 
   gainExp(amount: number) {
     if (this.d.level >= LEVEL_CAP) return;
-    amount = Math.round(amount * (1 + this.stats.expBonus));
+    amount = Math.round(amount * (1 + this.stats.expBonus) * (this.d.cheats?.dblExp ? 2 : 1));
     this.d.exp += amount;
     let leveled = false;
     while (this.d.level < LEVEL_CAP && this.d.exp >= expToNext(this.d.level)) {
       this.d.exp -= expToNext(this.d.level);
       this.d.level++;
-      this.d.statPoints += 5;
+      this.d.statPoints += STAT_POINTS_PER_LEVEL;
       this.d.skillPoints += 1;
       leveled = true;
     }
@@ -186,13 +189,38 @@ export class PlayerState {
     this.d.skills[id] = this.skillLevel(id) + 1;
     this.d.skillPoints--;
     const s = SKILLS[id];
-    if ((s.type === 'active' || s.type === 'ultimate') && this.d.skills[id] === 1 && !this.d.quick.includes(id)) {
+    if ((s.type === 'active' || s.type === 'buff' || s.type === 'ultimate') && this.d.skills[id] === 1 && !this.d.quick.includes(id)) {
       const free = s.type === 'ultimate' ? 5 : this.d.quick.findIndex((q, i) => q === null && i < 5);
       if (free >= 0 && this.d.quick[free] === null) this.d.quick[free] = id;
     }
     this.recalc();
     this.emit('skills');
     return true;
+  }
+
+  /** Puts a learned castable technique in quick slot i (0-4, or 5 for the ultimate), swapping if needed. */
+  assignQuick(id: string, i: number) {
+    const s = SKILLS[id];
+    if (!s || this.skillLevel(id) <= 0) return false;
+    if (s.type === 'ultimate' ? i !== 5 : (i > 4 || (s.type !== 'active' && s.type !== 'buff'))) return false;
+    const prev = this.d.quick.indexOf(id);
+    const occupant = this.d.quick[i];
+    if (prev === i) return true;
+    if (prev >= 0) this.d.quick[prev] = occupant ?? null;
+    this.d.quick[i] = id;
+    this.emit('skills');
+    return true;
+  }
+
+  /** Puts learned actives into empty quick slots and the ultimate into slot 6. */
+  autoFillQuickSlots() {
+    for (const s of classSkills(this.d.cls)) {
+      if (!this.d.skills[s.id] || this.d.quick.includes(s.id)) continue;
+      if (s.type === 'ultimate') { if (!this.d.quick[5]) this.d.quick[5] = s.id; continue; }
+      if (s.type !== 'active' && s.type !== 'buff') continue;
+      const free = this.d.quick.findIndex((q, i) => q === null && i < 5);
+      if (free >= 0) this.d.quick[free] = s.id;
+    }
   }
 
   // ------------------------------------------------------------------
@@ -388,6 +416,8 @@ export class PlayerState {
     return !!st && st.progress[i] >= objCount(q.objectives[i]);
   }
 
+  forceQuestRefresh(id: string) { this.refreshQuest(id); }
+
   private refreshQuest(id: string) {
     const st = this.d.quests[id];
     const q = QUEST_BY_ID[id];
@@ -475,6 +505,7 @@ export class PlayerState {
       d.quick = d.quick ?? [null, null, null, null, null, null];
       while (d.quick.length < 6) d.quick.push(null);
       d.flags = d.flags ?? {};
+      migrate(d);
       return new PlayerState(d);
     } catch {
       return null;
@@ -502,3 +533,13 @@ export function objCount(o: Objective) {
 
 import { NPC_NAMES } from '../data/story';
 export function npcName(id: string) { return NPC_NAMES[id] ?? id; }
+
+/** Brings saves from older versions up to date. */
+function migrate(d: SaveData) {
+  const v = d.version ?? 1;
+  if (v < 2) {
+    // level-ups used to grant 5 attribute points; top up to the new rate
+    d.statPoints += (STAT_POINTS_PER_LEVEL - 5) * (d.level - 1);
+  }
+  d.version = SAVE_VERSION;
+}

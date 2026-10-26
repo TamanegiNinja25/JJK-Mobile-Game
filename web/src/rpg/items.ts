@@ -74,6 +74,21 @@ reg(
   A('vowCharm', 'Binding Vow Charm', 'charm', 23, { maxCe: 90, skillPow: 0.08 }, 3200, 'charm', '#2a2a3a', '#ffd04a'),
   A('sixEyes', 'Six Eyes Shard', 'charm', 32, { maxCe: 150, ceRegen: 2 }, 14000, 'eye', '#7fdcff', '#ffffff', { unique: [{ k: 'cdr', v: 0.15 }, { k: 'crit', v: 0.08 }, { k: 'ce', v: 14 }], desc: 'A sliver of perception beyond limits.' }),
 
+  A('hachimaki', 'Training Headband', 'head', 1, { def: 2, maxHp: 10 }, 45, 'headband', '#f4f0e6', '#c83a3a'),
+  A('tintedGlasses', 'Tinted Glasses', 'head', 8, { def: 3, crit: 0.02 }, 400, 'glasses', '#2a2a32', '#8ad0ff'),
+  A('wardMask', 'Curse-Ward Mask', 'head', 15, { def: 8, maxHp: 60, evasion: 0.02 }, 1250, 'mask', '#e8e4dc', '#9a2a3a'),
+  A('veilHood', 'Veil Hood', 'head', 23, { def: 13, maxHp: 120, ceRegen: 0.6 }, 3150, 'hood', '#1a1a2a', '#8a6aff'),
+  A('sgCirclet', 'Special Grade Circlet', 'head', 31, { def: 20, maxHp: 200, crit: 0.03 }, 6400, 'circlet', '#d8b04a', '#ff3a5a'),
+  A('makiGlasses', "Maki's Spare Glasses", 'head', 20, { def: 10, crit: 0.03 }, 8000, 'glasses', '#3a3a2a', '#c8ff9a', { unique: [{ k: 'crit', v: 0.05 }, { k: 'critDmg', v: 0.2 }, { k: 'str', v: 8 }], desc: 'Cursed-tool lenses that let anyone see curses. Maki wants them back.' }),
+  A('blindfold', "Gojo's Blindfold", 'head', 28, { def: 16, maxHp: 150 }, 12500, 'blindfold', '#14141c', '#7fdcff', { unique: [{ k: 'cdr', v: 0.1 }, { k: 'crit', v: 0.06 }, { k: 'evasion', v: 0.06 }], desc: 'It dampens the Six Eyes. On you, it mostly dampens seeing.' }),
+
+  A('beadBracelet', 'Prayer Bead Bracelet', 'ring', 1, { atk: 3, maxCe: 5 }, 45, 'bracelet', '#6a3a2a', '#e0b84e'),
+  A('ironRing', 'Iron Ring', 'ring', 8, { atk: 7, crit: 0.01 }, 390, 'ring', '#9aa4ae', '#d8dce4'),
+  A('vowRing', 'Binding Vow Ring', 'ring', 15, { atk: 12, critDmg: 0.08 }, 1280, 'ring', '#2a2a3a', '#ffd04a'),
+  A('cursedBracer', 'Cursed Bracer', 'ring', 23, { atk: 18, lifesteal: 0.02 }, 3150, 'bracelet', '#3a1a2a', '#ff4a7a'),
+  A('sgRing', 'Special Grade Ring', 'ring', 31, { atk: 26, crit: 0.03, critDmg: 0.1 }, 6400, 'ring', '#1a1a22', '#ff2a3a'),
+  A('boogieBand', 'Boogie Woogie Band', 'ring', 24, { atk: 16 }, 9500, 'bracelet', '#f0e0c0', '#3a8aff', { unique: [{ k: 'atkSpd', v: 0.08 }, { k: 'evasion', v: 0.05 }, { k: 'dex', v: 10 }], desc: 'Todo insisted you take it. Clap, and you are somewhere else.' }),
+
   A('sneakers', 'Sneakers', 'shoes', 1, { moveSpd: 0.02, def: 1 }, 40, 'shoes', '#e8e8e8', '#d83a3a'),
   A('runShoes', 'Running Shoes', 'shoes', 8, { moveSpd: 0.04, def: 3 }, 380, 'shoes', '#3a6ad8', '#ffffff'),
   A('cursedTreads', 'Cursed Treads', 'shoes', 15, { moveSpd: 0.06, def: 6, evasion: 0.02 }, 1250, 'shoes', '#3a2a4a', '#9a6aff'),
@@ -149,7 +164,28 @@ export function makeItem(baseId: string, rarity: 0 | 1 | 2 | 3 = 0, qty = 1, rng
   return inst;
 }
 
-export function isGear(b: ItemBase) { return b.kind === 'weapon' || b.kind === 'outfit' || b.kind === 'charm' || b.kind === 'shoes'; }
+export function isGear(b: ItemBase) { return (SLOT_ORDER as string[]).includes(b.kind); }
+
+/** Equipment slots in display order. */
+export const SLOT_ORDER: Slot[] = ['weapon', 'head', 'outfit', 'charm', 'ring', 'shoes'];
+export const SLOT_NAMES: Record<Slot, string> = { weapon: 'Weapon', head: 'Headgear', outfit: 'Uniform', charm: 'Charm', ring: 'Accessory', shoes: 'Shoes' };
+export const KIND_NAME: Record<ItemKind, string> = { ...SLOT_NAMES, consumable: 'Consumable', material: 'Material', quest: 'Key Item' };
+
+/** Inventory categories, one per equipment slot plus the non-gear kinds. */
+export const CATEGORIES: { id: ItemKind; label: string }[] = [
+  { id: 'weapon', label: 'Weapons' }, { id: 'head', label: 'Headgear' }, { id: 'outfit', label: 'Uniforms' },
+  { id: 'charm', label: 'Charms' }, { id: 'ring', label: 'Accessories' }, { id: 'shoes', label: 'Shoes' },
+  { id: 'consumable', label: 'Consumables' }, { id: 'material', label: 'Materials' }, { id: 'quest', label: 'Key Items' },
+];
+const CAT_INDEX = new Map(CATEGORIES.map((c, i) => [c.id, i]));
+
+/** Sorts by category, then best first (rarity, enhancement, level), then name. */
+export function sortItems(list: ItemInstance[]) {
+  return [...list].sort((a, b) => {
+    const A = ITEMS[a.base], B = ITEMS[b.base];
+    return (CAT_INDEX.get(A.kind)! - CAT_INDEX.get(B.kind)!) || (b.rarity - a.rarity) || (b.plus - a.plus) || (B.req - A.req) || A.name.localeCompare(B.name);
+  });
+}
 
 /** Base stats including rarity scaling and enhancement. */
 export function itemStats(it: ItemInstance): Partial<Record<StatKey, number>> {

@@ -8,7 +8,7 @@ import { buildCharacter } from '../render/models/characters';
 import { wrapHumanoid } from '../render/models/model';
 import { weaponMesh } from '../render/models/weapons';
 import { ITEMS } from '../rpg/items';
-import { SKILLS } from '../rpg/skills';
+import { SKILLS, triggerReactions } from '../rpg/skills';
 import { Caster } from '../world/api';
 import { audio } from '../audio/Audio';
 import { clamp } from '../core/util';
@@ -98,6 +98,12 @@ export class Player extends Actor implements Caster {
   }
   setInvuln(t: number) { this.invulnT = Math.max(this.invulnT, t); }
   addBuff(id: string, dur: number, stats: Record<string, number>) { this.ps.addBuff(id, dur, stats); }
+  maxHpValue() { return this.ps.stats.maxHp; }
+  payHp(frac: number) {
+    const cost = Math.round(this.ps.stats.maxHp * frac);
+    this.ps.d.hp = Math.max(1, this.ps.d.hp - cost);
+    this.world.overlay.add(this.x, 2.2, this.z, '-' + cost, '#c80a3a', 15);
+  }
   heal(amount: number) {
     const before = this.ps.d.hp;
     this.ps.d.hp = Math.min(this.ps.stats.maxHp, this.ps.d.hp + amount);
@@ -117,7 +123,7 @@ export class Player extends Actor implements Caster {
     if (!this.alive) { this.syncModel(dt); return; }
 
     // regen
-    ps.d.ce = Math.min(st.maxCe, ps.d.ce + st.ceRegen * dt);
+    ps.d.ce = ps.d.cheats?.infCe ? st.maxCe : Math.min(st.maxCe, ps.d.ce + st.ceRegen * dt);
     const outOfCombat = this.world.time - this.lastDamageT > 5;
     ps.d.hp = Math.min(st.maxHp, ps.d.hp + st.hpRegen * dt * (outOfCombat ? 4 : 1));
 
@@ -247,7 +253,7 @@ export class Player extends Actor implements Caster {
     if (this.ps.d.ce < cost) { this.world.game.toast('Not enough cursed energy', 'warn', 1); audio.play('error'); return false; }
     this.ps.d.ce -= cost;
     if (s.type === 'ultimate') this.ps.d.domain = 0;
-    this.cds[id] = (s.cd?.(lv) ?? 5) * (1 - this.ps.stats.cdr);
+    this.cds[id] = this.ps.d.cheats?.noCd ? 0 : (s.cd?.(lv) ?? 5) * (1 - this.ps.stats.cdr);
     const t = this.world.nearestTarget('enemy', this.x, this.z, s.range ?? 8);
     if (t) this.facing = Math.atan2(t.x - this.x, t.z - this.z);
     this.model?.play(s.anim ?? 'cast', s.animDur ?? 0.4);
@@ -294,8 +300,15 @@ export class Player extends Actor implements Caster {
     return true;
   }
 
-  onHit(dmg: number) {
+  onHit(dmg: number, src: Actor | null = null) {
+    const before = this.ps.d.hp + dmg;
     this.lastDamageT = this.world.time;
+    if (this.alive && this.ps.d.hp > 0) {
+      const learned = this.ps.d.skills;
+      triggerReactions('hit', this.world, this, learned, { src: src && src.team === 'enemy' ? src : null, dmg });
+      const low = this.ps.stats.maxHp * 0.3;
+      if (this.ps.d.hp < low && before >= low) triggerReactions('lowHp', this.world, this, learned, { dmg });
+    }
     this.ps.d.domain = Math.min(100, this.ps.d.domain + (dmg / this.ps.stats.maxHp) * 40);
     audio.play('hurt', { vol: 0.7 });
     this.model?.hit();

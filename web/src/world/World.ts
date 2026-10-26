@@ -20,6 +20,7 @@ import { Loot, Pickup, Portal } from '../entities/Loot';
 import { ENEMIES, GRADE_NAME } from '../rpg/enemies';
 import { ITEMS, makeItem, randomGear, rollRarity, uniquesForLevel } from '../rpg/items';
 import { QUEST_BY_ID } from '../data/story';
+import { triggerReactions } from '../rpg/skills';
 import { Caster, DamageOpts, DamageSource, ProjectileSpec, Target, WorldAPI } from './api';
 import { audio, Surface } from '../audio/Audio';
 import { music } from '../audio/Music';
@@ -226,6 +227,18 @@ export class World implements WorldAPI {
   }
 
   /** Spawn/despawn NPCs whose conditions changed (quest progress). */
+  /** Kills every living enemy within r of the player (cheat). */
+  killNearby(r: number) {
+    let n = 0;
+    for (const e of this.enemies) {
+      if (!e.alive || e.d.ai === 'dummy' || Math.hypot(e.x - this.player.x, e.z - this.player.z) > r) continue;
+      e.hp = 0;
+      this.onZero(e, this.player);
+      n++;
+    }
+    return n;
+  }
+
   refreshNpcs() {
     const ps = this.game.ps!;
     for (const def of this.map.npcs) {
@@ -600,11 +613,13 @@ export class World implements WorldAPI {
 
   applyDamageRaw(src: Actor | DamageSource, target: Actor, amount: number, opts: DamageOpts = {}) {
     if (!target.alive || target.invulnT > 0 && target.team === 'player') return 0;
+    if (target === this.player && this.player.ps.d.cheats?.god) return 0;
     let dmg = Math.max(1, Math.round(amount));
+    if (src.team === 'player' && target.team === 'enemy' && this.player.ps.d.cheats?.oneHit) dmg = Math.max(dmg, Math.ceil(target.hp));
     if (target === this.player) dmg = Math.round(dmg * (1 - this.player.ps.stats.dmgReduce));
     target.hp -= dmg;
     this.overlay.add(target.x, 1.9, target.z, String(dmg), opts.color ?? (target === this.player ? '#ff5a5a' : '#ffffff'), 14);
-    if (target === this.player) this.player.onHit(dmg);
+    if (target === this.player) this.player.onHit(dmg, src instanceof Actor ? src : null);
     else target.onHit(dmg, src as Actor);
     if (target.hp <= 0) this.onZero(target, src as Actor);
     return dmg;
@@ -613,12 +628,12 @@ export class World implements WorldAPI {
   /** Main damage formula. Returns damage dealt (0 if missed/invalid). */
   applyDamage(src: Actor, target: Actor, mult: number, opts: DamageOpts = {}): number {
     if (!target.alive || src === target) return 0;
-    if (target.invulnT > 0) {
+    const ps = this.player.ps;
+    if (target.invulnT > 0 || target === this.player && ps.d.cheats?.god) {
       if (target === this.player) this.overlay.add(target.x, 2, target.z, 'IMMUNE', '#9adfff', 12);
       return 0;
     }
     const isPlayerSrc = src === this.player;
-    const ps = this.player.ps;
     // evasion for the player
     if (target === this.player && Math.random() < ps.stats.evasion) {
       this.overlay.add(target.x, 2.1, target.z, 'MISS', '#c0c0ff', 14);
@@ -637,6 +652,7 @@ export class World implements WorldAPI {
     if (bf) dmg *= 2.5;
     else if (crit) dmg *= src.critMult;
     if (opts.vsMarked && target.marked > 0) dmg *= opts.vsMarked;
+    if (target.marked > 0 && (isPlayerSrc || src instanceof Summon)) dmg *= 1 + ps.stats.markDmg;
     if (!opts.ignoreDef) {
       const def = target.def;
       dmg *= 1 - def / (def + 60 + 8 * src.level);
@@ -644,6 +660,7 @@ export class World implements WorldAPI {
     if (target instanceof Enemy && target.boss?.incomingMult) dmg *= target.boss.incomingMult(opts);
     if (target === this.player) dmg *= 1 - ps.stats.dmgReduce;
     dmg = Math.max(1, Math.round(dmg));
+    if (src.team === 'player' && target.team === 'enemy' && ps.d.cheats?.oneHit) dmg = Math.max(dmg, Math.ceil(target.hp));
     target.hp -= dmg;
 
     // feedback
@@ -672,7 +689,7 @@ export class World implements WorldAPI {
     if (opts.consumeMark) { target.marked = 0; target.markT = 0; }
     if (opts.dot) { target.dotDmg = src.atkPower() * opts.dot.mult; target.dotT = opts.dot.dur; target.dotTick = 0.5; target.dotSrc = src; }
 
-    if (target === this.player) this.player.onHit(dmg);
+    if (target === this.player) this.player.onHit(dmg, src);
     else target.onHit(dmg, src);
     if (isPlayerSrc || src instanceof Summon) {
       ps.d.domain = Math.min(100, ps.d.domain + (kind === 'melee' ? 0.9 : kind === 'domain' ? 0 : 0.5));
@@ -708,6 +725,7 @@ export class World implements WorldAPI {
     this.fx.burst(e.x, 1, e.z, 0x9a4aff, e.isBoss ? 80 : 18, e.isBoss ? 9 : 4, 0.3, 0.9);
     this.fx.burst(e.x, 1, e.z, 0x1a0a20, e.isBoss ? 40 : 10, 3, 0.5, 1.0, false);
     void killer;
+    if (d.ai !== 'dummy') triggerReactions('kill', this, this.player, ps.d.skills, { x: e.x, z: e.z });
     if (d.ai === 'dummy' && d.id === 'dummy') {
       ps.questProgress('kill', 'dummy', 1, this.mapDef.id);
       ps.gainExp(6);
