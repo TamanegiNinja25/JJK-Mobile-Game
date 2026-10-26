@@ -33,3 +33,7 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Web game (npm)
+web/node_modules/
+.DS_Store
