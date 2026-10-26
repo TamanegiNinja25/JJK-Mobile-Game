@@ -17,7 +17,7 @@
 
 ### [⬇ Download CursedChronicles.apk](https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases/latest/download/CursedChronicles.apk)
 
-<sub>Latest release · Android 7.0+ · about 1.3 MB · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a></sub>
+<sub>Latest release · Android 7.0+ · about 1.4 MB · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a></sub>
 
 </div>
 
