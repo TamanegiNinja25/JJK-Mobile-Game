@@ -2,8 +2,8 @@
 import type { Game } from '../Game';
 import { Hud } from './Hud';
 import { Menus } from './Menus';
-import { el, escapeHtml, formatNum } from '../core/util';
-import { itemIcon } from './Icons';
+import { copyText, el, escapeHtml, formatNum } from '../core/util';
+import { itemIconIfReady } from './Icons';
 import { IconSpec } from '../rpg/items';
 import { CLASSES } from '../rpg/classes';
 import { ClassId } from '../rpg/types';
@@ -47,7 +47,9 @@ export class UI {
 
   toast(msg: string, kind: 'info' | 'warn' | 'good' | 'item' | 'boss' | 'quest' = 'info', dur = 2, color?: string, icon?: IconSpec) {
     const t = el('div', `toast ${kind}`);
-    t.innerHTML = `${icon ? `<img src="${itemIcon(icon, 48)}">` : ''}<span ${color ? `style="color:${color}"` : ''}>${escapeHtml(msg)}</span>`;
+    // toasts never paint an icon on the spot (that can stall a fight); unpainted ones are queued
+    const iconUrl = icon ? itemIconIfReady(icon) : null;
+    t.innerHTML = `${iconUrl ? `<img src="${iconUrl}">` : ''}<span ${color ? `style="color:${color}"` : ''}>${escapeHtml(msg)}</span>`;
     this.toasts.appendChild(t);
     while (this.toasts.childElementCount > 5) this.toasts.firstChild!.remove();
     setTimeout(() => t.classList.add('out'), dur * 1000);
@@ -131,6 +133,7 @@ export class UI {
         ${latest ? `<button class="tbtn primary" data-a="continue">Continue <small>${CLASSES[latest.s!.cls].name} · Lv ${latest.s!.level}</small></button>` : ''}
         <button class="tbtn ${latest ? '' : 'primary'}" data-a="new">New Game</button>
         ${latest ? '<button class="tbtn" data-a="load">Load Game</button>' : ''}
+        <button class="tbtn" data-a="transfer">Transfer Save</button>
         <button class="tbtn" data-a="settings">Settings</button>
       </div>
       <div class="title-foot">Unofficial fan game · Not affiliated with Gege Akutami, Shueisha or MAPPA</div>`;
@@ -143,7 +146,54 @@ export class UI {
       if (a === 'new') this.slotSelect('new');
       if (a === 'load') this.slotSelect('load');
       if (a === 'settings') this.titleSettings();
+      if (a === 'transfer') this.saveTransfer();
     };
+  }
+
+  /** Copy a slot out as a text code, or paste a code into a slot (survives reinstalling the app). */
+  private saveTransfer(msg = '') {
+    const t = this.titleEl!;
+    const rows = [0, 1, 2].map(i => {
+      const s = PlayerState.peek(i);
+      return `<div class="slot xfer"><div class="slot-info"><div class="slot-n">Slot ${i + 1}${s ? ' · ' + CLASSES[s.cls].name : ''}</div><small>${s ? `Lv ${s.level} · ${MAPS[s.map]?.name ?? s.map}` : '— Empty —'}</small></div>
+        ${s ? `<button class="btn small" data-copy="${i}">Copy code</button>` : ''}<button class="btn small primary" data-imp="${i}">Paste here</button></div>`;
+    }).join('');
+    t.innerHTML = `${this.logo()}<div class="slots-panel"><div class="panel-title">Transfer save</div>
+      <div class="help">Copy a slot's save code and keep it somewhere safe (a note or a message to yourself). After reinstalling, or on another phone, paste it below and choose a slot.</div>
+      ${rows}
+      <textarea class="save-code" placeholder="Paste a save code here (starts with CC1:)" spellcheck="false"></textarea>
+      ${msg ? `<div class="xfer-msg">${escapeHtml(msg)}</div>` : ''}
+      <button class="tbtn back" data-back="1">Back</button></div>`;
+    const area = t.querySelector('.save-code') as HTMLTextAreaElement;
+    t.onclick = async (e) => {
+      const tgt = e.target as HTMLElement;
+      if (tgt.closest('[data-back]')) { audio.play('click'); this.titleMain(); return; }
+      const cp = tgt.closest('[data-copy]') as HTMLElement | null;
+      if (cp) {
+        const code = PlayerState.exportCode(+cp.dataset.copy!);
+        if (!code) return;
+        area.value = code;
+        const ok = await copyText(code);
+        audio.play(ok ? 'save' : 'click');
+        this.saveTransferMsg(t, ok ? `Slot ${+cp.dataset.copy! + 1} copied to the clipboard.` : 'Select the code in the box and copy it.');
+        return;
+      }
+      const imp = tgt.closest('[data-imp]') as HTMLElement | null;
+      if (imp) {
+        const i = +imp.dataset.imp!;
+        if (!area.value.trim()) { audio.play('error'); this.saveTransferMsg(t, 'Paste a save code into the box first.'); return; }
+        if (PlayerState.peek(i) && !confirm(`Overwrite slot ${i + 1}?`)) return;
+        const err = PlayerState.importCode(area.value, i);
+        audio.play(err ? 'error' : 'questDone');
+        this.saveTransfer(err ?? `Save imported into slot ${i + 1}.`);
+      }
+    };
+  }
+
+  private saveTransferMsg(t: HTMLElement, msg: string) {
+    let m = t.querySelector('.xfer-msg') as HTMLElement | null;
+    if (!m) { m = el('div', 'xfer-msg'); t.querySelector('.save-code')!.after(m); }
+    m.textContent = msg;
   }
 
   private slotSelect(mode: 'new' | 'load') {

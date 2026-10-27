@@ -78,6 +78,13 @@ and runs without an internet connection.
     <td><img src="docs/screenshots/skills.jpg" alt="Skills menu"><br><sub><b>Skills</b>: actives, buffs, passives, reactions and an ultimate, with a quick bar</sub></td>
     <td><img src="docs/screenshots/bag.jpg" alt="Bag"><br><sub><b>Bag</b>: six equipment slots, items grouped by category</sub></td>
   </tr>
+  <tr>
+    <td><img src="docs/screenshots/tracking.jpg" alt="Quest tracking"><br><sub><b>Quest tracking</b>: a ground arrow, the tracker and a minimap ◆ lead to the objective</sub></td>
+    <td><img src="docs/screenshots/map.jpg" alt="World map"><br><sub><b>Map</b>: tap an area to travel; ⛩ travel points, ▣ enterable buildings, ◆ objective</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/reforge.jpg" alt="Mechamaru's reforge" width="50%"><br><sub><b>Mechamaru's Reforge</b>: +10 gear on to +30, every stat change explained</sub></td>
+  </tr>
 </table>
 
 ## Download
@@ -89,6 +96,12 @@ and runs without an internet connection.
    also has the APKs under its **CursedChronicles-apk** artifact.
 2. On your phone, allow **Install unknown apps** for your browser or file manager, then
    open the APK.
+
+**Updating:** from v1.2.0 on, every release is signed with the same key, so a new APK
+installs straight over the old one and keeps your saves. Versions 1.0.0 and 1.1.0 were
+each signed with a one-off key, so moving from those needs one uninstall first. Before
+uninstalling anything, you can keep your progress with **System → Copy Save Code** (from
+1.2.0 on) and paste it back under **Transfer Save** on the title screen.
 
 Requirements: Android 7.0 (API 24) or newer with OpenGL ES 3.0. The game plays in
 landscape. If the frame rate stays low, it lowers the graphics quality automatically;
@@ -113,7 +126,9 @@ Each class has about twenty techniques of five kinds:
   (Counter Stance, Loyal Hounds, Final Nail and more).
 - **Ultimate:** spends a full domain gauge.
 
-Every level gives 10 stat points (STR, DEX, VIT, CE) and 1 skill point, up to level 50.
+Every level gives 10 stat points (STR, DEX, VIT, CE) and 1 skill point, up to level 100.
+After the main story, curses everywhere grow with you, and Awakened (Lv 55) and
+Sovereign (Lv 80) gear starts dropping.
 
 ### The RPG loop
 
@@ -126,9 +141,21 @@ Every level gives 10 stat points (STR, DEX, VIT, CE) and 1 skill point, up to le
   shoes. The bag and the shops group items by category.
 - **Infusion:** Yaga's workshop upgrades gear from +1 to +10. Higher levels can fail
   and drop a level.
+- **Reforge:** Mechamaru, by the storehouse at Jujutsu High, takes +10 gear on to +30.
+  Each step adds one tuned bonus for that slot (a weapon cycles Attack %, Crit Rate,
+  Crit Damage, Skill Power and Black Flash), with bigger milestones at +20 and +30. The
+  screen shows every stat before and after, with what each stat does.
+- **Quest tracking:** pick any active quest in the log (or tap the tracker to cycle) and
+  it follows you on the HUD. A gold arrow on the ground, a ◆ on the minimap and a
+  distance readout point at the objective, or at the door, exit or travel gate that
+  leads to it.
 - **Towns and travel:** Shoko sells potions, Maki runs the armory and Mei Mei trades
-  materials. Ijichi drives you between unlocked areas.
-- **Saves:** three slots with autosave. Older saves are upgraded automatically.
+  materials. Travel from the **Map** tab by tapping an area, or walk into the cyan
+  travel gate in each area. The map marks every area's travel point, its enterable
+  buildings and where your tracked quest leads; **This Area** shows the current map
+  with doors, gates, NPCs and the objective.
+- **Saves:** three slots with autosave. Older saves are upgraded automatically, and
+  **Copy Save Code** / **Transfer Save** move a save between installs or phones.
 - **Cheats tab:** god mode, infinite cursed energy, one-hit kills, no cooldowns, extra
   speed, double EXP, all areas unlocked, plus one-tap level-ups, gear, items and quest
   completion. Toggles are saved per slot.
@@ -231,10 +258,15 @@ To work on the game in a desktop browser, run `npm run serve` in `web/` and open
 **CI:** [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml)
 type-checks, bundles and builds debug and release APKs on every push and pull request.
 To ship a version, publish a release on GitHub (or run **Build APK** by hand from the
-Actions tab with a tag such as `v1.1.0`); the workflow builds the APK and attaches it
-to that release. Pushing a `v*` tag does the same. The release build is signed with
-the debug key so it can be sideloaded; use your own keystore before distributing it
-elsewhere.
+Actions tab with a tag such as `v1.2.0`); the workflow builds the APK and attaches it
+to that release. Pushing a `v*` tag does the same.
+
+**Signing:** Android only installs an APK as an update when it carries the same
+signature as the installed one, so every build is signed with one permanent key kept
+in two repository secrets: `CC_KEYSTORE_B64` (the keystore, base64-encoded) and
+`CC_KEYSTORE_PASSWORD`. Release builds refuse to publish without them. Ordinary builds
+without the secrets still work but fall back to a throwaway debug key. Locally, point
+`CC_KEYSTORE` and `CC_KEYSTORE_PASSWORD` at the keystore to sign the same way.
 
 ## How it works
 
@@ -267,6 +299,10 @@ phrases on the fly, layered over ambience loops and a convolution reverb.
 **Performance:** there are three quality tiers that set resolution, shadows and bloom,
 and the game drops a tier automatically when the frame rate stays low. A fixed pool
 of four point lights avoids shader recompiles, and particles are pooled on the GPU.
+Compiled shaders are kept for the whole session, and every effect shader is
+pre-compiled while an area loads, so no slash, bolt or domain compiles mid-fight.
+Enemy and shikigami models reuse their built geometry on respawn, and icons are
+painted once in idle time before menus need them.
 
 ## Project layout
 

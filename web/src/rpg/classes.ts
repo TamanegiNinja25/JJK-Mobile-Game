@@ -80,7 +80,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
   },
 };
 
-export const LEVEL_CAP = 50;
+export const LEVEL_CAP = 100;
 export function expToNext(level: number) {
   return Math.floor(40 * Math.pow(level, 1.75) + 60 * level);
 }

@@ -61,7 +61,24 @@ function windows(b: PartBag, x0: number, x1: number, ys: number[], z: number, ww
   }
 }
 
+/** Painted signs are cached: the glow makes them slow to paint, and every map visit used to repaint
+ * (and leak) them. Meshes share the cached geometry and material. */
+const signCache = new Map<string, { geo: THREE.PlaneGeometry; mat: THREE.MeshBasicMaterial }>();
+
 function signPlane(text: string, w: number, h: number, color: string, bg = 'rgba(0,0,0,0)', font = 'bold 96px sans-serif', glow = true) {
+  const key = [text, w, h, color, bg, font, glow].join('|');
+  let hit = signCache.get(key);
+  if (!hit) {
+    const mesh = paintSign(text, w, h, color, bg, font, glow);
+    hit = { geo: mesh.geometry as THREE.PlaneGeometry, mat: mesh.material as THREE.MeshBasicMaterial };
+    signCache.set(key, hit);
+  }
+  const m = new THREE.Mesh(hit.geo, hit.mat);
+  m.userData.shared = true;
+  return m;
+}
+
+function paintSign(text: string, w: number, h: number, color: string, bg: string, font: string, glow: boolean) {
   const c = document.createElement('canvas');
   c.width = 512; c.height = Math.max(64, Math.round(512 * h / w));
   const ctx = c.getContext('2d')!;

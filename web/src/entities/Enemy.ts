@@ -8,6 +8,7 @@ import { buildCharacter } from '../render/models/characters';
 import { wrapHumanoid, ModelHandle } from '../render/models/model';
 import { getProp } from '../render/models/props';
 import { toonMaterial, outlineMaterial } from '../render/toon';
+import { RigBuilder } from '../render/rig';
 import { RigModel } from '../render/rig';
 import { BossScript, createBoss } from './Bosses';
 import { angleDiff, rand } from '../core/util';
@@ -38,6 +39,10 @@ function staticModel(propName: string): ModelHandle {
 }
 
 export function buildEnemyModel(def: EnemyDef): ModelHandle {
+  return RigBuilder.cached('enemy:' + def.model, () => buildEnemyModelFresh(def));
+}
+
+function buildEnemyModelFresh(def: EnemyDef): ModelHandle {
   if (def.model.startsWith('char:')) return wrapHumanoid(buildCharacter(def.model.slice(5)));
   if (def.model.startsWith('static:')) return staticModel(def.model.slice(7));
   return buildCreature(def.model as CreatureKind);

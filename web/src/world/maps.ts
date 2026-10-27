@@ -61,6 +61,7 @@ const sugisawa: MapDef = {
     // NPCs
     b.npc({ id: 'gojo', x: 3, z: 24, facing: Math.PI, cond: (ps) => ps.questState('m3')?.state !== 'done' });
     b.npc({ id: 'ijichi', x: -6, z: 27, facing: Math.PI, shop: 'travel', cond: done('m2') });
+    b.portal({ x: -10.5, z: 27.5, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
     // curses
     b.spawner({ enemies: [{ id: 'flyhead', w: 3 }, { id: 'crawler', w: 2 }], x: 0, z: 9, w: 28, d: 12, count: 7, respawn: 9, level: [1, 3] });
     b.spawner({ enemies: [{ id: 'crawler' }, { id: 'lanky' }], x: 23, z: -6, w: 6, d: 22, count: 5, respawn: 10, level: [3, 5] });
@@ -134,11 +135,13 @@ const hub: MapDef = {
     // people
     b.npc({ id: 'gojo', x: 3, z: 3, facing: Math.PI * 0.9, cond: (ps) => ps.questState('m3')?.state === 'done' || active('m3')(ps) });
     b.npc({ id: 'yaga', x: 0, z: -16, facing: Math.PI, shop: 'workshop' });
+    b.npc({ id: 'mechamaru', x: -19.5, z: -21.5, facing: Math.PI * 0.75, shop: 'reforge', cond: done('m3') });
     b.npc({ id: 'shoko', x: -16.5, z: 13, facing: -Math.PI / 2, shop: 'potions' });
     b.npc({ id: 'maki', x: 13, z: 11, facing: Math.PI, shop: 'armory' });
     b.npc({ id: 'panda', x: -13, z: 24, facing: Math.PI / 2 });
     b.npc({ id: 'inumaki', x: -12, z: 26.5, facing: Math.PI / 2 });
     b.npc({ id: 'ijichi', x: 6, z: 27.5, facing: Math.PI, shop: 'travel' });
+    b.portal({ x: 11.5, z: 26, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
     b.npc({ id: 'meimei', x: 20, z: -21, facing: Math.PI, shop: 'exchange', cond: done('m6') });
     b.npc({ id: 'yuji', x: -5, z: 6, facing: Math.PI / 3, cond: (ps) => ps.d.cls !== 'yuji' });
     b.npc({ id: 'megumi', x: -7, z: 3.5, facing: Math.PI / 2, cond: (ps) => ps.d.cls !== 'megumi' });
@@ -188,6 +191,7 @@ const eishu: MapDef = {
     b.decor('grassDry', 0, 0, 60, 70, 60);
     for (let i = 0; i < 9; i++) b.water(-14 + (i % 3) * 14 + (i * 3.7 % 5), 22 - Math.floor(i / 3) * 12 + (i * 2.3 % 4), 2.5 + (i % 2), 1.8, 0x23303a, false);
     b.npc({ id: 'ijichi', x: -5, z: 29, facing: Math.PI, shop: 'travel' });
+    b.portal({ x: -9.5, z: 29, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
     b.spawner({ enemies: [{ id: 'womb', w: 2 }, { id: 'hound', w: 2 }], x: 0, z: 14, w: 36, d: 24, count: 8, respawn: 10, level: [7, 9] });
     b.spawner({ enemies: [{ id: 'hound' }, { id: 'wretch' }], x: 4, z: -1, w: 22, d: 10, count: 5, respawn: 11, level: [9, 11] });
     b.spawner({ enemies: [{ id: 'wretch', w: 2 }, { id: 'womb' }], x: 0, z: -24, w: 36, d: 20, count: 6, respawn: 12, level: [10, 12] });
@@ -253,6 +257,7 @@ const kawasaki: MapDef = {
     b.npc({ id: 'nanami', x: -10, z: -3.5, facing: Math.PI });
     b.npc({ id: 'junpei', x: 4, z: 17, facing: 0, pose: 'sit' });
     b.npc({ id: 'ijichi', x: 8, z: 29, facing: Math.PI, shop: 'travel' });
+    b.portal({ x: 12.5, z: 29, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
     b.spawner({ enemies: [{ id: 'transfigured', w: 2 }, { id: 'bloated' }], x: 0, z: 4, w: 60, d: 8, count: 8, respawn: 10, level: [13, 16] });
     b.spawner({ enemies: [{ id: 'leech' }, { id: 'transfigured' }], x: -20, z: 22, w: 22, d: 14, count: 5, respawn: 11, level: [13, 15] });
     b.spawner({ enemies: [{ id: 'bloated' }, { id: 'transfigured', w: 2 }, { id: 'leech' }], x: 0, z: -24, w: 10, d: 28, count: 6, respawn: 12, level: [15, 18] });
@@ -332,6 +337,7 @@ const kyoto: MapDef = {
     b.water(18, 18, 3, 16, 0x3a6a6a, false);
     b.border(['cedar', 'pine'], 1.5, 2.6, 1, [{ x: 0, z: 41, r: 4 }]);
     b.npc({ id: 'ijichi', x: 4, z: 34, facing: Math.PI, shop: 'travel' });
+    b.portal({ x: 8.5, z: 34, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
     b.npc({ id: 'miwa', x: -3, z: 30, facing: Math.PI });
     b.npc({ id: 'todo', x: -14, z: 4, facing: Math.PI, cond: (ps) => ['ready', 'done'].includes(ps.questState('m9')?.state ?? '') });
     b.pickup('miwaSword', 27, -9, 's_miwa');
@@ -393,6 +399,7 @@ const shibuya: MapDef = {
     b.scatter(['roundTree'], 24, 26, 16, 10, 4, { minDist: 4 });
     b.wall('wallConcrete', -42, 42, 42, 42).wall('wallConcrete', -42, -42, -42, 42).wall('wallConcrete', 42, -42, 42, 42);
     b.npc({ id: 'ijichi', x: 5, z: 36, facing: Math.PI, shop: 'travel' });
+    b.portal({ x: 9.5, z: 36, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
     b.npc({ id: 'civilian', model: 'civilianA', x: -6, z: 32, facing: 0.5 });
     b.npc({ id: 'civilian', model: 'civilianB', x: -30, z: 30, facing: 1.2 });
     b.npc({ id: 'civilian', model: 'civilianC', x: 30, z: 30, facing: -1.2 });

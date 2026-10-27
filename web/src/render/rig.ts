@@ -13,14 +13,31 @@ export interface RigModel {
   height: number;
 }
 
+/** Merged geometry of models built inside RigBuilder.cached(), shared by every later copy. */
+const geoCache = new Map<string, THREE.BufferGeometry>();
+let cacheScope: { key: string; n: number } | null = null;
+
 export class RigBuilder {
   bones: THREE.Bone[] = [];
   byName: Record<string, THREE.Bone> = {};
-  private parts: { geo: THREE.BufferGeometry; bone: number }[] = [];
+  // parts are recorded and only baked at build() time, so a cached model can skip the work
+  private parts: { geo: THREE.BufferGeometry; color: number; o: PartOpts; m: THREE.Matrix4; bone: number }[] = [];
   private root: THREE.Bone;
+  private key: string | null;
 
   constructor() {
     this.root = this.bone('root', null, [0, 0, 0]);
+    this.key = cacheScope ? `${cacheScope.key}#${cacheScope.n++}` : null;
+  }
+
+  /**
+   * Builds a deterministic model, reusing the merged geometry from the first build with the same
+   * key (enemies respawn constantly; merging and faceting dozens of parts each time caused hitches).
+   */
+  static cached<T>(key: string, fn: () => T): T {
+    const prev = cacheScope;
+    cacheScope = { key, n: 0 };
+    try { return fn(); } finally { cacheScope = prev; }
   }
 
   bone(name: string, parent: string | null, pos: V3, rot: V3 = [0, 0, 0]) {
@@ -39,8 +56,7 @@ export class RigBuilder {
     const b = this.byName[boneName];
     if (!b) throw new Error('No bone ' + boneName);
     this.root.updateMatrixWorld(true);
-    const g = bakePart(geo, color, o, b.matrixWorld);
-    this.parts.push({ geo: g, bone: this.bones.indexOf(b) });
+    this.parts.push({ geo, color, o, m: b.matrixWorld.clone(), bone: this.bones.indexOf(b) });
     return this;
   }
 
@@ -54,7 +70,15 @@ export class RigBuilder {
   }
 
   build(opts: { outline?: number | false; castShadow?: boolean } = {}): RigModel {
-    const geo = mergeParts(this.parts, true);
+    let geo = this.key ? geoCache.get(this.key) : undefined;
+    if (geo) {
+      for (const p of this.parts) p.geo.dispose();
+    } else {
+      geo = mergeParts(this.parts.map(p => ({ geo: bakePart(p.geo, p.color, p.o, p.m), bone: p.bone })), true);
+      if (this.key) geoCache.set(this.key, geo);
+    }
+    this.parts = [];
+    const shared = !!this.key;
     const group = new THREE.Group();
     const mesh = new THREE.SkinnedMesh(geo, toonMaterial());
     mesh.add(this.root);
@@ -62,6 +86,7 @@ export class RigBuilder {
     mesh.bind(skeleton);
     mesh.castShadow = opts.castShadow ?? true;
     mesh.frustumCulled = false;
+    mesh.userData.shared = shared;
     group.add(mesh);
     let outline: THREE.SkinnedMesh | undefined;
     if (opts.outline !== false) {
@@ -69,6 +94,7 @@ export class RigBuilder {
       outline.bind(skeleton, mesh.bindMatrix);
       outline.frustumCulled = false;
       outline.castShadow = false;
+      outline.userData.shared = shared;
       group.add(outline);
     }
     const rest: RigModel['rest'] = {};

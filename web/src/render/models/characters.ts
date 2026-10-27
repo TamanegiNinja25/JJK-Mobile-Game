@@ -97,6 +97,12 @@ export const SPECS: Record<string, HumanoidSpec> = {
     top: 0x8a6a4a, bottom: 0x6a4a2a, accent: 0x6a4a2a, shoes: 0x4a3420, height: 0.55, head: 1.7, bulk: 1.35,
     extras: ['stitches', 'gloves'],
   },
+  mechamaru: {
+    // Ultimate Mechamaru: a heavy steel puppet body with a visor glow
+    skin: 0x8c939e, hair: 0x5a606a, hairStyle: 'bald', eyes: 0xffd23a, outfit: 'tank',
+    top: 0x34465a, bottom: 0x26303c, accent: 0xffd23a, shoes: 0x1a1f26, height: 1.2, bulk: 1.5, head: 1.12,
+    extras: ['mask', 'gloves', 'cursedEyes'],
+  },
   grandpa: {
     skin: 0xe6c4a4, hair: 0xc8c4bc, hairStyle: 'short', eyes: 0x3a3030, outfit: 'casual',
     top: 0xc8d6de, bottom: 0xb8c6ce, accent: 0xc8d6de, shoes: 0x5a5a5a, height: 0.96, bulk: 0.95,

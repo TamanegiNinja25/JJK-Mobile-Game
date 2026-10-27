@@ -1,12 +1,14 @@
 // In-game HUD: vitals, EXP, minimap, quest tracker, boss bar and touch controls.
 import type { Game } from '../Game';
 import type { Enemy } from '../entities/Enemy';
+import { audio } from '../audio/Audio';
 import { el, formatNum } from '../core/util';
 import { skillIcon, itemIcon } from './Icons';
 import { SKILLS } from '../rpg/skills';
 import { ITEMS } from '../rpg/items';
-import { expToNext, CLASSES } from '../rpg/classes';
+import { expToNext, CLASSES, LEVEL_CAP } from '../rpg/classes';
 import { GRADE_NAME } from '../rpg/enemies';
+import { NPC_SHORT } from '../data/story';
 import { Action } from '../core/Input';
 
 export class Hud {
@@ -18,6 +20,7 @@ export class Hud {
   private lvl!: HTMLDivElement; private portrait!: HTMLDivElement; private nameEl!: HTMLDivElement;
   private gold!: HTMLDivElement;
   private tracker!: HTMLDivElement; private trackerName!: HTMLDivElement; private trackerText!: HTMLDivElement;
+  private trackerGuide!: HTMLDivElement; private guideArrow!: HTMLSpanElement; private guideText!: HTMLSpanElement; private lastGuide = '';
   private mm!: HTMLCanvasElement; private mmCtx!: CanvasRenderingContext2D;
   private mmBg: HTMLCanvasElement | null = null;
   /** interiors start unexplored; the player's path clears this mask */
@@ -119,8 +122,18 @@ export class Hud {
     this.tracker = el('div', 'tracker');
     this.trackerName = el('div', 'tracker-name');
     this.trackerText = el('div', 'tracker-text');
-    this.tracker.append(this.trackerName, this.trackerText);
-    this.tracker.addEventListener('click', () => this.game.ui.openMenu('quests'));
+    this.trackerGuide = el('div', 'tracker-guide');
+    this.guideArrow = el('span', 'tg-arrow', '➤');
+    this.guideText = el('span', 'tg-text');
+    this.trackerGuide.append(this.guideArrow, this.guideText);
+    const cycle = el('div', 'tracker-cycle', '⇄ tap to switch quest');
+    this.tracker.append(this.trackerName, this.trackerText, this.trackerGuide, cycle);
+    // tapping the tracker switches which active quest it follows
+    this.tracker.addEventListener('click', () => {
+      const q = this.game.ps!.cycleTracked();
+      if (q) { audio.play('tab'); this.game.world.refreshGuide(); this.game.toast(`Tracking: ${q.name}`, 'quest', 1.4); }
+      else this.game.ui.openMenu('quests');
+    });
     tr.append(row, mmWrap, this.gold, this.tracker);
     this.root.appendChild(tr);
   }
@@ -248,6 +261,50 @@ export class Hud {
     }
   }
 
+  /** The whole current area for the Map tab: doors, travel gates, NPCs, bosses and the tracked objective. */
+  drawAreaMap(c: HTMLCanvasElement) {
+    const w = this.game.world;
+    if (!this.mmBg || !w.mapDef) return;
+    const x = c.getContext('2d')!;
+    const [W, D] = w.mapDef.size;
+    const k = Math.min((c.width - 20) / W, (c.height - 20) / D);
+    const ox = (c.width - W * k) / 2, oy = (c.height - D * k) / 2;
+    const toM = (wx: number, wz: number): [number, number] => [ox + (wx + W / 2) * k, oy + (wz + D / 2) * k];
+    x.fillStyle = '#0a0812'; x.fillRect(0, 0, c.width, c.height);
+    x.drawImage(this.mmBg, ox, oy, W * k, D * k);
+    if (this.mmFog) x.drawImage(this.mmFog, ox, oy, W * k, D * k);
+    x.strokeStyle = 'rgba(200,180,255,0.5)'; x.lineWidth = 2; x.strokeRect(ox, oy, W * k, D * k);
+    const label = (t: string, mx: number, my: number, col: string) => {
+      x.font = 'bold 12px sans-serif'; x.textAlign = 'center';
+      x.lineWidth = 3; x.strokeStyle = 'rgba(0,0,0,.85)'; x.strokeText(t, mx, my); x.fillStyle = col; x.fillText(t, mx, my);
+    };
+    for (const b of w.map.bosses) { const [mx, my] = toM(b.x, b.z); x.strokeStyle = 'rgba(255,60,80,0.5)'; x.lineWidth = 2; x.beginPath(); x.arc(mx, my, b.r * k, 0, Math.PI * 2); x.stroke(); }
+    for (const n of w.npcs) {
+      const [mx, my] = toM(n.x, n.z);
+      const mk = w.npcMarker(n.id, n.d.shop);
+      x.fillStyle = mk === '!' ? '#ffd23a' : mk === '?' ? '#7affb0' : '#e8e8ff';
+      x.beginPath(); x.arc(mx, my, 5, 0, Math.PI * 2); x.fill();
+      if (mk || n.d.shop) label((NPC_SHORT[n.id] ?? n.name.split(' (')[0]) + (mk ? ' ' + mk : ''), mx, my - 9, x.fillStyle as string);
+    }
+    for (const po of w.portals) {
+      const [mx, my] = toM(po.d.x, po.d.z);
+      if (po.d.style === 'door') { x.fillStyle = '#ffd890'; x.fillRect(mx - 6, my - 6, 12, 12); x.strokeStyle = '#000'; x.lineWidth = 1.5; x.strokeRect(mx - 6, my - 6, 12, 12); label('▣ ' + po.d.label, mx, my + 20, '#ffd890'); }
+      else if (po.d.style === 'travel') { x.strokeStyle = '#6adfff'; x.lineWidth = 3; x.beginPath(); x.arc(mx, my, 8, 0, Math.PI * 2); x.stroke(); label('⛩ Travel', mx, my + 22, '#6adfff'); }
+      else { x.fillStyle = '#b08aff'; x.beginPath(); x.arc(mx, my, 7, 0, Math.PI * 2); x.fill(); label(po.d.label, mx, my + 20, '#c8b0ff'); }
+    }
+    if (w.guide) {
+      const [mx, my] = toM(w.guide.x, w.guide.z);
+      x.save(); x.translate(mx, my); x.rotate(Math.PI / 4); x.fillStyle = '#ffd23a'; x.strokeStyle = '#000'; x.lineWidth = 2; x.fillRect(-7, -7, 14, 14); x.strokeRect(-7, -7, 14, 14); x.restore();
+      label('◆ ' + w.guide.hint, mx, my - 13, '#ffd23a');
+    }
+    const p = w.player;
+    const [px, py] = toM(p.x, p.z);
+    x.save(); x.translate(px, py); x.rotate(-p.facing + Math.PI);
+    x.fillStyle = '#fff'; x.strokeStyle = '#000'; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(0, -12); x.lineTo(9, 10); x.lineTo(0, 5); x.lineTo(-9, 10); x.closePath(); x.fill(); x.stroke();
+    x.restore();
+  }
+
   private drawMinimap() {
     const w = this.game.world;
     if (!this.mmBg || !w.mapDef) return;
@@ -276,7 +333,22 @@ export class Hud {
       x.drawImage(this.mmFog, sx, sz, view * S, view * S, 0, 0, N, N);
     }
     const toM = (wx: number, wz: number) => [N / 2 + (wx - p.x) * scale, N / 2 + (wz - p.z) * scale];
-    for (const po of w.portals) { const [mx, my] = toM(po.d.x, po.d.z); x.fillStyle = '#b08aff'; x.beginPath(); x.arc(mx, my, 6, 0, Math.PI * 2); x.fill(); }
+    for (const po of w.portals) {
+      const [mx, my] = toM(po.d.x, po.d.z);
+      if (po.d.style === 'door') { x.fillStyle = '#ffd890'; x.fillRect(mx - 5, my - 5, 10, 10); x.strokeStyle = '#000'; x.lineWidth = 1.5; x.strokeRect(mx - 5, my - 5, 10, 10); }
+      else if (po.d.style === 'travel') { x.strokeStyle = '#6adfff'; x.lineWidth = 3; x.beginPath(); x.arc(mx, my, 6, 0, Math.PI * 2); x.stroke(); }
+      else { x.fillStyle = '#b08aff'; x.beginPath(); x.arc(mx, my, 6, 0, Math.PI * 2); x.fill(); }
+    }
+    if (w.guide) {
+      // objective marker, pinned to the rim when it's off the minimap
+      let [mx, my] = toM(w.guide.x, w.guide.z);
+      const dx = mx - N / 2, dy = my - N / 2, r = Math.hypot(dx, dy), lim = N / 2 - 9;
+      if (r > lim) { mx = N / 2 + dx / r * lim; my = N / 2 + dy / r * lim; }
+      x.save(); x.translate(mx, my); x.rotate(Math.PI / 4);
+      x.fillStyle = '#ffd23a'; x.strokeStyle = '#000'; x.lineWidth = 2;
+      x.fillRect(-5, -5, 10, 10); x.strokeRect(-5, -5, 10, 10);
+      x.restore();
+    }
     for (const n of w.npcs) {
       const [mx, my] = toM(n.x, n.z);
       const mk = w.npcMarker(n.id, n.d.shop);
@@ -328,8 +400,8 @@ export class Hud {
     this.domFill.style.width = d.domain.toFixed(1) + '%';
     this.domWrap.classList.toggle('full', d.domain >= 100);
     const need = expToNext(d.level);
-    this.expFill.style.width = (d.level >= 50 ? 100 : d.exp / need * 100).toFixed(2) + '%';
-    this.expText.textContent = d.level >= 50 ? 'MAX' : `EXP ${(d.exp / need * 100).toFixed(1)}%`;
+    this.expFill.style.width = (d.level >= LEVEL_CAP ? 100 : d.exp / need * 100).toFixed(2) + '%';
+    this.expText.textContent = d.level >= LEVEL_CAP ? 'MAX' : `EXP ${(d.exp / need * 100).toFixed(1)}%`;
     this.lvl.textContent = String(d.level);
     this.statDot.style.display = d.statPoints > 0 || d.skillPoints > 0 ? 'block' : 'none';
     const pid = CLASSES[d.cls].model;
@@ -341,6 +413,20 @@ export class Hud {
       this.lastTrack = key;
       this.tracker.style.display = tr ? '' : 'none';
       if (tr) { this.trackerName.textContent = tr.name; this.trackerText.textContent = tr.text; this.tracker.classList.toggle('ready', tr.ready); }
+      this.tracker.classList.toggle('multi', ps.activeQuests().length > 1);
+    }
+    // direction to the tracked objective; the camera never rotates, so world x/z map straight to screen x/y
+    const gd = w.guide;
+    const gp = w.player;
+    const dist = gd ? Math.hypot(gd.x - gp.x, gd.z - gp.z) : 0;
+    const gkey = gd ? gd.hint + Math.round(dist) + Math.round(Math.atan2(gd.z - gp.z, gd.x - gp.x) * 8) : '';
+    if (gkey !== this.lastGuide) {
+      this.lastGuide = gkey;
+      this.trackerGuide.style.display = gd && dist > 2 ? '' : 'none';
+      if (gd) {
+        this.guideArrow.style.transform = `rotate(${Math.atan2(gd.z - gp.z, gd.x - gp.x)}rad)`;
+        this.guideText.textContent = `${gd.hint} · ${Math.round(dist)}m`;
+      }
     }
     // skills
     const p = w.player;

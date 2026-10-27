@@ -96,6 +96,24 @@ reg(
   A('flashBoots', 'Flash Boots', 'shoes', 31, { moveSpd: 0.11, def: 15, evasion: 0.05 }, 6300, 'shoes', '#1a1a1a', '#ffd04a'),
 );
 
+// ---- Post-story tiers (Lv 55 and Lv 80) ----
+// Built from the best regular item in each slot so levels 51-100 keep dropping upgrades.
+// Flat stats scale fully; percentage stats grow more gently so speed and crit stay sane.
+const TIERS = [
+  { key: 'aw', prefix: 'Awakened', req: 55, mult: 1.75, price: 3.5, c1: '#2a2438', c2: '#ffd04a' },
+  { key: 'sv', prefix: 'Sovereign', req: 80, mult: 2.6, price: 7, c1: '#0a0a10', c2: '#ff2a5a' },
+] as const;
+for (const baseId of ['sgFist', 'spiritEdge', 'resMallet', 'sgCoat', 'vowCharm', 'sgCirclet', 'sgRing', 'flashBoots']) {
+  const b = ITEMS[baseId];
+  for (const t of TIERS) {
+    const stats: Partial<Record<StatKey, number>> = {};
+    for (const [k, v] of Object.entries(b.stats ?? {}) as [StatKey, number][]) {
+      stats[k] = PCT_KEYS.has(k) ? Math.round(v * (1 + (t.mult - 1) * 0.35) * 1000) / 1000 : Math.round(v * t.mult * 10) / 10;
+    }
+    reg({ ...b, id: t.key + baseId[0].toUpperCase() + baseId.slice(1), name: `${t.prefix} ${b.name.replace('Special Grade ', '')}`, req: t.req, stats, price: Math.round(b.price * t.price), icon: { ...b.icon, c1: t.c1, c2: t.c2 } });
+  }
+}
+
 // ---- Consumables / materials / quest ----
 reg(
   { id: 'hpS', name: "Shoko's Salve", kind: 'consumable', req: 1, price: 30, icon: { shape: 'potion', c1: '#ff4a5a', c2: '#ffd0d4' }, use: { hp: 150 }, stack: 99, desc: 'Restores 150 HP.' },
@@ -193,15 +211,80 @@ export function itemStats(it: ItemInstance): Partial<Record<StatKey, number>> {
   const b = ITEMS[it.base];
   const out: Partial<Record<StatKey, number>> = {};
   const rMul = [1, 1.1, 1.25, 1.35][it.rarity];
-  const eMul = 1 + it.plus * 0.09 + (it.plus >= 7 ? (it.plus - 6) * 0.05 : 0);
+  const inf = Math.min(it.plus, 10); // Yaga's infusion; reforging past +10 grows base stats more gently
+  const eMul = 1 + inf * 0.09 + (inf >= 7 ? (inf - 6) * 0.05 : 0) + Math.max(0, it.plus - 10) * 0.06;
   for (const [k, v] of Object.entries(b.stats ?? {})) {
     const key = k as StatKey;
     const scaled = PCT_KEYS.has(key) || key === 'ceRegen' ? v * (1 + (rMul - 1) * 0.5) : v * rMul * eMul;
     out[key] = (out[key] ?? 0) + (PCT_KEYS.has(key) ? scaled : Math.round(scaled));
   }
   for (const a of it.affixes) out[a.k] = (out[a.k] ?? 0) + a.v;
+  for (const [k, v] of Object.entries(reforgeBonus(it)) as [StatKey, number][]) out[k] = (out[k] ?? 0) + v;
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Reforging (+11 to +30): every step adds one fixed bonus from the item type's track
+// ---------------------------------------------------------------------------
+
+export const REFORGE_MAX = 30;
+
+type Step = [StatKey, number];
+/** Per equipment type: the repeating cycle of step bonuses, plus the +20 and +30 milestones. */
+const REFORGE_TRACK: Record<Slot, { cycle: Step[]; m20: Step[]; m30: Step[] }> = {
+  weapon: { cycle: [['atkPct', 0.015], ['crit', 0.005], ['critDmg', 0.02], ['skillPow', 0.015], ['bfChance', 0.0025]], m20: [['atkPct', 0.08]], m30: [['bfChance', 0.02], ['critDmg', 0.15]] },
+  outfit: { cycle: [['defPct', 0.015], ['hpPct', 0.015], ['dmgReduce', 0.004], ['hpRegen', 0.4]], m20: [['hpPct', 0.08]], m30: [['dmgReduce', 0.04], ['defPct', 0.1]] },
+  head: { cycle: [['crit', 0.004], ['evasion', 0.003], ['cdr', 0.004], ['hpPct', 0.01]], m20: [['cdr', 0.03]], m30: [['crit', 0.04], ['evasion', 0.03]] },
+  charm: { cycle: [['cePct', 0.015], ['ceRegen', 0.3], ['skillPow', 0.012], ['cdr', 0.003]], m20: [['skillPow', 0.06]], m30: [['cePct', 0.1], ['cdr', 0.04]] },
+  ring: { cycle: [['atkPct', 0.01], ['critDmg', 0.02], ['lifesteal', 0.002], ['atkSpd', 0.004]], m20: [['critDmg', 0.1]], m30: [['lifesteal', 0.02], ['atkPct', 0.06]] },
+  shoes: { cycle: [['moveSpd', 0.003], ['evasion', 0.003], ['defPct', 0.01], ['atkSpd', 0.003]], m20: [['evasion', 0.03]], m30: [['moveSpd', 0.03], ['atkSpd', 0.04]] },
+};
+
+/** The bonus a single reforge step (1..20, i.e. +11..+30) grants. */
+export function reforgeStep(kind: ItemKind, step: number): Step[] {
+  const t = REFORGE_TRACK[kind as Slot];
+  if (!t) return [];
+  const out: Step[] = [t.cycle[(step - 1) % t.cycle.length]];
+  if (step === 10) out.push(...t.m20);
+  if (step === 20) out.push(...t.m30);
+  return out;
+}
+
+/** Everything reforging has added to an item so far. */
+export function reforgeBonus(it: ItemInstance): Partial<Record<StatKey, number>> {
+  const out: Partial<Record<StatKey, number>> = {};
+  const b = ITEMS[it.base];
+  for (let step = 1; step <= it.plus - 10; step++) for (const [k, v] of reforgeStep(b.kind, step)) out[k] = (out[k] ?? 0) + v;
+  return out;
+}
+
+export function reforgeCost(it: ItemInstance) {
+  const b = ITEMS[it.base];
+  const step = it.plus - 9; // the step this attempt would reach
+  return {
+    gold: Math.floor((300 + b.req * 40) * step * (1 + it.rarity * 0.35)),
+    fragments: 6 + step * 2,
+    cores: 1 + Math.floor(step / 2),
+    rate: Math.max(0.3, 0.88 - (step - 1) * 0.03),
+    /** failures past +20 may knock a level off, but never below +20 */
+    risky: it.plus >= 21,
+  };
+}
+
+/** What each stat does, for the reforge and item screens. */
+export const STAT_DESC: Partial<Record<StatKey, string>> = {
+  atk: 'base damage of every hit and technique', atkPct: 'multiplies your total Attack',
+  def: 'reduces damage from every hit', defPct: 'multiplies your total Defense',
+  maxHp: 'how much damage you can take', hpPct: 'multiplies your Max HP',
+  maxCe: 'cursed energy for techniques', cePct: 'multiplies your Max CE',
+  crit: 'chance for a hit to be critical', critDmg: 'extra damage a critical hit deals',
+  bfChance: 'chance a hit becomes a Black Flash (x2.5)', skillPow: 'damage and healing of techniques',
+  atkSpd: 'how fast you swing and recover', moveSpd: 'how fast you run',
+  evasion: 'chance to slip past a hit entirely', dmgReduce: 'cuts all damage taken',
+  lifesteal: 'heals you for part of the damage you deal', cdr: 'shortens technique cooldowns',
+  ceRegen: 'cursed energy recovered each second', hpRegen: 'HP recovered each second',
+  summonPow: 'strength of your shikigami', projPow: 'damage of nails and thrown attacks',
+};
 
 export function itemName(it: ItemInstance) {
   const b = ITEMS[it.base];
@@ -234,7 +317,10 @@ export function enhanceCost(it: ItemInstance) {
 
 /** Pick a random gear base appropriate for a level (and optionally class). */
 export function randomGear(level: number, cls?: ClassId) {
-  const pool = Object.values(ITEMS).filter(b => isGear(b) && !b.unique && b.req <= level + 2 && b.req >= level - 12 && (!b.cls || !cls || b.cls === cls || Math.random() < 0.25));
+  const fits = Object.values(ITEMS).filter(b => isGear(b) && !b.unique && b.req <= level + 2 && (!b.cls || !cls || b.cls === cls || Math.random() < 0.25));
+  // drops come from the top 12 levels of what exists, so gaps between tiers still drop gear
+  const top = fits.reduce((m, b) => Math.max(m, b.req), 0);
+  const pool = fits.filter(b => b.req >= Math.min(level, top) - 12);
   if (!pool.length) return null;
   return pick(pool).id;
 }

@@ -522,30 +522,40 @@ export class Effects implements FxAPI {
   // Domains
   // ------------------------------------------------------------------
 
+  /**
+   * Compiles every effect shader up front (called after a map loads) so the first slash, bolt or
+   * domain of a fight doesn't stall while its shader compiles. The renderer keeps the programs.
+   */
+  warmup() {
+    const t = this.r.target;
+    // the real effects at a size nobody will notice (they expire within a fraction of a second)
+    this.slash(t.x, t.z, 0, 0.02, 0xffffff, 1, 0, 1);
+    this.lightning(t.x, 1, t.z, t.x + 0.02, 1, t.z, 0xffffff, 0.005);
+    this.ring(t.x, t.z, 0xffffff, 0.02, 0.05);
+    this.sigil(t.x, t.z, 0.02, 0xffffff, 0.05);
+    this.telegraph('circle', t.x, t.z, 0.02, 0.05, 0xffffff);
+    this.telegraph('line', t.x, t.z, 0.02, 0.05, 0xffffff, 0, 0.01);
+    // Custom shaders are only identified as "the same" while some material using them is alive;
+    // when the last one is disposed three forgets them and the next copy compiles from scratch.
+    // So the slash material and one domain pair are drawn here and kept for the whole session.
+    if (!this.keepers) this.keepers = domainMeshes({ uTime: { value: 0 }, uKind: { value: 0 }, uFade: { value: 0 }, uR: { value: 0.02 } }, 0.02);
+    const g = new THREE.Group();
+    g.position.set(t.x, 0, t.z);
+    g.add(...this.keepers, new THREE.Mesh(this.keeperQuad, this.slashMat));
+    this.r.scene.add(g);
+    try { this.r.render(); } catch { /* warming up is only an optimisation */ }
+    this.r.scene.remove(g);
+  }
+
+  private keepers: THREE.Mesh[] | null = null;
+  private keeperQuad = new THREE.PlaneGeometry(0.01, 0.01);
+
   domain(kind: string, x: number, z: number, r: number, dur: number) {
     const k = DOMAIN_KIND[kind] ?? 0;
     const group = new THREE.Group();
     group.position.set(x, 0, z);
     const uniforms = { uTime: { value: 0 }, uKind: { value: k }, uFade: { value: 0 }, uR: { value: r } };
-    const dome = new THREE.Mesh(
-      new THREE.SphereGeometry(r, 48, 24, 0, TAU, 0, Math.PI / 2),
-      new THREE.ShaderMaterial({
-        uniforms, side: THREE.BackSide, transparent: true, depthWrite: false,
-        vertexShader: `varying vec3 vP; varying vec3 vN; void main(){ vP = position; vN = normal; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-        fragmentShader: DOMAIN_FS,
-      }),
-    );
-    const floor = new THREE.Mesh(
-      new THREE.CircleGeometry(r, 64),
-      new THREE.ShaderMaterial({
-        uniforms, transparent: true, depthWrite: false,
-        vertexShader: `varying vec3 vP; void main(){ vP = vec3(position.x, 0.0, position.y); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-        fragmentShader: FLOOR_FS,
-      }),
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = 0.04;
-    floor.renderOrder = 2;
+    const [dome, floor] = domainMeshes(uniforms, r);
     group.add(dome, floor);
     // Domain-specific set pieces
     if (kind === 'shrine') group.add(shrineModel(r));
@@ -634,4 +644,30 @@ function nailRing(r: number) {
   doll.position.set(0, 2, -r * 0.8);
   g.add(doll);
   return g;
+}
+
+/** Dome and floor meshes for a domain expansion of radius r (shared uniforms). */
+function domainMeshes(uniforms: Record<string, { value: number }>, r: number): [THREE.Mesh, THREE.Mesh] {
+  const [domeMat, floorMat] = domainMaterials(uniforms);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 24, 0, TAU, 0, Math.PI / 2), domeMat);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(r, 64), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = 0.04;
+  floor.renderOrder = 2;
+  return [dome, floor];
+}
+
+function domainMaterials(uniforms: Record<string, { value: number }>): [THREE.ShaderMaterial, THREE.ShaderMaterial] {
+  return [
+    new THREE.ShaderMaterial({
+      uniforms, side: THREE.BackSide, transparent: true, depthWrite: false,
+      vertexShader: `varying vec3 vP; varying vec3 vN; void main(){ vP = position; vN = normal; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+      fragmentShader: DOMAIN_FS,
+    }),
+    new THREE.ShaderMaterial({
+      uniforms, transparent: true, depthWrite: false,
+      vertexShader: `varying vec3 vP; void main(){ vP = vec3(position.x, 0.0, position.y); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+      fragmentShader: FLOOR_FS,
+    }),
+  ];
 }
