@@ -156,15 +156,24 @@ export interface PortalDef {
   rot?: number;
   /** facing on arrival */
   toFacing?: number;
-  /** 'door' draws a lit doorway instead of a cursed-energy ring */
-  style?: 'ring' | 'door';
+  /** 'door' draws a lit doorway, 'travel' a gate that opens the travel menu (to: '@travel') */
+  style?: 'ring' | 'door' | 'travel';
 }
 
 export class Portal {
   obj: THREE.Group;
+  /** the player is standing in it (travel gates trigger on the way in) */
+  occupied = false;
   ring: THREE.Mesh;
   constructor(public world: World, public d: PortalDef) {
     this.obj = new THREE.Group();
+    if (d.style === 'travel') {
+      this.ring = travelGate(this.obj);
+      this.obj.position.set(d.x, 0, d.z);
+      this.obj.rotation.y = d.rot ?? 0;
+      world.root.add(this.obj);
+      return;
+    }
     if (d.style === 'door') {
       this.ring = doorway(this.obj);
       this.obj.position.set(d.x, 0, d.z);
@@ -186,6 +195,13 @@ export class Portal {
     world.root.add(this.obj);
   }
   update(dt: number) {
+    if (this.d.style === 'travel') {
+      const t = this.world.time;
+      this.ring.rotation.y = t * 0.6;
+      this.ring.children.forEach((c, i) => { ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.35 + 0.35 * Math.sin(t * 2.4 + i * 2.1); });
+      if (Math.random() < 0.25) this.world.fx.burst(this.d.x + (Math.random() - 0.5) * 1.6, 0.2, this.d.z + (Math.random() - 0.5) * 1.6, 0x6adfff, 1, 0.8, 0.12, 1.0);
+      return;
+    }
     if (this.d.style === 'door') {
       // chevrons drift toward the doorway; the light breathes
       const t = this.world.time;
@@ -232,4 +248,37 @@ function doorway(obj: THREE.Group) {
   }
   obj.add(chev);
   return chev as unknown as THREE.Mesh;
+}
+
+/** Travel point: a small glowing torii over a turning ring of chevrons. Returns the ring group. */
+function travelGate(obj: THREE.Group) {
+  const mat = (o = 0.8) => new THREE.MeshBasicMaterial({ color: 0x6adfff, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  for (const sx of [-1.05, 1.05]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.3, 0.14), mat(0.7));
+    post.position.set(sx, 1.15, 0);
+    obj.add(post);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.16, 0.18), mat(0.85));
+  beam.position.y = 2.35;
+  const beam2 = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.1, 0.12), mat(0.6));
+  beam2.position.y = 2.0;
+  obj.add(beam, beam2);
+  const ring = new THREE.Group();
+  const shape = new THREE.Shape();
+  shape.moveTo(-0.3, 0.1); shape.lineTo(0, -0.18); shape.lineTo(0.3, 0.1); shape.lineTo(0.3, 0.26); shape.lineTo(0, -0.02); shape.lineTo(-0.3, 0.26); shape.closePath();
+  const geo = new THREE.ShapeGeometry(shape);
+  geo.rotateX(Math.PI / 2);
+  for (let i = 0; i < 3; i++) {
+    const m = new THREE.Mesh(geo, mat(0.5));
+    const a = (i / 3) * Math.PI * 2;
+    m.position.set(Math.sin(a) * 0.9, 0.05, Math.cos(a) * 0.9);
+    m.rotation.y = a + Math.PI; // point inward
+    ring.add(m);
+  }
+  const disc = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.25, 40), mat(0.45));
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.y = 0.04;
+  ring.add(disc);
+  obj.add(ring);
+  return ring as unknown as THREE.Mesh;
 }

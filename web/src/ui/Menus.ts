@@ -1,17 +1,18 @@
 // Full-screen menus (status, bag, skills, quests, map, system) and the shop,
 // infusion workshop and travel windows.
 import type { Game } from '../Game';
-import { el, escapeHtml, formatNum } from '../core/util';
+import { copyText, el, escapeHtml, formatNum } from '../core/util';
 import { itemIcon, skillIcon } from './Icons';
-import { ITEMS, RARITY_COLOR, RARITY_NAME, itemName, itemStats, formatStat, isGear, sellPrice, enhanceCost, makeItem, ItemBase, uniquesForLevel, SLOT_ORDER, SLOT_NAMES, KIND_NAME, CATEGORIES, sortItems } from '../rpg/items';
-import { Attr, ItemInstance, ItemKind, Slot, StatKey, PCT_KEYS } from '../rpg/types';
+import { ITEMS, RARITY_COLOR, RARITY_NAME, itemName, itemStats, formatStat, isGear, sellPrice, enhanceCost, makeItem, ItemBase, uniquesForLevel, SLOT_ORDER, SLOT_NAMES, KIND_NAME, CATEGORIES, sortItems, REFORGE_MAX, reforgeCost, reforgeStep, STAT_DESC } from '../rpg/items';
+import { Attr, ItemInstance, ItemKind, Slot, StatKey, PCT_KEYS, STAT_LABEL } from '../rpg/types';
 import { SKILLS, classSkills, SKILL_TYPES, SkillDef } from '../rpg/skills';
-import { CLASSES, expToNext } from '../rpg/classes';
-import { QUESTS, QUEST_BY_ID } from '../data/story';
+import { CLASSES, LEVEL_CAP, expToNext } from '../rpg/classes';
+import { QUESTS, QUEST_BY_ID, NPC_SHORT } from '../data/story';
 import { MAPS, TRAVEL_LIST, travelUnlocked } from '../world/maps';
+import { getAtlas } from '../world/atlas';
 import { audio } from '../audio/Audio';
 import { music } from '../audio/Music';
-import { INV_SIZE, objCount } from '../rpg/PlayerState';
+import { INV_SIZE, objCount, PlayerState } from '../rpg/PlayerState';
 import { CHEAT_TOGGLES, CHEAT_ACTIONS, cheatOn, toggleCheat, runCheat } from '../rpg/Cheats';
 
 const TABS: [string, string, string][] = [['status', '状', 'Status'], ['bag', '袋', 'Bag'], ['skills', '術', 'Skills'], ['quests', '任', 'Quests'], ['map', '図', 'Map'], ['cheats', '秘', 'Cheats'], ['system', '設', 'System']];
@@ -92,10 +93,34 @@ export class Menus {
 
   refresh() { if (this.open) this.render(); }
 
+  /** Scrollable regions whose position survives a re-render (every tap rebuilds the panel). */
+  private static SCROLLERS = ['.menu-body', '.grid', '.sk-grid', '.filters', '.bag-left', '.status-left', '.status-right', '.skills-right', '.quests-left', '.quests-right', '.shop-list', '.ws-body', '.map-side'];
+
   private render() {
+    const saved = new Map<string, [number, number]>();
+    const sameView = this.lastView === this.viewKey();
+    if (sameView) for (const sel of Menus.SCROLLERS) {
+      const nodes = sel === '.menu-body' ? [this.body] : Array.from(this.body.querySelectorAll(sel)) as HTMLElement[];
+      nodes.forEach((n, i) => saved.set(sel + i, [n.scrollTop, n.scrollLeft]));
+    }
+    this.renderView();
+    // the big two-column screens scroll per column (see .menu-body.split in the stylesheet)
+    this.body.classList.toggle('split', !this.shop && ['status', 'bag', 'skills', 'quests'].includes(this.tab));
+    for (const sel of Menus.SCROLLERS) {
+      const nodes = sel === '.menu-body' ? [this.body] : Array.from(this.body.querySelectorAll(sel)) as HTMLElement[];
+      nodes.forEach((n, i) => { const v = saved.get(sel + i); n.scrollTop = v ? v[0] : 0; n.scrollLeft = v ? v[1] : 0; });
+    }
+    this.lastView = this.viewKey();
+  }
+
+  private lastView = '';
+  private viewKey() { return this.shop ? 'shop:' + this.shop.kind : this.tab; }
+
+  private renderView() {
     for (const b of Array.from(this.tabsEl.children) as HTMLElement[]) b.classList.toggle('active', b.dataset.tab === this.tab && !this.shop);
     if (this.shop) {
       if (this.shop.kind === 'workshop') this.body.innerHTML = this.renderWorkshop();
+      else if (this.shop.kind === 'reforge') this.body.innerHTML = this.renderReforge();
       else if (this.shop.kind === 'travel') this.body.innerHTML = this.renderTravel();
       else this.body.innerHTML = this.renderShop();
       return;
@@ -128,7 +153,7 @@ export class Menus {
         <div class="big-portrait" style="background-image:url(${this.game.portraits.get(c.model)})"></div>
         <div class="st-name" style="color:${c.color}">${c.name}</div>
         <div class="st-title">${c.title} · Lv ${d.level}</div>
-        <div class="xp"><div class="xp-fill" style="width:${d.level >= 50 ? 100 : (d.exp / need * 100).toFixed(1)}%"></div><span>${d.level >= 50 ? 'MAX LEVEL' : `${formatNum(d.exp)} / ${formatNum(need)} EXP`}</span></div>
+        <div class="xp"><div class="xp-fill" style="width:${d.level >= LEVEL_CAP ? 100 : (d.exp / need * 100).toFixed(1)}%"></div><span>${d.level >= LEVEL_CAP ? 'MAX LEVEL' : `${formatNum(d.exp)} / ${formatNum(need)} EXP`}</span></div>
         <div class="fingers">Sukuna's Fingers <b>${d.fingers} / 20</b><small>+${d.fingers * 2}% ATK and Max HP</small></div>
         <div class="misc">Curses exorcised: <b>${formatNum(d.kills)}</b> · Play time: <b>${Math.floor(mins / 60)}h ${mins % 60}m</b></div>
       </div>
@@ -323,8 +348,9 @@ export class Menus {
     const act = QUESTS.filter(q => ps.questState(q.id) && ps.questState(q.id)!.state !== 'done');
     const done = QUESTS.filter(q => ps.questState(q.id)?.state === 'done');
     const avail = QUESTS.filter(q => ps.isAvailable(q));
-    if (!this.selQuest && act.length) this.selQuest = act[0].id;
-    const row = (q: typeof QUESTS[0], cls: string) => `<div class="q-row ${cls} ${this.selQuest === q.id ? 'sel' : ''}" data-act="selquest" data-id="${q.id}"><span class="q-type ${q.type}">${q.type === 'main' ? '本' : '依'}</span>${escapeHtml(q.name)}${ps.questState(q.id)?.state === 'ready' ? ' <b class="rdy">✔</b>' : ''}</div>`;
+    const tracked = ps.trackedQuest();
+    if (!this.selQuest && act.length) this.selQuest = tracked?.id ?? act[0].id;
+    const row = (q: typeof QUESTS[0], cls: string) => `<div class="q-row ${cls} ${this.selQuest === q.id ? 'sel' : ''}" data-act="selquest" data-id="${q.id}"><span class="q-type ${q.type}">${q.type === 'main' ? '本' : '依'}</span>${escapeHtml(q.name)}${ps.questState(q.id)?.state === 'ready' ? ' <b class="rdy">✔</b>' : ''}${tracked?.id === q.id ? '<span class="q-track">◎ Tracking</span>' : ''}</div>`;
     let detail = '<div class="detail-empty">No quest selected</div>';
     const q = this.selQuest ? QUEST_BY_ID[this.selQuest] : null;
     if (q) {
@@ -344,6 +370,7 @@ export class Menus {
         <div class="objs">${objs}</div>
         <div class="rewards"><b>Rewards</b> ${formatNum(r.exp)} EXP · ¥${formatNum(r.gold)}${items.length ? ' · ' + items.map(escapeHtml).join(', ') : ''}</div>
         ${!st ? `<div class="id-err">Talk to ${escapeHtml(this.npcName(q.giver))} to accept${q.level ? ` (Lv ${q.level})` : ''}.</div>` : ''}
+        ${st && st.state !== 'done' ? `<div class="slots"><small>${tracked?.id === q.id ? '◎ This quest is on your HUD. Follow the gold arrow and the ◆ on the minimap.' : 'Selecting an active quest puts it on your HUD.'}</small></div>` : ''}
       </div>`;
     }
     return `<div class="quests">
@@ -356,27 +383,56 @@ export class Menus {
     </div>`;
   }
 
-  private npcName(id: string) { return ({ gojo: 'Gojo', yaga: 'Yaga', shoko: 'Shoko', maki: 'Maki', panda: 'Panda', inumaki: 'Inumaki', ijichi: 'Ijichi', nanami: 'Nanami', junpei: 'Junpei', todo: 'Todo', miwa: 'Miwa', meimei: 'Mei Mei' } as Record<string, string>)[id] ?? id; }
+  private npcName(id: string) { return NPC_SHORT[id] ?? id; }
 
   // ------------------------------------------------------------------
   // Map
   // ------------------------------------------------------------------
+  /** World-map positions of each travel destination (canvas pixels, 640x440). */
+  private static NODES: Record<string, [number, number]> = { sugisawa: [560, 110], hub: [430, 296], eishu: [500, 240], kawasaki: [392, 342], kyoto: [240, 350], shibuya: [462, 330] };
+
+  /** The area a map belongs to on the world map (interiors and the sewer sit inside their area). */
+  private areaOf(id: string) {
+    if (Menus.NODES[id]) return id;
+    const A = getAtlas();
+    return Object.keys(Menus.NODES).find(a => A[a]?.portals.some(p => p.to === id)) ?? id;
+  }
+
   private renderMap() {
     const ps = this.game.ps!;
-    const cur = MAPS[ps.d.map];
+    const here = this.areaOf(ps.d.map);
+    const A = getAtlas();
+    const goal = new Set(this.game.world.guideMaps.map(m => this.areaOf(m)));
     const list = TRAVEL_LIST.map(t => {
       const ok = travelUnlocked(ps, t.id);
       const m = MAPS[t.id];
-      return `<div class="map-row ${ok ? '' : 'locked'} ${t.id === ps.d.map ? 'here' : ''}"><b>${m.name}</b><small>${m.jp} · ${t.level}</small>${t.id === ps.d.map ? '<span class="here-tag">YOU ARE HERE</span>' : ok ? '' : '<span>🔒</span>'}</div>`;
+      const doors = A[t.id]?.portals.filter(p => p.style === 'door').map(p => p.label) ?? [];
+      const tags = [
+        A[t.id]?.portals.some(p => p.style === 'travel') ? '<i class="mk travel" title="Travel point">⛩</i>' : '',
+        doors.length ? `<i class="mk door" title="${escapeHtml(doors.join(', '))}">▣ ${doors.length}</i>` : '',
+        goal.has(t.id) ? '<i class="mk goal" title="Tracked objective">◆ Objective</i>' : '',
+      ].join('');
+      const need = t.need ? QUEST_BY_ID[t.need] : null;
+      return `<div class="map-row ${ok ? '' : 'locked'} ${t.id === here ? 'here' : ''}" ${ok && t.id !== here ? `data-act="maptravel" data-id="${t.id}"` : ''}>
+        <div class="mr-main"><b>${m.name}</b><small>${m.jp} · ${t.level}</small><div class="mr-tags">${tags}</div>
+        ${doors.length ? `<small class="mr-doors">Enterable: ${escapeHtml(doors.join(', '))}</small>` : ''}</div>
+        ${t.id === here ? '<span class="here-tag">HERE</span>' : ok ? '<button class="btn small primary">Travel</button>' : `<small class="mr-lock">🔒 ${need ? escapeHtml(need.name) : 'Locked'}</small>`}</div>`;
     }).join('');
-    return `<div class="mapview"><canvas class="world-map" width="640" height="440"></canvas><div class="map-side"><div class="panel-title">${cur.name}</div><div class="id-sub">${cur.jp}</div>${list}<div class="hint">Travel between areas with Ijichi's car (⛩ marker), or use a Return Talisman.</div></div></div>`;
+    const view = (v: string, l: string) => `<button class="chip ${this.mapView === v ? 'on' : ''}" data-act="mapview" data-v="${v}">${l}</button>`;
+    return `<div class="mapview"><div class="map-canvas-wrap"><div class="chips map-views">${view('world', 'Japan')}${view('area', 'This Area')}</div><canvas class="world-map" width="640" height="440"></canvas></div><div class="map-side"><div class="panel-title">${MAPS[ps.d.map].name}</div><div class="id-sub">${MAPS[ps.d.map].jp}</div>${list}<div class="hint">Tap an area on the map or in the list to travel there. ⛩ marks each area's travel point, ▣ its enterable buildings, ◆ where your tracked quest leads.</div></div></div>`;
   }
+
+  private mapView: 'world' | 'area' = 'world';
 
   private drawWorldMap() {
     const c = this.body.querySelector('.world-map') as HTMLCanvasElement;
     if (!c) return;
+    if (this.mapView === 'area') { c.onclick = null; this.game.ui.hud?.drawAreaMap(c); return; }
     const x = c.getContext('2d')!;
     const ps = this.game.ps!;
+    const A = getAtlas();
+    const here = this.areaOf(ps.d.map);
+    const goal = new Set(this.game.world.guideMaps.map(m => this.areaOf(m)));
     const g = x.createLinearGradient(0, 0, 0, c.height);
     g.addColorStop(0, '#0c1428'); g.addColorStop(1, '#05070e');
     x.fillStyle = g; x.fillRect(0, 0, c.width, c.height);
@@ -388,24 +444,54 @@ export class Menus {
     x.moveTo(coast[0][0], coast[0][1]);
     for (const [a, b] of coast) x.lineTo(a, b);
     x.closePath(); x.fill(); x.stroke();
-    const nodes: Record<string, [number, number]> = { sugisawa: [560, 110], hub: [430, 296], eishu: [500, 240], kawasaki: [392, 342], sewer: [395, 345], kyoto: [240, 350], shibuya: [462, 330] };
-    const labelOff: Record<string, [number, number, CanvasTextAlign]> = { sugisawa: [0, -16, 'center'], hub: [-14, -10, 'right'], eishu: [14, 4, 'left'], kawasaki: [-14, 16, 'right'], kyoto: [0, -16, 'center'], shibuya: [14, 18, 'left'] };
-    x.strokeStyle = 'rgba(160,140,255,0.4)'; x.setLineDash([6, 6]); x.lineWidth = 2;
+    const nodes = Menus.NODES;
+    const labelOff: Record<string, [number, number, CanvasTextAlign]> = { sugisawa: [0, -22, 'center'], hub: [-20, -10, 'right'], eishu: [20, 4, 'left'], kawasaki: [-20, 18, 'right'], kyoto: [0, -22, 'center'], shibuya: [20, 20, 'left'] };
+    x.strokeStyle = 'rgba(106,223,255,0.35)'; x.setLineDash([6, 6]); x.lineWidth = 2;
     for (const id of ['sugisawa', 'eishu', 'kawasaki', 'kyoto', 'shibuya']) { x.beginPath(); x.moveTo(...nodes.hub); x.lineTo(...nodes[id]); x.stroke(); }
     x.setLineDash([]);
     for (const [id, [nx, ny]] of Object.entries(nodes)) {
-      if (id === 'sewer') continue;
       const ok = travelUnlocked(ps, id);
-      const here = ps.d.map === id || (ps.d.map === 'sewer' && id === 'kawasaki');
-      x.beginPath(); x.arc(nx, ny, here ? 11 : 8, 0, Math.PI * 2);
-      x.fillStyle = here ? '#ffd23a' : ok ? '#b08aff' : '#3a3a4a'; x.fill();
-      x.strokeStyle = '#000'; x.lineWidth = 2; x.stroke();
-      const [lx, ly, al] = labelOff[id] ?? [0, -16, 'center'];
+      // travel indicator: the same cyan ring and inward chevrons as the gate in each area
+      x.save(); x.translate(nx, ny);
+      x.globalAlpha = ok ? 1 : 0.4;
+      x.strokeStyle = id === here ? '#ffd23a' : '#6adfff'; x.lineWidth = 3;
+      x.shadowColor = x.strokeStyle; x.shadowBlur = ok ? 10 : 0;
+      x.beginPath(); x.arc(0, 0, 12, 0, Math.PI * 2); x.stroke();
+      x.fillStyle = x.strokeStyle;
+      for (let i = 0; i < 3; i++) {
+        x.save(); x.rotate(i * Math.PI * 2 / 3);
+        x.beginPath(); x.moveTo(-4, -20); x.lineTo(0, -15); x.lineTo(4, -20); x.lineTo(0, -17.5); x.closePath(); x.fill();
+        x.restore();
+      }
+      x.shadowBlur = 0;
+      x.beginPath(); x.arc(0, 0, 5, 0, Math.PI * 2); x.fill();
+      // enterable buildings: small gold door marks under the node
+      const doors = A[id]?.portals.filter(p => p.style === 'door').length ?? 0;
+      for (let i = 0; i < doors; i++) { x.fillStyle = '#ffd890'; x.fillRect(-doors * 5 + i * 10 + 1, 22, 7, 9); x.strokeStyle = '#000'; x.lineWidth = 1; x.strokeRect(-doors * 5 + i * 10 + 1, 22, 7, 9); }
+      if (goal.has(id)) { x.save(); x.translate(15, -14); x.rotate(Math.PI / 4); x.fillStyle = '#ffd23a'; x.strokeStyle = '#000'; x.lineWidth = 2; x.fillRect(-6, -6, 12, 12); x.strokeRect(-6, -6, 12, 12); x.restore(); }
+      x.restore();
+      const [lx, ly, al] = labelOff[id] ?? [0, -22, 'center'];
       x.fillStyle = ok ? '#fff' : '#777'; x.font = 'bold 15px sans-serif'; x.textAlign = al;
-      x.fillText(MAPS[id].name, nx + lx, ny + ly);
+      x.fillText(MAPS[id].name + (ok ? '' : ' 🔒'), nx + lx, ny + ly);
     }
     x.fillStyle = 'rgba(255,255,255,0.5)'; x.font = '13px serif'; x.textAlign = 'left';
-    x.fillText('呪術地図 — Jujutsu Map', 16, 26);
+    x.fillText('呪術地図 — tap an area to travel', 16, 26);
+    c.onclick = (e) => {
+      const r = c.getBoundingClientRect();
+      const px = (e.clientX - r.left) * c.width / r.width, py = (e.clientY - r.top) * c.height / r.height;
+      const hit = Object.entries(nodes).map(([id, [nx, ny]]) => ({ id, d: Math.hypot(nx - px, ny - py) })).sort((a, b) => a.d - b.d)[0];
+      if (hit && hit.d < 34) this.mapTravel(hit.id);
+    };
+  }
+
+  private mapTravel(id: string) {
+    const ps = this.game.ps!;
+    if (id === this.areaOf(ps.d.map)) { this.game.toast('You are already here.', 'info', 1.2); return; }
+    if (!travelUnlocked(ps, id)) { audio.play('error'); this.game.toast('That area is not open yet.', 'warn', 1.6); return; }
+    if (this.game.world.inBossFight()) { audio.play('error'); this.game.toast('You can\'t leave mid-fight!', 'warn'); return; }
+    audio.play('portal');
+    this.close();
+    this.game.travel(id);
   }
 
   // ------------------------------------------------------------------
@@ -421,6 +507,8 @@ export class Menus {
         <div class="panel-title">Game</div>
         <button class="btn primary wide" data-act="save">Save Game</button>
         <button class="btn wide" data-act="title">Save &amp; Return to Title</button>
+        <button class="btn wide" data-act="exportsave">Copy Save Code</button>
+        <div class="help">The save code keeps your progress if you reinstall or change phones. Paste it under <b>Transfer Save</b> on the title screen.</div>
         <div class="panel-title">Controls</div>
         <div class="help">Touch: drag the left half of the screen to move. Tap or hold <b>攻</b> to attack (it becomes <b>話</b> to talk). Skills sit around it, <b>回避</b> dodges, the gold-rimmed button is your Ultimate.<br>Keyboard: WASD move · J/Space attack · 1–5 skills · R ultimate · Shift dodge · Q/E potions · F talk · I/K/L/M menus · Esc close.</div>
       </div>
@@ -536,7 +624,7 @@ export class Menus {
       detail = `<div class="item-detail">
         <div class="id-head"><img src="${itemIcon(ITEMS[sel.base].icon, 96)}" class="r${sel.rarity}"><div><div class="id-name" style="color:${RARITY_COLOR[sel.rarity]}">${escapeHtml(itemName(sel))}</div><div class="id-sub">Infusion +${sel.plus} / +10</div></div></div>
         <div class="id-stats">${this.statLines(sel)}</div>${preview}
-        ${maxed ? '<div class="id-desc">This item cannot hold any more cursed energy.</div>' : `<div class="ws-cost">
+        ${maxed ? '<div class="id-desc">This item cannot hold any more cursed energy. Mechamaru, by the storehouse, can reforge it further — up to +30.</div>' : `<div class="ws-cost">
           <div>Success rate <b>${Math.round(c.rate * 100)}%</b>${sel.plus >= 6 ? ' <small class="warn">(failure may drop a level)</small>' : ''}</div>
           <div>Cost <b>¥${formatNum(c.gold)}</b> (have ¥${formatNum(ps.d.gold)})</div>
           <div>Cursed Fragments <b>${c.fragments}</b> (have ${ps.countItem('fragment')})</div>
@@ -546,6 +634,57 @@ export class Menus {
     }
     return `<div class="shop workshop">
       <div class="shop-head"><div class="shop-portrait" style="background-image:url(${this.game.portraits.get('yaga')})"></div><div><div class="id-name">Yaga's Workshop</div><div class="id-sub">Weave cursed energy into your equipment</div></div></div>
+      <div class="ws-body"><div class="grid small">${list}</div><div class="detail">${detail}</div></div>
+    </div>`;
+  }
+
+  private renderReforge() {
+    const ps = this.game.ps!;
+    const gear: ItemInstance[] = [...Object.values(ps.d.equip).filter(Boolean) as ItemInstance[], ...ps.d.inventory.filter(it => isGear(ITEMS[it.base]))]
+      .sort((a, b) => b.plus - a.plus);
+    if ((this.selItem === null || !gear.some(g => g.uid === this.selItem)) && gear.length) this.selItem = gear[0].uid;
+    const sel = gear.find(g => g.uid === this.selItem);
+    const list = gear.map(it => this.itemCell(it, `data-act="wsel" data-uid="${it.uid}"`).replace('class="cell', `class="cell ${this.selItem === it.uid ? 'sel' : ''} ${it.plus < 10 ? 'dim' : ''}`)).join('');
+    const num = (k: StatKey, v: number) => PCT_KEYS.has(k) ? (v * 100).toFixed(v * 100 % 1 ? 1 : 0) + '%' : k === 'ceRegen' || k === 'hpRegen' ? v.toFixed(1) + '/s' : formatNum(Math.round(v));
+    const stepLine = ([k, v]: [StatKey, number]) => `<b>${STAT_LABEL[k]} +${num(k, v)}</b>${STAT_DESC[k] ? ` <small>— ${STAT_DESC[k]}</small>` : ''}`;
+    let detail = '<div class="detail-empty">No equipment to reforge</div>';
+    if (sel) {
+      const b = ITEMS[sel.base];
+      const head = `<div class="id-head"><img src="${itemIcon(b.icon, 96)}" class="r${sel.rarity}"><div><div class="id-name" style="color:${RARITY_COLOR[sel.rarity]}">${escapeHtml(itemName(sel))}</div>
+        <div class="id-sub">${sel.plus >= 10 ? `+${sel.plus} of +${REFORGE_MAX}` : `Infused +${sel.plus} (needs +10)`} · ${KIND_NAME[b.kind]}</div>
+        <div class="rf-bar"><i style="width:${Math.max(0, sel.plus - 10) / (REFORGE_MAX - 10) * 100}%"></i><em style="left:50%"></em></div></div></div>`;
+      if (sel.plus < 10) {
+        detail = `<div class="item-detail">${head}<div class="id-desc">Reforging continues where infusion stops. Infuse this to <b>+10</b> at Yaga's workshop first (it is +${sel.plus}).</div></div>`;
+      } else if (sel.plus >= REFORGE_MAX) {
+        detail = `<div class="item-detail">${head}<div class="id-stats">${this.statLines(sel)}</div><div class="id-desc">Fully reforged. Mechamaru has nothing left to tune.</div></div>`;
+      } else {
+        const c = reforgeCost(sel);
+        const nx = { ...sel, plus: sel.plus + 1 };
+        const a = itemStats(sel), z = itemStats(nx);
+        const keys = [...new Set([...Object.keys(a), ...Object.keys(z)])] as StatKey[];
+        const rows = keys.map(k => {
+          const v0 = a[k] ?? 0, v1 = z[k] ?? 0, d = v1 - v0;
+          const up = Math.abs(d) > 1e-9;
+          return `<div class="rf-row ${up ? 'up' : ''}"><span class="rf-k">${STAT_LABEL[k]}${k.endsWith('Pct') ? ' %' : ''}</span><span class="rf-v">${num(k, v0)}${up ? ` → <b>${num(k, v1)}</b> <em>(+${num(k, d)})</em>` : ''}</span>${up && STAT_DESC[k] ? `<small>${STAT_DESC[k]}</small>` : ''}</div>`;
+        }).join('');
+        const step = sel.plus - 9;
+        const gain = reforgeStep(b.kind, step).map(stepLine).join('<br>');
+        const ms = [10, 20].filter(m => m > step).map(m => `<div><span class="rf-ms">+${m + 10}</span> ${reforgeStep(b.kind, m).slice(1).map(stepLine).join(', ')}</div>`).join('');
+        detail = `<div class="item-detail">${head}
+          <div class="rf-gain"><div class="panel-title">Reforge +${sel.plus + 1} adds</div>${gain}</div>
+          <div class="rf-table">${rows}</div>
+          ${ms ? `<div class="rf-mss"><div class="panel-title">Milestones</div>${ms}</div>` : ''}
+          <div class="ws-cost">
+            <div>Success rate <b>${Math.round(c.rate * 100)}%</b>${c.risky ? ' <small class="warn">(failure may drop a level, never below +20)</small>' : ' <small>(failure keeps the current level)</small>'}</div>
+            <div>Cost <b>¥${formatNum(c.gold)}</b> (have ¥${formatNum(ps.d.gold)})</div>
+            <div>Cursed Fragments <b>${c.fragments}</b> (have ${ps.countItem('fragment')}) · Grade 1 Cores <b>${c.cores}</b> (have ${ps.countItem('core')})</div>
+          </div>
+          <div class="id-actions"><button class="btn primary" data-act="reforge" data-uid="${sel.uid}">Reforge to +${sel.plus + 1}</button></div>
+        </div>`;
+      }
+    }
+    return `<div class="shop workshop reforge">
+      <div class="shop-head"><div class="shop-portrait" style="background-image:url(${this.game.portraits.get('mechamaru')})"></div><div><div class="id-name">Mechamaru's Reforge</div><div class="id-sub">Takes +10 gear up to +30, one tuned stat at a time</div></div><div class="shop-gold">¥${formatNum(ps.d.gold)}</div></div>
       <div class="ws-body"><div class="grid small">${list}</div><div class="detail">${detail}</div></div>
     </div>`;
   }
@@ -599,8 +738,21 @@ export class Menus {
         else audio.play('error');
         break;
       }
-      case 'selquest': this.selQuest = t.dataset.id!; audio.play('click', { vol: 0.5 }); break;
+      case 'selquest': {
+        this.selQuest = t.dataset.id!;
+        // picking an active quest makes it the tracked one
+        const st = ps.questState(this.selQuest);
+        if (st && st.state !== 'done') { ps.track(this.selQuest); this.game.world.refreshGuide(); }
+        audio.play('click', { vol: 0.5 });
+        break;
+      }
       case 'save': this.game.save(true); break;
+      case 'exportsave': {
+        this.game.save(false);
+        const code = PlayerState.exportCode(ps.d.slot);
+        if (code) copyText(code).then(ok => this.game.toast(ok ? 'Save code copied to the clipboard.' : 'Could not reach the clipboard.', ok ? 'good' : 'warn', 2.2));
+        break;
+      }
       case 'title': this.game.save(false); this.close(); this.game.toTitle(); return;
       case 'quality': this.game.settings.quality = t.dataset.q as any; this.game.settings.autoQ = false; this.game.applySettings(); break;
       case 'zoom': this.game.settings.zoom = +t.dataset.z!; this.game.applySettings(); break;
@@ -651,7 +803,19 @@ export class Menus {
         else { audio.play('error'); this.game.toast(res, 'warn'); }
         break;
       }
+      case 'reforge': {
+        const gear = [...Object.values(ps.d.equip), ...ps.d.inventory].find(x => x && x.uid === uid) as ItemInstance | undefined;
+        if (!gear) break;
+        const res = ps.reforge(gear);
+        if (res === 'ok') { audio.play('enhanceOk'); this.game.toast(`Reforge succeeded! ${itemName(gear)}`, 'good', 2); this.game.world.player.refreshWeapon(); }
+        else if (res === 'fail') { audio.play('enhanceFail'); this.game.toast('The calibration slipped… reforge failed.', 'warn', 2); }
+        else if (res === 'down') { audio.play('enhanceFail'); this.game.toast(`Overload! ${itemName(gear)} lost a level.`, 'warn', 2); this.game.world.player.refreshWeapon(); }
+        else { audio.play('error'); this.game.toast(res, 'warn'); }
+        break;
+      }
       case 'travel': this.close(); this.game.travel(t.dataset.id!); return;
+      case 'maptravel': this.mapTravel(t.dataset.id!); return;
+      case 'mapview': this.mapView = t.dataset.v as 'world' | 'area'; audio.play('tab'); break;
     }
     this.render();
     void music;

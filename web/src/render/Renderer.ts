@@ -218,6 +218,22 @@ export class Renderer {
   render() {
     if (this.composer) this.composer.render();
     else this.gl.render(this.scene, this.camera);
+    this.pinPrograms();
+  }
+
+  private pinned = new WeakSet<object>();
+  private pinnedCount = -1;
+  /**
+   * three.js deletes a compiled shader as soon as the last material using it is disposed. Effects
+   * create and dispose short-lived materials constantly (every slash, bolt and ring), so without
+   * this the same shader was recompiled on almost every attack: a visible hitch on phones. Holding
+   * one extra reference keeps each program for the session (there are only a few dozen).
+   */
+  pinPrograms() {
+    const progs = (this.gl.info as unknown as { programs: { usedTimes: number }[] | null }).programs;
+    if (!progs || progs.length === this.pinnedCount) return;
+    for (const p of progs) if (!this.pinned.has(p)) { this.pinned.add(p); p.usedTimes++; }
+    this.pinnedCount = progs.length;
   }
 
   /** Project a world point to screen pixels (CSS px). Returns false if behind camera. */

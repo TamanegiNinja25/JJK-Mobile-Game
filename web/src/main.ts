@@ -1,4 +1,5 @@
 // Entry point.
+import { getAtlas } from './world/atlas';
 import { Game } from './Game';
 import { skillIcon, itemIcon } from './ui/Icons';
 import { SKILLS } from './rpg/skills';
@@ -23,4 +24,4 @@ const game = new Game();
 game.start();
 
 // debugging/test hooks
-(window as any).__dbg = { skillIcon, itemIcon, SKILLS, ITEMS, audio };
+(window as any).__dbg = { atlas: getAtlas, skillIcon, itemIcon, SKILLS, ITEMS, audio };

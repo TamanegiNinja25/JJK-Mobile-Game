@@ -1,7 +1,7 @@
 // Persistent player progression: stats, inventory, equipment, skills, quests and saving.
 import { Attr, ClassId, ItemInstance, SaveData, Slot, Stats, StatKey } from './types';
 import { CLASSES, LEVEL_CAP, expToNext } from './classes';
-import { ITEMS, makeItem, itemStats, isGear, enhanceCost, getUidCounter, setUidCounter } from './items';
+import { REFORGE_MAX, reforgeCost, ITEMS, makeItem, itemStats, isGear, enhanceCost, getUidCounter, setUidCounter } from './items';
 import { SKILLS, classSkills } from './skills';
 import { QUESTS, QUEST_BY_ID, QuestDef, Objective } from '../data/story';
 
@@ -326,6 +326,27 @@ export class PlayerState {
     return res;
   }
 
+  /** Mechamaru's reforge: takes +10 gear toward +30. Returns 'ok' | 'fail' | 'down' or an error. */
+  reforge(it: ItemInstance): string {
+    if (it.plus < 10) return 'Infuse it to +10 at Yaga\'s workshop first';
+    if (it.plus >= REFORGE_MAX) return 'Already fully reforged';
+    const c = reforgeCost(it);
+    if (this.d.gold < c.gold) return 'Not enough yen';
+    if (this.countItem('fragment') < c.fragments) return 'Not enough Cursed Fragments';
+    if (this.countItem('core') < c.cores) return 'Not enough Grade 1 Cores';
+    this.d.gold -= c.gold;
+    this.removeItem('fragment', c.fragments);
+    this.removeItem('core', c.cores);
+    let res: string;
+    if (Math.random() < c.rate) { it.plus++; res = 'ok'; }
+    else if (c.risky && Math.random() < 0.35) { it.plus--; res = 'down'; }
+    else res = 'fail';
+    this.recalc();
+    this.emit('inventory');
+    this.emit('gold');
+    return res;
+  }
+
   addGold(n: number) {
     this.d.gold += Math.round(n);
     this.emit('gold');
@@ -455,10 +476,55 @@ export class PlayerState {
     return QUESTS.filter(q => this.d.quests[q.id] && this.d.quests[q.id].state !== 'done');
   }
 
-  /** The objective text for the HUD tracker (main quest first). */
+  /** The quest the HUD follows: the one the player picked, else the main quest, else any active one. */
+  trackedQuest(): QuestDef | null {
+    const act = this.activeQuests();
+    return act.find(q => q.id === this.d.tracked) ?? act.find(q => q.type === 'main') ?? act[0] ?? null;
+  }
+
+  track(id: string | null) {
+    this.d.tracked = id;
+    this.emit('quest', id ? QUEST_BY_ID[id] : null);
+  }
+
+  /** Switches the tracker to the next active quest and returns it. */
+  cycleTracked(): QuestDef | null {
+    const act = this.activeQuests();
+    if (!act.length) return null;
+    const cur = this.trackedQuest();
+    const next = act[(cur ? act.indexOf(cur) + 1 : 0) % act.length];
+    this.track(next.id);
+    return next;
+  }
+
+  /** What the tracked quest needs next, in a form the world can locate. */
+  trackGoal(): TrackGoal | null {
+    const q = this.trackedQuest();
+    if (!q) {
+      const next = QUESTS.find(x => x.type === 'main' && !this.d.quests[x.id]);
+      return next && !(next.level && this.d.level < next.level) ? { kind: 'talk', npc: next.giver } : null;
+    }
+    const st = this.d.quests[q.id];
+    if (st.state === 'ready') return { kind: 'talk', npc: q.turnIn ?? q.giver };
+    for (let i = 0; i < q.objectives.length; i++) {
+      if (this.objectiveDone(q, i)) continue;
+      const o = q.objectives[i];
+      switch (o.type) {
+        case 'talk': return { kind: 'talk', npc: o.npc };
+        case 'boss': return { kind: 'boss', boss: o.target, quest: q.id };
+        case 'reach': return { kind: 'reach', map: o.map };
+        case 'kill': return { kind: 'kill', targets: o.target, map: o.map };
+        case 'collect': return { kind: 'collect', item: o.item, quest: q.id };
+        case 'enhance': return { kind: 'talk', npc: 'yaga' };
+        case 'pay': return { kind: 'talk', npc: q.turnIn ?? q.giver };
+      }
+    }
+    return null;
+  }
+
+  /** The objective text for the HUD tracker. */
   trackerText(): { name: string; text: string; ready: boolean } | null {
-    const qs = this.activeQuests().sort((a, b) => (a.type === 'main' ? 0 : 1) - (b.type === 'main' ? 0 : 1));
-    const q = qs[0];
+    const q = this.trackedQuest();
     if (!q) {
       const next = QUESTS.find(x => x.type === 'main' && !this.d.quests[x.id]);
       if (next) {
@@ -519,6 +585,27 @@ export class PlayerState {
     } catch { return null; }
   }
 
+  /** A save as a copyable text code, so progress survives reinstalls and moves between devices. */
+  static exportCode(slot: number): string | null {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY + slot);
+      if (!raw) return null;
+      return 'CC1:' + btoa(unescape(encodeURIComponent(raw)));
+    } catch { return null; }
+  }
+
+  /** Writes a save code into a slot. Returns an error message, or null on success. */
+  static importCode(code: string, slot: number): string | null {
+    const body = code.trim().replace(/\s+/g, '');
+    if (!body.startsWith('CC1:')) return 'That is not a Cursed Chronicles save code.';
+    let d: SaveData;
+    try { d = JSON.parse(decodeURIComponent(escape(atob(body.slice(4))))) as SaveData; } catch { return 'The save code is damaged or incomplete.'; }
+    if (!d || typeof d !== 'object' || !d.cls || !d.level || !d.quests) return 'The save code is missing data.';
+    d.slot = slot;
+    try { localStorage.setItem(SAVE_KEY + slot, JSON.stringify(d)); } catch { return 'Could not write the save.'; }
+    return null;
+  }
+
   static erase(slot: number) {
     try { localStorage.removeItem(SAVE_KEY + slot); } catch { /* storage unavailable */ }
   }
@@ -551,3 +638,10 @@ function migrate(d: SaveData) {
   }
   d.version = SAVE_VERSION;
 }
+
+export type TrackGoal =
+  | { kind: 'talk'; npc: string }
+  | { kind: 'boss'; boss: string; quest: string }
+  | { kind: 'reach'; map: string }
+  | { kind: 'kill'; targets: string[] | 'any'; map?: string }
+  | { kind: 'collect'; item: string; quest: string };

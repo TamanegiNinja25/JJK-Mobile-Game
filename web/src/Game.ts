@@ -15,7 +15,9 @@ import { NPC } from './entities/NPC';
 import { MAPS } from './world/maps';
 import { audio } from './audio/Audio';
 import { music } from './audio/Music';
-import { IconSpec } from './rpg/items';
+import { IconSpec, ITEMS } from './rpg/items';
+import { warmIcons } from './ui/Icons';
+import { classSkills } from './rpg/skills';
 import { pick } from './core/util';
 import { occlusion } from './render/toon';
 
@@ -89,13 +91,19 @@ export class Game {
     this.fpsAcc += dt; this.fpsN++;
     if (this.fpsAcc > 1) { this.fps = this.fpsN / this.fpsAcc; this.fpsAcc = 0; this.fpsN = 0; this.autoQuality(); }
     this.input.update();
+    const t0 = performance.now();
     try {
       this.update(dt);
     } catch (err) {
       console.error(err);
     }
+    const t1 = performance.now();
     this.r.render();
+    const t2 = performance.now();
     this.overlay.draw(dt);
+    // frame profiler for automated tests: window.__perf = [] turns it on
+    const perf = (window as any).__perf as number[][] | undefined;
+    if (perf) perf.push([t1 - t0, t2 - t1, performance.now() - t2]);
   };
 
   private update(dt: number) {
@@ -193,6 +201,8 @@ export class Game {
   // ------------------------------------------------------------------
   private bindPlayerEvents(ps: PlayerState) {
     ps.on((ev, data) => {
+      // new loot gets its icon painted in the background before the bag is next opened
+      if (ev === 'inventory') warmIcons([], ps.d.inventory.map(it => ITEMS[it.base].icon), true);
       if (ev === 'levelup') {
         audio.play('levelup');
         this.ui.levelUp(data);
@@ -218,6 +228,9 @@ export class Game {
     this.world.player.model!.root.visible = true;
     this.ui.createHud();
     this.ui.hud!.buildMinimap();
+    // paint this class's skill icons and the player's gear icons in the background
+    warmIcons(classSkills(ps.d.cls).map(s => s.id), [...ps.d.inventory, ...Object.values(ps.d.equip)].filter(Boolean).map(it => ITEMS[it!.base].icon), true);
+    warmIcons([], Object.values(ITEMS).map(b => b.icon)); // then everything else, for shops
     this.state = 'play';
     this.input.enabled = true;
     this.applySettings();

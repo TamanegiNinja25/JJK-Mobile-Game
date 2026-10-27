@@ -4,6 +4,7 @@ import { Actor } from './Actor';
 import type { World } from '../world/World';
 import { Caster } from '../world/api';
 import { buildCreature, CreatureKind } from '../render/models/creatures';
+import { RigBuilder } from '../render/rig';
 import { ModelHandle } from '../render/models/model';
 import { G, PartBag } from '../render/geo';
 import { toonMaterial, outlineMaterial } from '../render/toon';
@@ -63,7 +64,7 @@ export class Summon extends Actor {
     let scale = 1;
     if (kind === 'doll') m = dollModel();
     else {
-      m = buildCreature(kind as CreatureKind);
+      m = RigBuilder.cached('summon:' + kind, () => buildCreature(kind as CreatureKind));
       if (kind === 'elephant') scale = 1.3;
       if (kind === 'toad') scale = 1.2;
       if (kind === 'serpent') scale = 1.15;

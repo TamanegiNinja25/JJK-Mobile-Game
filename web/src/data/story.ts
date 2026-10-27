@@ -46,7 +46,14 @@ export const NPC_NAMES: Record<string, string> = {
   ijichi: 'Kiyotaka Ijichi', nanami: 'Kento Nanami', junpei: 'Junpei Yoshino', todo: 'Aoi Todo', miwa: 'Kasumi Miwa', meimei: 'Mei Mei',
   yuji: 'Yuji Itadori', megumi: 'Megumi Fushiguro', nobara: 'Nobara Kugisaki', narrator: '', sukuna: 'Ryomen Sukuna', mahito: 'Mahito',
   hanami: 'Hanami', jogo: 'Jogo', dagon: 'Dagon', civilian: 'Civilian', student: 'Student', board: 'Notice Board',
-  sasaki: 'Sasaki (Occult Club)', iguchi: 'Iguchi (Occult Club)', choso: 'Choso', kenjaku: '???', grandpa: 'Wasuke Itadori',
+  mechamaru: 'Mechamaru', sasaki: 'Sasaki (Occult Club)', iguchi: 'Iguchi (Occult Club)', choso: 'Choso', kenjaku: '???', grandpa: 'Wasuke Itadori',
+};
+
+/** How the UI refers to people in tight spaces (map labels, quest log). */
+export const NPC_SHORT: Record<string, string> = {
+  gojo: 'Gojo', yaga: 'Yaga', shoko: 'Shoko', maki: 'Maki', panda: 'Panda', inumaki: 'Inumaki', ijichi: 'Ijichi', nanami: 'Nanami',
+  junpei: 'Junpei', todo: 'Todo', miwa: 'Miwa', meimei: 'Mei Mei', sasaki: 'Sasaki', iguchi: 'Iguchi', yuji: 'Yuji', megumi: 'Megumi', nobara: 'Nobara',
+  mechamaru: 'Mechamaru',
 };
 
 export const QUESTS: QuestDef[] = [
@@ -498,6 +505,7 @@ export const QUESTS: QuestDef[] = [
       { who: 'narrator', text: 'The manifestation scatters into black smoke, and the fingers fall silent. Above Shibuya, the veil cracks open to the night sky.' },
       { who: 'yaga', text: 'You did what grown sorcerers could not. Rest now. Satoru\'s seal will take time to break — but we have time, thanks to you.' },
       { who: 'narrator', text: 'THE END — of this chapter. The Culling Game will come. For now: free roam, bounties, and one more shadow that waits in Shibuya...' },
+      { who: 'narrator', text: 'From now on, the curses of Japan grow stronger as you do. The road to level 100 is open.' },
     ],
     rewards: { exp: 30000, gold: 20000, fingers: 1, items: [{ id: 'core', qty: 6 }, { id: 'gojoJacket' }] },
   },
@@ -563,6 +571,7 @@ export const IDLE: Record<string, Line[][]> = {
   ijichi: [[{ who: 'ijichi', text: 'W-where would you like to go? I can drive you anywhere the higher-ups have cleared.' }]],
   nanami: [[{ who: 'nanami', text: 'Labor is crap.' }], [{ who: 'nanami', text: 'My technique creates a weak point at a 7:3 ratio. Yours seems to be "hit it until it stops."' }]],
   junpei: [[{ who: 'junpei', text: 'Do you think... people can change? Like, actually change?' }]],
+  mechamaru: [[{ who: 'mechamaru', text: 'Kokichi Muta, operating remotely. Bring me gear infused to +10 and I will tune it further. Up to +30.' }], [{ who: 'mechamaru', text: 'Each reforge calibrates one property. Past +20 the margins are thin. Do not complain when it overloads.' }]],
   sasaki: [[{ who: 'sasaki', text: 'We\'re never touching anything cursed again. Probably. Maybe.' }]],
   iguchi: [[{ who: 'iguchi', text: 'My arm\'s fine. Mostly. Is there a mouth on your— never mind.' }]],
   todo: [[{ who: 'todo', text: 'BROTHER! Our souls resonate even now!' }]],
@@ -581,4 +590,5 @@ export const SHOP_LINES: Record<string, string> = {
   yaga: 'Workshop — cursed energy infusion',
   meimei: 'Mei Mei\'s Exchange — rare goods, rare prices',
   ijichi: 'Travel — where to?',
+  mechamaru: "Mechamaru's Reforge — +11 to +30",
 };

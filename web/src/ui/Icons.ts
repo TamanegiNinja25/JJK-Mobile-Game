@@ -418,8 +418,15 @@ const SKILL_ART: Record<string, (x: Ctx, c: string) => void> = {
   bloodResonance: (x, c) => { at(x, 44, 52, 0, 0.8, () => { cel(x, G.doll(), '#d8b05a', 3); G.dollStraw(x); }); at(x, 72, 30, 0, 0.42, () => cel(x, G.drop(), c, 4)); },
 };
 
-export function skillIcon(id: string, size = 96): string {
-  const key = `s:${id}:${size}`;
+/**
+ * Icons are painted once at full size and shared by every display size (CSS scales the image):
+ * painting and PNG-encoding an icon is the expensive part, and it used to happen per size.
+ */
+const ICON_PX = 96;
+
+export function skillIcon(id: string, _size = 96): string {
+  const size = ICON_PX;
+  const key = `s:${id}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const s = SKILLS[id];
@@ -515,8 +522,9 @@ const ITEM_ART: Record<string, ItemArt> = {
   ring: (x, c1, c2) => { cel(x, G.ring(), c1, 2.8); const g = new Path2D(); poly(g, [50, 14, 62, 26, 50, 38, 38, 26]); cel(x, g, c2, 2.4); sparks(x, '#ffffff', [[46, 22, 3.5]]); },
 };
 
-export function itemIcon(spec: IconSpec, size = 96): string {
-  const key = `i:${spec.shape}:${spec.c1}:${spec.c2 ?? ''}:${size}`;
+export function itemIcon(spec: IconSpec, _size = 96): string {
+  const size = ICON_PX;
+  const key = `i:${spec.shape}:${spec.c1}:${spec.c2 ?? ''}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const { c, x } = makeCanvas(size);
@@ -529,4 +537,40 @@ export function itemIcon(spec: IconSpec, size = 96): string {
   const url = c.toDataURL();
   cache.set(key, url);
   return url;
+}
+
+/** The icon if it has already been painted; otherwise queues it (first) and returns null. */
+export function itemIconIfReady(spec: IconSpec): string | null {
+  const hit = cache.get(`i:${spec.shape}:${spec.c1}:${spec.c2 ?? ''}`);
+  if (!hit) warmIcons([], [spec], true);
+  return hit ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Background pre-painting
+// ---------------------------------------------------------------------------
+const warmQueue: (() => void)[] = [];
+let warming = false;
+type Idle = { timeRemaining(): number; didTimeout: boolean };
+const onIdle: (cb: (d: Idle) => void) => void = (window as any).requestIdleCallback
+  ? (cb) => (window as any).requestIdleCallback(cb, { timeout: 2500 })
+  : (cb) => setTimeout(() => cb({ timeRemaining: () => 8, didTimeout: false }), 80);
+
+/**
+ * Paints icons in the background, only in the idle part of frames, so menus and buff icons open
+ * without a hitch and gameplay never pays for it. `first` jumps the queue (the bag, the skills).
+ */
+export function warmIcons(skills: string[], items: IconSpec[], first = false) {
+  const jobs: (() => void)[] = [];
+  for (const id of skills) if (!cache.has(`s:${id}`)) jobs.push(() => { skillIcon(id); });
+  for (const spec of items) if (!cache.has(`i:${spec.shape}:${spec.c1}:${spec.c2 ?? ''}`)) jobs.push(() => { itemIcon(spec); });
+  if (first) warmQueue.unshift(...jobs); else warmQueue.push(...jobs);
+  if (warming || !warmQueue.length) return;
+  warming = true;
+  const step = (d: Idle) => {
+    // always make some progress, otherwise only paint while the frame has room to spare
+    do warmQueue.shift()?.(); while (warmQueue.length && d.timeRemaining() > 6);
+    if (warmQueue.length) onIdle(step); else warming = false;
+  };
+  onIdle(step);
 }

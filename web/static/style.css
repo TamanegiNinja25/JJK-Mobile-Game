@@ -399,7 +399,7 @@ button { font-family: inherit; color: inherit; }
   .dlg-portrait { width: 110px; height: 110px; bottom: calc(110px + var(--sb)); }
   .dlg-box { min-height: 96px; padding: 12px 16px 14px; }
   .dlg-text { font-size: 15px; }
-  .status, .bag, .skills, .quests { grid-template-columns: 1fr 1.3fr; }
+  .status, .bag, .skills, .quests { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
   .status-left .big-portrait { width: 110px; height: 110px; }
   .mapview { grid-template-columns: 1fr 240px; }
   .cards { gap: 8px; }
@@ -437,3 +437,70 @@ button { font-family: inherit; color: inherit; }
 .hbuff::after { content: ''; position: absolute; inset: 0; background: conic-gradient(transparent calc(var(--p, 1) * 360deg), rgba(0, 0, 0, .62) 0); }
 .hbuff.ending { animation: buffBlink .35s infinite alternate; }
 @keyframes buffBlink { to { opacity: .45; } }
+
+/* Save transfer */
+.slot.xfer { gap: 8px; }
+.slot.xfer .slot-info { flex: 1; }
+.save-code { width: 100%; min-height: 64px; margin: 8px 0 4px; background: rgba(0, 0, 0, .35); color: #e8e4ff; border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: 11px/1.4 ui-monospace, monospace; resize: vertical; word-break: break-all; }
+.xfer-msg { font-size: 13px; color: #b8ffcf; margin: 4px 0; }
+
+/* Two-column menus: each column scrolls by itself so the frame never moves */
+@media (min-width: 701px) {
+  .menu-body.split { overflow: hidden; display: flex; flex-direction: column; touch-action: auto; }
+  .menu-body.split > .status, .menu-body.split > .bag, .menu-body.split > .skills, .menu-body.split > .quests { flex: 1; min-height: 0; height: auto; grid-template-rows: minmax(0, 1fr); }
+  .menu-body.split .status-left, .menu-body.split .status-right, .menu-body.split .bag-left,
+  .menu-body.split .skills-right, .menu-body.split .quests-left, .menu-body.split .quests-right {
+    min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding-right: 4px;
+  }
+  .menu-body.split .bag-right, .menu-body.split .skills-left { display: flex; flex-direction: column; min-height: 0; }
+  .menu-body.split .bag-right .grid, .menu-body.split .skills-left .sk-grid {
+    flex: 1; min-height: 0; overflow-y: auto; align-content: start; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding: 2px 4px 10px 2px;
+  }
+  .menu-body.split .skills-left > .filters { flex: none; }
+}
+.filters { overscroll-behavior-x: contain; }
+
+/* columns may shrink below their content (chip rows scroll instead of widening a column) */
+.status > *, .bag > *, .skills > *, .quests > * { min-width: 0; }
+.bag-head .filters { flex: 1 1 0; }
+
+/* Quest tracker guidance */
+.tracker-guide { margin-top: 3px; font-size: 11px; color: #ffe9a8; display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
+.tg-arrow { display: inline-block; color: var(--gold); font-size: 13px; line-height: 1; transition: transform .15s; }
+.tracker-cycle { display: none; font-size: 9px; color: rgba(255, 255, 255, .45); margin-top: 2px; letter-spacing: .03em; }
+.tracker.multi .tracker-cycle { display: block; }
+.q-track { margin-left: 6px; font-size: 10px; color: var(--gold); }
+
+/* Map tab travel */
+.map-row { flex-direction: row; align-items: center; gap: 8px; cursor: default; }
+.map-row[data-act] { cursor: pointer; }
+.map-row[data-act]:hover { background: rgba(106, 223, 255, .08); }
+.map-row .mr-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.map-row span:not(.here-tag) { position: static; }
+.map-row .here-tag { margin-top: 0; align-self: center; }
+.mr-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.mr-tags .mk { font-style: normal; font-size: 10px; padding: 1px 5px; border-radius: 4px; background: rgba(255, 255, 255, .06); }
+.mk.travel { color: #6adfff; } .mk.door { color: #ffd890; } .mk.goal { color: #ffd23a; background: rgba(255, 210, 58, .14); }
+.mr-doors { font-size: 10px; opacity: .8; }
+.mr-lock { font-size: 10px; text-align: right; max-width: 110px; }
+.world-map { cursor: pointer; }
+.map-side { overflow-y: auto; min-height: 0; }
+.map-canvas-wrap { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.map-views { margin: 0; }
+
+/* Mechamaru's reforge */
+.reforge .cell.dim { opacity: .45; }
+.rf-bar { position: relative; height: 6px; margin-top: 6px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; width: 180px; }
+.rf-bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #6adfff, #ffd23a, #ff2a5a); }
+.rf-bar em { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, .5); }
+.rf-gain { margin: 8px 0; padding: 8px 10px; border-radius: 8px; background: rgba(106, 223, 255, .08); border: 1px solid rgba(106, 223, 255, .3); font-size: 13px; }
+.rf-gain .panel-title { margin: 0 0 4px; }
+.rf-gain small, .rf-row small { color: var(--dim); font-size: 11px; }
+.rf-table { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.rf-row { display: grid; grid-template-columns: 130px 1fr; column-gap: 8px; padding: 2px 0; border-bottom: 1px solid rgba(255, 255, 255, .04); }
+.rf-row small { grid-column: 2; }
+.rf-row.up .rf-k { color: #b8ffcf; }
+.rf-row b { color: #fff; }
+.rf-row em { color: #7affb0; font-style: normal; }
+.rf-mss { margin-top: 8px; font-size: 12px; }
+.rf-ms { display: inline-block; min-width: 34px; font-weight: 900; color: #ffd23a; }

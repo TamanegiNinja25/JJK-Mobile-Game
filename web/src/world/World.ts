@@ -18,6 +18,9 @@ import { NPC } from '../entities/NPC';
 import { Projectile } from '../entities/Projectile';
 import { Loot, Pickup, Portal } from '../entities/Loot';
 import { ENEMIES, GRADE_NAME } from '../rpg/enemies';
+import { LEVEL_CAP } from '../rpg/classes';
+import { getAtlas, AtlasEntry } from './atlas';
+import { npcName } from '../rpg/PlayerState';
 import { ITEMS, makeItem, randomGear, rollRarity, uniquesForLevel } from '../rpg/items';
 import { QUEST_BY_ID } from '../data/story';
 import { triggerReactions } from '../rpg/skills';
@@ -121,6 +124,8 @@ export class World implements WorldAPI {
 
     for (const n of this.map.npcs) if (!n.cond || n.cond(ps)) this.npcs.push(new NPC(this, n));
     for (const p of this.map.portals) this.portals.push(new Portal(this, p));
+    // arriving on top of a travel gate shouldn't pop its menu open
+    for (const po of this.portals) po.occupied = Math.hypot(sx - po.d.x, sz - po.d.z) <= po.d.r;
     for (const p of this.map.pickups) this.pickups.push(new Pickup(this, p.x, p.z, p.item, p.quest));
     for (const s of this.map.spawners) {
       const st: SpawnerState = { def: s, alive: new Set(), timers: [] };
@@ -130,6 +135,7 @@ export class World implements WorldAPI {
     for (const dm of this.map.dummies) this.spawnDummy(dm.x, dm.z);
     ps.questProgress('reach', id, 1);
     this.r.snap(sx, sz);
+    this.fx.warmup();
     this.portalCooldown = 1.0;
     this.time = 0;
     this.game.ui.mapBanner(def.name, def.jp);
@@ -184,6 +190,9 @@ export class World implements WorldAPI {
     }
     this.time += dt;
     this.game.ps!.tick(dt);
+    this.guideT -= dt;
+    if (this.guideT <= 0) { this.guideT = 0.3; this.updateGuide(); }
+    this.updateGuideArrow();
     // scheduled tasks
     for (let i = 0; i < this.tasks.length; i++) {
       const t = this.tasks[i];
@@ -307,12 +316,19 @@ export class World implements WorldAPI {
       if (this.col.blocked(x, z, def.radius * def.scale)) continue;
       if (this.player && Math.hypot(this.player.x - x, this.player.z - z) < 7 && this.time > 1) continue;
       if (this.inArena(x, z)) continue;
-      const lv = s.level ? randInt(s.level[0], s.level[1]) : def.level;
+      const lv = this.scaledLevel(s.level ? randInt(s.level[0], s.level[1]) : def.level);
       const e = this.spawnEnemy(id, x, z, lv, false);
       e.spawner = { alive: 0, onDeath: () => { st.alive.delete(e); st.timers.push(s.respawn * rand(0.8, 1.3)); } };
       st.alive.add(e);
       return;
     }
+  }
+
+  /** Once the main story is over, curses everywhere rise to meet the player so Lv 51-100 stays reachable. */
+  private scaledLevel(base: number) {
+    const ps = this.game.ps!;
+    if (ps.questState('m14')?.state !== 'done' || ps.d.level <= base) return base;
+    return clamp(ps.d.level + randInt(-3, 1), base, LEVEL_CAP);
   }
 
   private tickSpawners(dt: number) {
@@ -508,7 +524,14 @@ export class World implements WorldAPI {
     const p = this.player;
     for (const po of this.portals) {
       const d = po.d;
-      if (Math.hypot(p.x - d.x, p.z - d.z) > d.r) continue;
+      const inside = Math.hypot(p.x - d.x, p.z - d.z) <= d.r;
+      if (d.style === 'travel') {
+        // opens Ijichi's travel menu on the way in; step out and back in to open it again
+        if (inside && !po.occupied && !this.inBossFight()) { audio.play('door'); this.game.ui.menus.openShop('travel', 'ijichi'); }
+        po.occupied = inside;
+        continue;
+      }
+      if (!inside) continue;
       const ps = this.game.ps!;
       if (d.cond && ps.questState(d.cond)?.state !== 'done' && !(d.cond === 'm7' && ps.questState('m8'))) {
         this.game.toast(d.condText ?? 'The way is sealed.', 'warn', 2);
@@ -523,6 +546,101 @@ export class World implements WorldAPI {
       this.game.travel(d.to, d.toX, d.toZ, d.toFacing);
       return;
     }
+  }
+
+  // ------------------------------------------------------------------
+  // Quest guidance
+  // ------------------------------------------------------------------
+
+  /** Where the tracked objective is, or the exit / door / travel gate that leads toward it. */
+  guide: { x: number; z: number; hint: string } | null = null;
+  /** areas where the tracked objective can be done (for the world map) */
+  guideMaps: string[] = [];
+  private guideT = 0;
+  /** recompute guidance on the next frame (the tracked quest changed) */
+  refreshGuide() { this.guideT = 0; }
+  private guideArrow: THREE.Mesh | null = null;
+
+  private updateGuide() {
+    const ps = this.game.ps!;
+    const g = ps.trackGoal();
+    this.guide = null;
+    this.guideMaps = [];
+    if (!g || !this.map) return;
+    const here = this.mapDef.id, A = getAtlas(), p = this.player;
+    const mapsWhere = (f: (e: AtlasEntry) => boolean) => Object.keys(A).filter(m => f(A[m]));
+    const nearest = <T extends { x: number; z: number }>(list: T[]) => list.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0];
+    let maps: string[] = [];
+    let at: { x: number; z: number; hint: string } | null = null;
+    switch (g.kind) {
+      case 'talk': {
+        const n = this.npcs.find(n => n.id === g.npc);
+        if (n) at = { x: n.x, z: n.z, hint: npcName(g.npc) };
+        maps = mapsWhere(e => e.npcs.some(d => d.id === g.npc && (!d.cond || d.cond(ps))));
+        break;
+      }
+      case 'boss': {
+        const b = this.map.bosses.find(b => b.id === g.boss && (!b.quest || b.quest === g.quest));
+        if (b) at = { x: b.x, z: b.z, hint: ENEMIES[g.boss]?.name ?? g.boss };
+        maps = mapsWhere(e => e.bosses.some(b => b.id === g.boss && (!b.quest || b.quest === g.quest)));
+        break;
+      }
+      case 'reach': maps = [g.map]; break;
+      case 'kill': {
+        const fits = (id: string) => g.targets === 'any' || g.targets.includes(id);
+        maps = g.map ? [g.map] : mapsWhere(e => [...e.enemies].some(fits));
+        if (maps.includes(here)) {
+          const e = nearest(this.enemies.filter(e => e.alive && !e.isBoss && e.d.ai !== 'dummy' && fits(e.d.id) || e.alive && e.d.id === 'dummy' && fits('dummy')));
+          if (e) at = { x: e.x, z: e.z, hint: e.d.name };
+          else if (fits('dummy') && this.map.dummies.length) at = { ...this.map.dummies[0], hint: 'Training corpses' };
+        }
+        break;
+      }
+      case 'collect': {
+        const pk = this.pickups.find(pk => pk.item === g.item && pk.visible());
+        if (pk) at = { x: pk.x, z: pk.z, hint: ITEMS[g.item].name };
+        const droppers = Object.values(ENEMIES).filter(d => d.drops?.some(x => x.item === g.item)).map(d => d.id);
+        maps = mapsWhere(e => e.pickups.some(x => x.item === g.item && x.quest === g.quest) || droppers.some(id => e.enemies.has(id)));
+        if (!at && maps.includes(here)) {
+          const e = nearest(this.enemies.filter(e => e.alive && droppers.includes(e.d.id)));
+          if (e) at = { x: e.x, z: e.z, hint: e.d.name };
+        }
+        break;
+      }
+    }
+    this.guideMaps = maps.length ? maps : at ? [here] : [];
+    if (at) { this.guide = at; return; }
+    if (!maps.length || maps.includes(here)) return;
+    // not in this area: a portal straight there, else the outside of the building it's in, else travel
+    const doorsTo = (targets: string[]) => this.portals.find(po => targets.includes(po.d.to));
+    const outside = Object.keys(A).filter(m => A[m].portals.some(po => maps.includes(po.to) && po.style === 'door'));
+    const po = doorsTo(maps) ?? (this.mapDef.interior ? this.portals.find(x => x.d.style === 'door') : undefined) ?? doorsTo(outside);
+    const dest = MAPS[maps.find(m => !MAPS[m].interior) ?? outside[0] ?? maps[0]];
+    if (po) { this.guide = { x: po.d.x, z: po.d.z, hint: po.d.style === 'travel' ? `Travel to ${dest.name}` : po.d.label }; return; }
+    const gate = this.portals.find(x => x.d.style === 'travel')?.d ?? this.npcs.find(n => n.id === 'ijichi');
+    if (gate) this.guide = { x: gate.x, z: gate.z, hint: `Travel to ${dest.name}` };
+  }
+
+  /** A soft gold arrow on the ground beside the player, pointing at the guide target. */
+  private updateGuideArrow() {
+    const g = this.guide, p = this.player;
+    if (!this.guideArrow) {
+      const shape = new THREE.Shape();
+      shape.moveTo(0, 0.55); shape.lineTo(0.38, 0); shape.lineTo(0.14, 0.02); shape.lineTo(0.14, -0.4); shape.lineTo(-0.14, -0.4); shape.lineTo(-0.14, 0.02); shape.lineTo(-0.38, 0); shape.closePath();
+      const geo = new THREE.ShapeGeometry(shape);
+      geo.rotateX(-Math.PI / 2);
+      this.guideArrow = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffd23a, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
+      this.guideArrow.renderOrder = 2;
+    }
+    const a = this.guideArrow;
+    if (a.parent !== this.root) this.root.add(a);
+    const d = g ? Math.hypot(g.x - p.x, g.z - p.z) : 0;
+    a.visible = !!g && d > 4 && this.game.state === 'play' && !this.bossActive;
+    if (!a.visible) return;
+    const yaw = Math.atan2(g!.x - p.x, g!.z - p.z);
+    a.position.set(p.x + Math.sin(yaw) * 1.5, 0.06, p.z + Math.cos(yaw) * 1.5);
+    a.rotation.y = yaw + Math.PI;
+    (a.material as THREE.MeshBasicMaterial).opacity = 0.45 + Math.sin(this.time * 4) * 0.15;
   }
 
   /** Story beats tied to a spot on the map play once, the first time the player walks in. */

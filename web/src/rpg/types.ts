@@ -84,6 +84,8 @@ export interface SaveData {
   z: number;
   quests: Record<string, QuestState>;
   flags: Record<string, number | string | boolean>;
+  /** quest the HUD tracker follows (falls back to the main quest) */
+  tracked?: string | null;
   fingers: number;
   playTime: number;
   kills: number;
