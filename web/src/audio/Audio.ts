@@ -588,6 +588,28 @@ const SFX: Record<string, SfxFn> = {
   barrier: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.5, wet: 0.7 }); a.fm(t, 150 * p, 1.5, 4, 2, d, 0.25); a.noiseBurst(t, 2, d, { type: 'bandpass', f0: 500, q: 8, vol: 0.2, attack: 0.8 }); },
   bell: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.5, wet: 0.8 }); a.fm(t, 196 * p, 3.5, 3, 3, d, 0.3); a.fm(t, 392 * p, 2.7, 1.5, 2.5, d, 0.15); },
   shatter: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.6, wet: 0.4 }); for (let i = 0; i < 10; i++) a.fm(t + Math.random() * 0.15, 2000 + Math.random() * 3000, 2.3, 2, 0.3, d, 0.08); a.noiseBurst(t, 0.4, d, { type: 'highpass', f0: 3000, vol: 0.5 }); },
+  thunder: (a, t, p, o) => {
+    const d = a.out({ ...o, vol: 0.75, wet: 0.6 });
+    for (let i = 0; i < 8; i++) a.noiseBurst(t + i * 0.01, 0.03, d, { type: 'highpass', f0: 3000 + Math.random() * 3000, vol: 0.55 });
+    a.noiseBurst(t + 0.03, 1.2, d, { type: 'lowpass', f0: 900 * p, f1: 60, vol: 0.9, pink: true });
+    a.osc('sawtooth', 90 * p, 30, t, 0.4, d, 0.2);
+  },
+  wind: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.55, wet: 0.5 }); a.noiseBurst(t, 0.7, d, { type: 'bandpass', f0: 300 * p, f1: 1500 * p, q: 0.8, vol: 0.7, attack: 0.15, pink: true }); },
+  ice: (a, t, p, o) => {
+    const d = a.out({ ...o, vol: 0.55, wet: 0.5 });
+    for (let i = 0; i < 6; i++) a.fm(t + i * 0.025, (2600 + i * 420) * p, 1.41, 3, 0.35, d, 0.1);
+    a.noiseBurst(t, 0.25, d, { type: 'highpass', f0: 4500, vol: 0.35 });
+  },
+  curse: (a, t, p, o) => {
+    const d = a.out({ ...o, vol: 0.5, wet: 0.6 });
+    a.osc('sawtooth', 110 * p, 70 * p, t, 0.5, d, 0.18);
+    a.osc('sine', 220 * p, 140 * p, t, 0.5, d, 0.2);
+    a.noiseBurst(t, 0.35, d, { type: 'bandpass', f0: 700 * p, q: 3, vol: 0.25 });
+  },
+  gavel: (a, t, p, o) => {
+    const d = a.out({ ...o, vol: 0.8, wet: 0.7 });
+    for (let i = 0; i < 2; i++) { a.osc('sine', 260 * p, 90, t + i * 0.22, 0.12, d, 0.9); a.noiseBurst(t + i * 0.22, 0.05, d, { type: 'bandpass', f0: 1800, q: 2, vol: 0.6 }); }
+  },
 };
 
 export const audio = new AudioSys();

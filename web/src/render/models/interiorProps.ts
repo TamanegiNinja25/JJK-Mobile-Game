@@ -236,6 +236,7 @@ export const INTERIOR_PROPS: Record<string, () => PropDef> = {
   iwStation: () => wall(0x3a3c40, 0xeceeec, 0x2a2a2e, { grid: 0.33, band: 0x2a8a4a, bandY: 1.25 }),
   iwPrison: () => wall(0x5a5c5e, 0x8e908c, 0x4a4c4e, { band: 0xe0b020, bandY: 0.5, lowerH: 0.4 }),
   iwDorm: () => wall(0x6a4a2e, 0xf2eee2, 0x4a3420, { grid: 0.45 }),
+  iwStore: () => wall(0x2a1e16, 0x5a4634, 0x1e1610, { grid: 0.33, band: 0x8a2a2a, bandY: 1.4 }),
   wallPost: () => wallPost(),
   wallPostDark: () => wallPost(0x241c1c),
   wallPostLow: () => wallPost(0x4a4038, H * 0.42 + 0.1),

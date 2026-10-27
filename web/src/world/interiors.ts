@@ -229,6 +229,23 @@ const THEMES: Record<string, Theme> = {
     },
     hall: (p, rng, walls, C) => againstWalls(p, rng, walls, C, ['pottedPlant', 'bench', 'bookshelf', 'vendingWhite'], 0.5),
   },
+  manor: {
+    // the Zen'in clan's cursed spirit storehouse: dark timber, tags of sealing paper, curses kept starving
+    wall: 'iwStore', post: 'wallPostDark', postLow: 'wallPostDarkLow',
+    kinds: ['wood', 'stone', 'mud', 'void'], scales: [0.25, 0.3, 0.2, 0.2], tint: 0xd8c8b8,
+    surfaces: ['wood', 'stone', 'dirt', 'stone'],
+    minimap: [[120, 90, 62], [120, 116, 108], [80, 60, 50], [14, 10, 8]],
+    lighting: darkLighting(0x060404, 0x0e0806, 0xa87a5a, 0x7a4a3a, 2.4, 0.55),
+    light: { color: 0xffb070, intensity: 4.2, range: 9, flicker: 0.3 },
+    music: 'zenin', ambience: ['hum', 'wind'], night: true,
+    room: (p, rng) => {
+      p('crate', -3.4, -3.6, 0.2).p('crate', -2.3, -3.8, 0).p('barrel', 3.5, -3.6);
+      if (rng.chance(0.6)) p('cursedBox', 0, -3.8, 0);
+      if (rng.chance(0.5)) p('bookshelf', 3.4, 3.8, Math.PI);
+      if (rng.chance(0.5)) p('stoneLantern', -3.6, 3.4);
+    },
+    hall: (p, rng, walls, C) => againstWalls(p, rng, walls, C, ['crate', 'barrel', 'crate', 'stoneLantern'], 0.45),
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -495,6 +512,24 @@ export const INTERIORS: Record<string, MapDef> = {
         { who: 'narrator', text: 'He vanishes into the tunnel. On the platform, the square of cracked tiles is empty. The Prison Realm is gone.' },
         { who: 'narrator', text: 'Far down the tracks, a man in monk\'s robes walks away with a small cube in his hand. He has Suguru Geto\'s face. Stitches run across his forehead.' },
         { who: 'narrator', text: 'By the time you reach the end of the platform, he is gone. Ijichi needs to hear about this.' },
+      ] });
+    },
+  }),
+  zeninIn: interiorMap({
+    id: 'zeninIn', name: 'Zen\'in Estate — Cursed Spirit Storehouse', jp: '禪院家 呪霊蔵', theme: 'manor', cols: 4, rows: 3,
+    levelRange: [39, 44], enemies: [{ id: 'cagedCurse', w: 2 }, { id: 'starvedHound', w: 2 }], density: 0.55,
+    exit: { map: 'zenin', x: 21.4, z: 14, facing: -Math.PI / 2, label: 'Estate grounds' },
+    goal: ({ b, place, toWorld }, c) => {
+      place('cursedBox', 0, -3.6, 0).p('crate', -3.2, -3.6, 0.3).p('crate', 3.2, -3.4, -0.2).p('stoneLantern', -3.6, 3.4).p('stoneLantern', 3.6, 3.4);
+      const [mx, mz] = toWorld(c, 1.6, -1.2);
+      b.spawner({ enemies: [{ id: 'cagedCurse' }], x: c.x, z: c.z, w: 6, d: 6, count: 2, respawn: 30, level: [41, 44], cond: isActive('m16') });
+      b.scene({ x: mx, z: mz, r: 4.2, flag: 'scene_mai', cond: isActive('m16'), lines: [
+        { who: 'narrator', text: 'The deepest room of the storehouse. The curses kept here have been starving for years.' },
+        { who: 'narrator', text: 'Mai is slumped against the far wall, badly hurt. Their father brought both twins in here and locked the door behind them.' },
+        { who: 'mai', text: 'Maki... we were always half of one person. As long as I\'m here, you can never be complete.' },
+        { who: 'mai', text: 'So I\'m taking my half with me. All of it. Promise me something — destroy everything.' },
+        { who: 'narrator', text: 'With the last of her cursed energy, Mai forges a katana and presses it into her sister\'s hands. Then she is still.' },
+        { who: 'maki', text: '...Yeah. I promise.' },
       ] });
     },
   }),

@@ -35,6 +35,9 @@ const _occV = new THREE.Vector3();
 
 interface SpawnerState { def: SpawnerDef; alive: Set<Enemy>; timers: number[] }
 
+
+/** Bosses that get the final-boss theme instead of the regular one. */
+const FINAL_BOSSES = new Set(['sukuna', 'mahoraga', 'kenjaku', 'sukunaTrue']);
 export class World implements WorldAPI {
   game: Game;
   r: Renderer;
@@ -437,7 +440,7 @@ export class World implements WorldAPI {
       e.target = this.player;
       e.atkCd = 1.5;
       this.bossActive = { def: b, enemy: e };
-      music.push(b.id === 'sukuna' || b.id === 'mahoraga' ? 'finalBoss' : 'boss');
+      music.push(FINAL_BOSSES.has(b.id) ? 'finalBoss' : 'boss');
       this.game.ui.hud?.setBoss(e);
       this.game.ui.banner(GRADE_NAME[def.grade].toUpperCase(), def.name, '#ff3a4a');
     };

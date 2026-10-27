@@ -7,6 +7,10 @@ import { INTERIORS } from './interiors';
 const done = (id: string) => (ps: PlayerState) => ps.questState(id)?.state === 'done';
 const active = (id: string) => (ps: PlayerState) => !!ps.questState(id) && ps.questState(id)!.state !== 'done';
 const objDone = (id: string, i: number) => (ps: PlayerState) => { const q = QUEST_BY_ID[id]; return !!ps.questState(id) && ps.objectiveDone(q, i); };
+/** Gojo is away from the end of Shibuya (sealed in the Prison Realm) until he is released, and gone after Shinjuku. */
+const gojoAround = (ps: PlayerState) => !done('m14')(ps) || (!!ps.questState('m22') && !done('m23')(ps));
+/** From Gojo's return until the final battle, Sukuna holds Megumi's body. */
+const megumiTaken = (ps: PlayerState) => !!ps.questState('m22') && !done('m26')(ps);
 
 // ============================================================================
 // Sugisawa Third High — night
@@ -133,7 +137,8 @@ const hub: MapDef = {
     b.border(['cedar', 'pine', 'roundTree', 'bamboo'], 1.5, 3, 1, [{ x: 0, z: 38, r: 4 }]);
     b.scatter('rock2', -30, 20, 8, 16, 3);
     // people
-    b.npc({ id: 'gojo', x: 3, z: 3, facing: Math.PI * 0.9, cond: (ps) => ps.questState('m3')?.state === 'done' || active('m3')(ps) });
+    b.npc({ id: 'gojo', x: 3, z: 3, facing: Math.PI * 0.9, cond: (ps) => (ps.questState('m3')?.state === 'done' || active('m3')(ps)) && gojoAround(ps) });
+    b.npc({ id: 'yuta', x: 6.5, z: 1, facing: -Math.PI * 0.6, cond: done('m15') });
     b.npc({ id: 'yaga', x: 0, z: -16, facing: Math.PI, shop: 'workshop' });
     b.npc({ id: 'mechamaru', x: -19.5, z: -21.5, facing: Math.PI * 0.75, shop: 'reforge', cond: done('m3') });
     b.npc({ id: 'shoko', x: -16.5, z: 13, facing: -Math.PI / 2, shop: 'potions' });
@@ -144,7 +149,7 @@ const hub: MapDef = {
     b.portal({ x: 11.5, z: 26, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
     b.npc({ id: 'meimei', x: 20, z: -21, facing: Math.PI, shop: 'exchange', cond: done('m6') });
     b.npc({ id: 'yuji', x: -5, z: 6, facing: Math.PI / 3, cond: (ps) => ps.d.cls !== 'yuji' });
-    b.npc({ id: 'megumi', x: -7, z: 3.5, facing: Math.PI / 2, cond: (ps) => ps.d.cls !== 'megumi' });
+    b.npc({ id: 'megumi', x: -7, z: 3.5, facing: Math.PI / 2, cond: (ps) => ps.d.cls !== 'megumi' && !megumiTaken(ps) });
     b.npc({ id: 'nobara', x: -3.5, z: 2.5, facing: -Math.PI / 4, cond: (ps) => ps.d.cls !== 'nobara' });
     b.dummy(15.5, 14).dummy(19, 13).dummy(22.5, 14.5);
   },
@@ -356,6 +361,140 @@ const kyoto: MapDef = {
 };
 
 // ============================================================================
+// Yasohachi Bridge — Saitama, after dark (Death Painting arc)
+// ============================================================================
+const yasohachi: MapDef = {
+  id: 'yasohachi', name: 'Yasohachi Bridge', jp: '八十八橋', size: [72, 80], night: true,
+  lighting: { sky: 0x7a7aaa, ground: 0x2a2e30, hemiIntensity: 1.55, sun: 0xffb898, sunIntensity: 1.45, sunDir: [-0.6, 0.6, -0.3], ambient: 0x9a9ac0, ambientIntensity: 0.45, playerLight: 2.6, fog: 0x1a1e2a, fogNear: 28, fogFar: 76, bg: 0x10121e, bloom: 0.55, exposure: 1.12 },
+  music: 'yasohachi', ambience: ['crickets', 'wind'], weather: 'fireflies', levelRange: [21, 27],
+  terrain: {
+    kinds: ['darkGrass', 'mud', 'gravel', 'asphalt'], scales: [0.18, 0.2, 0.25, 0.15],
+    paint: (p) => {
+      p.fill(0);
+      p.rect(1, 0, 0, 72, 15, 0.5);          // muddy banks either side of the river
+      p.rect(2, 0, 8.5, 72, 2.5, 0.4); p.rect(2, 0, -8.5, 72, 2.5, 0.4);
+      p.rect(3, 0, 31, 72, 6, 0.2);          // road along the south bank
+      p.rect(3, 0, -30, 72, 6, 0.2);         // road along the north bank
+      p.rect(3, 0, 19, 6, 20, 0.2); p.rect(3, 0, -19, 6, 18, 0.2);
+      p.patches(1, 0.09, 0.62, 0.6);
+    },
+  },
+  surfaces: ['grass', 'dirt', 'stone', 'concrete'],
+  spawn: { x: 0, z: 33, facing: Math.PI },
+  build: (b) => {
+    b.keepClear(0, 0, 8, 22).keepClear(0, 31, 72, 6).keepClear(0, -30, 72, 6).keepClear(-18, 15, 18, 14).keepClear(18, -16, 18, 14);
+    // the river, and the bridge everyone who died had crossed
+    b.water(-19.3, 0, 33.4, 10, 0x1e2e3a).water(19.3, 0, 33.4, 10, 0x1e2e3a);
+    b.building('riverBridge', 0, 0, 0);
+    for (const sz of [-1, 1]) {
+      b.row('reeds', -34, sz * 5.6, -4, sz * 5.6, 2.4).row('reeds', 4, sz * 5.6, 34, sz * 5.6, 2.4);
+      b.scatter(['rock1', 'rock3', 'mossRock'], -20, sz * 6.8, 26, 1.5, 4).scatter(['rock1', 'rock3'], 20, sz * 6.8, 26, 1.5, 4);
+    }
+    // south bank: a riverside park the victims walked through
+    b.row('streetLampWarm', -30, 27.5, 30, 27.5, 10, Math.PI);
+    b.prop('bench', -24, 20, Math.PI).prop('bench', 10, 22, Math.PI).prop('bench', 24, 20, Math.PI);
+    b.prop('vendingWhite', -5, 27, Math.PI).prop('vendingRed', -6.2, 27, Math.PI).prop('signboard', 4, 12, 0.3);
+    b.scatter(['roundTree', 'darkTree', 'autumnTree'], -22, 20, 26, 10, 7, { minDist: 3.5 });
+    b.scatter(['roundTree', 'darkTree'], 22, 18, 24, 12, 7, { minDist: 3.5 });
+    b.decor(['grass', 'fern'], 0, 18, 70, 18, 70);
+    // north bank: an old graveyard and the town beyond the road
+    // the graveyard wraps around Eso's clearing; rows are placed directly so the arena stays open
+    for (const z of [-24.5, -27]) b.row('grave', 8, z, 28, z, 2.6);
+    for (const x of [6.5, 29.5]) b.row('grave', x, -9, x, -22, 2.6, Math.PI / 2);
+    b.prop('stoneLantern', 9, -8.5).prop('stoneLantern', 27, -8.5).prop('shrineSmall', 18, -29, 0);
+    b.light(9, 1.4, -8.5, 0xffc880, 5, 9, true).light(27, 1.4, -8.5, 0xffc880, 5, 9, true).light(18, 6, -16, 0x9ab0ff, 4, 16);
+    b.light(-18, 6, 15, 0x9ab0ff, 3.5, 14);
+    b.scatter(['pine', 'darkTree', 'deadTree'], -20, -18, 26, 12, 8, { minDist: 3.5 });
+    b.decor(['grassDry', 'grass'], 0, -18, 70, 16, 60);
+    for (const [x, s] of [[-26, 11], [-12, 12], [12, 13], [26, 14]] as const) b.building('house', x, -36, 0, { seed: s });
+    b.row('utilityPole', -32, -26.5, 32, -26.5, 9, 0);
+    b.prop('carWhite', -16, 31, Math.PI / 2).prop('van', 18, -30, -Math.PI / 2);
+    b.border(['darkTree', 'pine', 'roundTree'], 1.5, 3, 1, [{ x: -35, z: 0, r: 7 }, { x: 35, z: 0, r: 7 }, { x: 0, z: 39, r: 5 }]);
+    b.npc({ id: 'ijichi', x: 5, z: 33, facing: Math.PI, shop: 'travel' });
+    b.portal({ x: 9.5, z: 33, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
+    b.spawner({ enemies: [{ id: 'riverCurse', w: 2 }, { id: 'bloodFetus' }], x: 8, z: 16, w: 40, d: 12, count: 7, respawn: 10, level: [21, 23] });
+    b.spawner({ enemies: [{ id: 'riverLeech' }, { id: 'riverCurse' }], x: -8, z: -17, w: 44, d: 12, count: 7, respawn: 11, level: [22, 25] });
+    b.spawner({ enemies: [{ id: 'bloodFetus', w: 2 }, { id: 'riverLeech' }], x: 0, z: 9, w: 60, d: 3, count: 4, respawn: 12, level: [23, 26] });
+    b.scene({ x: 0, z: 0, r: 2.6, flag: 'scene_bridge', cond: active('m10y'), lines: [
+      { who: 'narrator', text: 'Halfway across, the night goes quiet. No insects. No traffic. Just the river, far too loud.' },
+      { who: 'narrator', text: 'Every victim crossed this bridge after dark. Every one of them came home with a mark on their skin.' },
+      { who: 'player', text: 'So now we\'ve crossed it too. Great. Let\'s see what wants us.', only: ['yuji', 'nobara'] },
+      { who: 'player', text: 'The curse only marks people who cross. It will come to us now.', only: ['megumi'] },
+    ] });
+    b.boss({ id: 'kechizu', x: -18, z: 15, r: 9, quest: 'm10k', intro: [
+      { who: 'narrator', text: 'Something squat and wet scrabbles out of the reeds, a face crowded with eyes, blood running from its lips.' },
+      { who: 'kechizu', text: 'Brother! Brother, a sorcerer! Can I eat it? Can I, can I?' },
+      { who: 'player', text: 'That\'s not a curse... it\'s talking. What ARE you?', only: ['yuji'] },
+      { who: 'player', text: 'A cursed womb that took on flesh. Don\'t let its blood touch you.', only: ['megumi'] },
+      { who: 'player', text: 'Ugh. You\'re even uglier than the last one. And it\'s drooling. Why are they always drooling?', only: ['nobara'] },
+    ] });
+    b.boss({ id: 'eso', x: 18, z: -16, r: 10, quest: 'm10e', intro: [
+      { who: 'narrator', text: 'On the north bank, among the graves, a tall figure waits. One half of his face is pale; the other is the green of old bruises.' },
+      { who: 'eso', text: 'Kechizu was my little brother. He was stupid, and loud, and mine.' },
+      { who: 'eso', text: 'My blood rots whatever it touches. I am going to let it touch every part of you.' },
+    ] });
+  },
+};
+
+// ============================================================================
+// Zen'in Clan Estate — Kyoto, autumn night (Perfect Preparation arc)
+// ============================================================================
+const zenin: MapDef = {
+  id: 'zenin', name: 'Zen\'in Clan Estate', jp: '禪院家', size: [76, 80], night: true,
+  lighting: { sky: 0x5a6a9a, ground: 0x2a2620, hemiIntensity: 1.3, sun: 0xc8d4ff, sunIntensity: 1.3, sunDir: [0.4, 1, -0.5], ambient: 0x8a8ab8, ambientIntensity: 0.32, playerLight: 2.3, fog: 0x141826, fogNear: 28, fogFar: 78, bg: 0x0c0e1a, bloom: 0.5, exposure: 1.05 },
+  music: 'zenin', ambience: ['crickets', 'leaves', 'wind'], weather: 'leaves', levelRange: [38, 46],
+  terrain: {
+    kinds: ['moss', 'gravel', 'stone', 'dirt'], scales: [0.2, 0.28, 0.2, 0.2],
+    paint: (p) => {
+      p.fill(0);
+      p.rect(1, 0, 4, 60, 50, 0.4);          // raked gravel courtyards
+      p.rect(2, 0, 20, 5, 30, 0.2);          // stone path from the gate
+      p.rect(2, 0, -12, 22, 22, 0.3);        // inner courtyard
+      p.rect(2, -12, 8, 20, 4, 0.2); p.rect(2, 13, 14, 18, 4, 0.2);
+      p.rect(3, 0, 37.5, 76, 5, 0.3);        // lane outside the walls
+      p.patches(3, 0.08, 0.66, 0.5);
+    },
+  },
+  surfaces: ['grass', 'stone', 'stone', 'dirt'],
+  spawn: { x: 0, z: 37, facing: Math.PI },
+  build: (b) => {
+    b.keepClear(0, 20, 6, 30).keepClear(0, -12, 24, 24).keepClear(0, 37.5, 76, 5).keepClear(-12, 8, 20, 4).keepClear(13, 14, 18, 4);
+    b.building('manorGate', 0, 33.6, 0);
+    b.wall('wallStone', -37, 33.6, -3.6, 33.6).wall('wallStone', 3.6, 33.6, 37, 33.6);
+    b.wall('wallStone', -37, -38, 37, -38).wall('wallStone', -37, -38, -37, 33.6).wall('wallStone', 37, -38, 37, 33.6);
+    b.building('manorHouse', 0, -29, 0);
+    b.building('manorWing', -26, -14, 1);
+    b.building('manorWing', 26, -16, 3);
+    b.building('manorWing', -26, 18, 1);
+    b.building('zeninStore', 27, 14, 3);
+    b.portal({ x: 23.1, z: 14, r: 1.0, to: 'zeninIn', label: 'Cursed Spirit Storehouse', style: 'door', rot: -Math.PI / 2, cond: 'm16', condText: 'The storehouse doors are sealed with Zen\'in wards.' });
+    b.building('koiPond', -14, 22, 0);
+    for (let z = 30; z >= 6; z -= 6) { b.prop('stoneLantern', -3.4, z); b.prop('stoneLantern', 3.4, z); }
+    b.prop('paperLantern', -8, -21, 0).prop('paperLantern', 8, -21, Math.PI).prop('well', 14, -2, 0).prop('bell', -14, -2, 0);
+    b.prop('stoneLantern', -11, -12).prop('stoneLantern', 11, -12);
+    b.scatter(['autumnTree', 'pine', 'sakura'], -22, 4, 18, 16, 7, { minDist: 4 });
+    b.scatter(['autumnTree', 'pine'], 22, 2, 14, 14, 6, { minDist: 4 });
+    b.scatter(['bamboo'], -32, -26, 6, 20, 5).scatter(['bamboo'], 32, 26, 6, 10, 3);
+    b.scatter(['flowerBush', 'bush', 'mossRock'], 0, 0, 66, 66, 18);
+    b.decor(['grass', 'fern'], 0, 0, 70, 70, 120);
+    b.decor('lilyPad', -14, 22, 7, 5, 8);
+    b.border(['cedar', 'pine', 'autumnTree'], 1.2, 3, 1, [{ x: 0, z: 39, r: 8 }]);
+    b.npc({ id: 'ijichi', x: 5, z: 37, facing: Math.PI, shop: 'travel' });
+    b.portal({ x: 9.5, z: 37, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
+    b.npc({ id: 'maki', x: -4, z: 29.5, facing: Math.PI, cond: (ps) => active('m16')(ps) || active('m17')(ps) });
+    b.spawner({ enemies: [{ id: 'heiGuard', w: 2 }, { id: 'heiCaster' }], x: 0, z: 12, w: 30, d: 16, count: 7, respawn: 10, level: [38, 41] });
+    b.spawner({ enemies: [{ id: 'heiGuard' }, { id: 'heiCaster' }], x: -20, z: -2, w: 14, d: 14, count: 5, respawn: 11, level: [40, 43] });
+    b.spawner({ enemies: [{ id: 'heiCaster' }, { id: 'heiCaptain' }], x: 20, z: -2, w: 14, d: 14, count: 5, respawn: 12, level: [41, 45] });
+    b.spawner({ enemies: [{ id: 'heiCaptain' }, { id: 'heiGuard', w: 2 }], x: 0, z: -18, w: 26, d: 8, count: 4, respawn: 13, level: [43, 46] });
+    b.boss({ id: 'naoya', x: 0, z: -12, r: 10, quest: 'm17', intro: [
+      { who: 'naoya', text: 'Maki. You came crawling home. And you brought a stray from Tokyo with you.' },
+      { who: 'naoya', text: 'Projection Sorcery divides one second into twenty-four frames. I\'ve already seen how this ends. You lose. Try to make it interesting anyway.' },
+      { who: 'maki', text: 'Talk all you want. You\'re slow where it counts.' },
+    ] });
+  },
+};
+
+// ============================================================================
 // Shibuya — Halloween night
 // ============================================================================
 const shibuya: MapDef = {
@@ -403,7 +542,7 @@ const shibuya: MapDef = {
     b.npc({ id: 'civilian', model: 'civilianA', x: -6, z: 32, facing: 0.5 });
     b.npc({ id: 'civilian', model: 'civilianB', x: -30, z: 30, facing: 1.2 });
     b.npc({ id: 'civilian', model: 'civilianC', x: 30, z: 30, facing: -1.2 });
-    b.npc({ id: 'gojo', x: -3, z: 34, facing: Math.PI, cond: done('m14') });
+    b.npc({ id: 'yuta', x: 3, z: 23, facing: Math.PI, cond: (ps) => ['ready', 'done'].includes(ps.questState('m15')?.state ?? '') });
     b.npc({ id: 'todo', x: 9, z: 31, facing: -Math.PI * 0.75, cond: done('m14') });
     b.spawner({ enemies: [{ id: 'veilAnchor' }], x: 0, z: 0, w: 60, d: 50, count: 3, respawn: 9999, level: [26, 26], cond: active('m11') });
     b.spawner({ enemies: [{ id: 'hand' }, { id: 'pumpkin' }, { id: 'shibuyaTransfig', w: 2 }], x: 0, z: 0, w: 34, d: 30, count: 9, respawn: 10, level: [26, 30] });
@@ -429,14 +568,211 @@ const shibuya: MapDef = {
       { who: 'todo', text: 'Brother! Remember: when I clap, nothing stays where it was. Not even you.', emote: 'clap' },
       { who: 'mahito', text: 'Souls, bodies, it\'s all clay. Let\'s find out whose shape is better.' },
     ] });
+    b.boss({ id: 'yuta', x: 0, z: 20, r: 9, quest: 'm15', intro: [
+      { who: 'narrator', text: 'In the ruins at the heart of Shibuya, a young man in a white uniform waits with a katana across his knees. He looks exhausted.' },
+      { who: 'yuta', text: 'Sorry. I was given an order, and I said I would carry it out.' },
+      { who: 'yuta', text: 'Rika. Let\'s go.' },
+      { who: 'narrator', text: 'A colossal curse unfolds behind him — all teeth and grasping arms, and a voice like a little girl\'s.' },
+    ] });
     b.boss({ id: 'mahoraga', x: 24, z: 22, r: 11, quest: 's_mahoraga', intro: [
       { who: 'narrator', text: 'A colossal figure crouches beneath a slowly turning golden wheel. As it rises, the wheel clicks once.' },
-      { who: 'gojo', text: 'Remember: it adapts. Mix up your attacks — strikes, techniques, everything.' },
+      { who: 'yuta', text: 'Remember: it adapts. Mix up your attacks — strikes, techniques, everything.' },
     ] });
   },
 };
 
-export const MAPS: Record<string, MapDef> = { sugisawa, hub, eishu, kawasaki, sewer, kyoto, shibuya, ...INTERIORS };
+// ============================================================================
+// Tokyo Colony No. 1 — Culling Game
+// ============================================================================
+/** Every colony has the same barrier gate at its south edge: two anchor posts and a cleared lane. */
+function colonyGate(b: import('./MapBuilder').MapBuilder, z: number) {
+  b.prop('barrierPost', -6, z, 0).prop('barrierPost', 6, z, 0);
+  b.light(0, 3, z, 0x9a6aff, 6, 10);
+}
+
+const colony1: MapDef = {
+  id: 'colony1', name: 'Tokyo Colony No. 1', jp: '東京第1結界', size: [84, 84], night: false,
+  lighting: { sky: 0xd8a890, ground: 0x3a3236, hemiIntensity: 1.3, sun: 0xffc8a0, sunIntensity: 1.9, sunDir: [-0.6, 0.6, 0.4], ambient: 0xf0d0c0, ambientIntensity: 0.2, fog: 0x8a6a6a, fogNear: 30, fogFar: 84, bg: 0x9a7272, bloom: 0.45, exposure: 1.0 },
+  music: 'colony', ambience: ['city', 'wind', 'fire'], weather: 'ash', levelRange: [46, 60],
+  terrain: {
+    kinds: ['concrete', 'asphalt', 'dirt', 'gravel'], scales: [0.2, 0.15, 0.2, 0.25],
+    paint: (p) => {
+      p.fill(0);
+      p.rect(1, 0, 0, 10, 84, 0.2);           // main avenue
+      p.rect(1, 0, 4, 84, 9, 0.2);            // cross street
+      p.circle(2, 0, -18, 10, 1.0);           // the plaza where Higuruma waits
+      p.circle(2, 26, 22, 8, 1.2);            // scorched block (Kashimo)
+      p.patches(3, 0.1, 0.62, 0.6);
+    },
+  },
+  surfaces: ['concrete', 'concrete', 'dirt', 'stone'],
+  spawn: { x: 0, z: 37, facing: Math.PI },
+  build: (b) => {
+    b.keepClear(0, 0, 12, 84).keepClear(0, 4, 84, 10).keepClear(0, -18, 22, 22).keepClear(26, 22, 18, 18);
+    colonyGate(b, 33);
+    for (const [x, z, q, s] of [[-30, -32, 0, 1], [-14, -34, 0, 2], [14, -34, 0, 3], [30, -32, 0, 4], [-34, -12, 1, 5], [34, -14, 3, 6], [-30, 22, 1, 7]] as const) b.building('ruinedTower', x, z, q, { seed: s });
+    b.building('shopRow', -20, 34, 2, { seed: 11 }).building('apartment', 34, 34, 2);
+    for (const x of [-34, -24, -14, 14, 24, 34]) if (Math.abs(x) > 8) b.decal(x, 4, 2, 0.18, 0xd0d0c8);
+    b.crosswalk(0, -3, 8, 3, 0).crosswalk(0, 11, 8, 3, 0);
+    b.prop('carBlack', -8, 7, 0.4).prop('carWhite', 9, -2, 2.2).prop('van', -10, -8, 1.4).prop('carRed', 14, 9, -0.5).prop('carBlue', 4, 20, 2.8);
+    b.scatter(['rubble', 'rubbleBig', 'ruinedWall', 'barricade', 'crate'], 0, 0, 78, 78, 30, { minDist: 3 });
+    b.scatter(['fireBarrel'], 0, 0, 70, 70, 7, { minDist: 9 });
+    b.scatter(['deadTree', 'trafficCone', 'utilityPole'], 0, 0, 74, 74, 10, { minDist: 4 });
+    b.wall('ruinedWall', -42, 42, 42, 42).wall('ruinedWall', -42, -42, 42, -42).wall('ruinedWall', -42, -42, -42, 42).wall('ruinedWall', 42, -42, 42, 42);
+    b.npc({ id: 'ijichi', x: 5, z: 37, facing: Math.PI, shop: 'travel' });
+    b.portal({ x: 9.5, z: 37, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
+    b.npc({ id: 'hakari', x: -4, z: 32, facing: Math.PI });
+    b.npc({ id: 'higuruma', x: -3, z: -11, facing: Math.PI, cond: done('m19') });
+    b.spawner({ enemies: [{ id: 'cgBrawler', w: 2 }, { id: 'cgCaster' }], x: 0, z: 18, w: 40, d: 18, count: 8, respawn: 10, level: [46, 50] });
+    b.spawner({ enemies: [{ id: 'cgCaster' }, { id: 'barrierCurse' }], x: -22, z: 0, w: 22, d: 30, count: 6, respawn: 11, level: [48, 53] });
+    b.spawner({ enemies: [{ id: 'cgBrawler' }, { id: 'barrierCurse' }, { id: 'cgCaster' }], x: 20, z: -6, w: 22, d: 22, count: 6, respawn: 11, level: [50, 55] });
+    b.spawner({ enemies: [{ id: 'barrierCurse', w: 2 }, { id: 'cgBrawler' }], x: 0, z: -32, w: 50, d: 10, count: 6, respawn: 12, level: [53, 58] });
+    b.scene({ x: 0, z: 29, r: 3.2, flag: 'scene_kogane', cond: active('m18'), lines: [
+      { who: 'narrator', text: 'The barrier swallows you. A small golden shikigami pops into the air in front of your nose.' },
+      { who: 'narrator', text: '"NEW PLAYER CONFIRMED! Welcome to the Culling Game! Killing another player earns points. Score nothing for nineteen days, and your technique is removed!"' },
+      { who: 'narrator', text: '"One hundred points lets you add a new rule to the game! Good luck! Try not to die!"' },
+      { who: 'player', text: 'A game where the prize is killing people. Kenjaku really thought of everything.', only: ['yuji', 'megumi'] },
+      { who: 'player', text: 'I hate this shikigami. I hate its little voice.', only: ['nobara'] },
+    ] });
+    b.boss({ id: 'higuruma', x: 0, z: -18, r: 10, quest: 'm19', intro: [
+      { who: 'higuruma', text: 'Another player who thinks this game makes murder legal. I used to defend people like you.' },
+      { who: 'higuruma', text: 'I spent years watching the guilty walk free and the innocent hang. So now I hold the court myself.' },
+      { who: 'player', text: 'I\'m not here for your points to save myself. I need them to bring someone back.', only: ['yuji', 'megumi'] },
+      { who: 'player', text: 'A lawyer with a gavel the size of a car. Sure. Why not.', only: ['nobara'] },
+      { who: 'higuruma', text: 'Then let the court decide.' },
+    ] });
+    b.scene({ x: 0, z: -18, r: 7, flag: 'scene_higuruma', cond: (ps) => ps.questState('m19')?.state === 'ready', lines: [
+      { who: 'narrator', text: 'Higuruma lowers his gavel. The courtroom fades, and for a moment he only looks tired.' },
+      { who: 'higuruma', text: 'You never lied to the court. Not once. Even when the truth could have hanged you.' },
+      { who: 'player', text: 'People died in Shibuya because of what\'s inside me. I\'m not going to pretend it wasn\'t me.', only: ['yuji'] },
+      { who: 'player', text: 'I made choices in Shibuya I have to live with. I won\'t dress them up.', not: ['yuji'] },
+      { who: 'higuruma', text: '...I had forgotten what an honest defendant looks like. Take my points. Spend them on something worth it.' },
+    ] });
+    b.boss({ id: 'kashimo', x: 26, z: 22, r: 9, quest: 's_kashimo', intro: [
+      { who: 'kashimo', text: 'You\'re not Sukuna. But you smell like you\'ve stood next to him. That\'s close enough — for a warm-up!' },
+      { who: 'kashimo', text: 'Four hundred years I\'ve waited for a real fight. Don\'t you dare be boring!' },
+    ] });
+  },
+};
+
+// ============================================================================
+// Sendai Colony — Culling Game
+// ============================================================================
+const sendai: MapDef = {
+  id: 'sendai', name: 'Sendai Colony', jp: '仙台結界', size: [84, 84], night: true,
+  lighting: { sky: 0x7a6a8a, ground: 0x2a2228, hemiIntensity: 1.3, sun: 0xffa070, sunIntensity: 1.4, sunDir: [0.6, 0.5, -0.4], ambient: 0xb09ab0, ambientIntensity: 0.3, playerLight: 2.2, fog: 0x2a1e24, fogNear: 28, fogFar: 80, bg: 0x1a1218, bloom: 0.6, exposure: 1.05 },
+  music: 'sendai', ambience: ['fire', 'wind'], weather: 'embers', levelRange: [56, 68],
+  terrain: {
+    kinds: ['concrete', 'asphalt', 'mud', 'gravel'], scales: [0.2, 0.15, 0.2, 0.25],
+    paint: (p) => {
+      p.fill(0);
+      p.rect(1, 0, 0, 10, 84, 0.25); p.rect(1, 0, 10, 84, 9, 0.25);
+      for (const [x, z, r] of [[0, -16, 11], [-24, 18, 8], [22, -2, 6], [-18, -24, 5], [28, 26, 5]] as const) p.circle(2, x, z, r, 1.2);
+      p.patches(3, 0.1, 0.6, 0.6);
+    },
+  },
+  surfaces: ['concrete', 'concrete', 'dirt', 'stone'],
+  spawn: { x: 0, z: 37, facing: Math.PI },
+  build: (b) => {
+    b.keepClear(0, 0, 12, 84).keepClear(0, 10, 84, 10).keepClear(0, -16, 24, 24).keepClear(-24, 18, 18, 18);
+    colonyGate(b, 33);
+    for (const [x, z, q, s] of [[-32, -32, 0, 21], [-12, -36, 0, 22], [14, -36, 0, 23], [32, -30, 0, 24], [34, -6, 3, 25], [-34, -6, 1, 26], [32, 24, 3, 27]] as const) b.building('ruinedTower', x, z, q, { seed: s });
+    b.building('office', -22, 34, 2).building('shopRow', 22, 34, 2, { seed: 13 });
+    b.prop('carRed', -8, 13, 0.6).prop('carBlack', 10, 6, -2.4).prop('van', 6, -30, 1.1).prop('carWhite', -14, 2, 2.0);
+    b.scatter(['rubble', 'rubbleBig', 'ruinedWall', 'barricade'], 0, 0, 78, 78, 34, { minDist: 3 });
+    b.scatter(['fireBarrel'], 0, 0, 70, 70, 8, { minDist: 9 });
+    b.scatter(['snowPine', 'deadTree'], 0, 0, 78, 78, 10, { minDist: 6 });
+    b.wall('ruinedWall', -42, 42, 42, 42).wall('ruinedWall', -42, -42, 42, -42).wall('ruinedWall', -42, -42, -42, 42).wall('ruinedWall', 42, -42, 42, 42);
+    b.npc({ id: 'ijichi', x: 5, z: 37, facing: Math.PI, shop: 'travel' });
+    b.portal({ x: 9.5, z: 37, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
+    b.npc({ id: 'yuta', x: -4, z: 32, facing: Math.PI });
+    b.npc({ id: 'ishigori', x: 6, z: -10, facing: Math.PI, pose: 'sit', cond: done('m21') });
+    b.spawner({ enemies: [{ id: 'roach', w: 3 }, { id: 'cgBrawler' }], x: 0, z: 18, w: 44, d: 16, count: 10, respawn: 8, level: [56, 59] });
+    b.spawner({ enemies: [{ id: 'roach', w: 2 }, { id: 'roachQueen' }], x: 24, z: 4, w: 18, d: 26, count: 7, respawn: 10, level: [58, 62] });
+    b.spawner({ enemies: [{ id: 'cgCaster' }, { id: 'barrierCurse' }, { id: 'cgBrawler' }], x: -24, z: -6, w: 18, d: 24, count: 6, respawn: 11, level: [59, 63] });
+    b.spawner({ enemies: [{ id: 'roach', w: 2 }, { id: 'barrierCurse' }, { id: 'roachQueen' }], x: 0, z: -32, w: 56, d: 10, count: 7, respawn: 12, level: [62, 67] });
+    b.scene({ x: 0, z: 26, r: 3.5, flag: 'scene_sendai', cond: active('m20'), lines: [
+      { who: 'narrator', text: 'The Sendai colony is a city of craters. Whole blocks have been flattened by something that fires cursed energy like artillery.' },
+      { who: 'narrator', text: 'In the rubble, the cockroaches are as big as dogs. They move like one animal.' },
+    ] });
+    b.boss({ id: 'ishigori', x: 0, z: -16, r: 11, quest: 'm21', intro: [
+      { who: 'ishigori', text: 'FINALLY! Someone with some meat on them! Four hundred years ago I fought everyone in sight and never once felt full!' },
+      { who: 'ishigori', text: 'They called me the sorcerer with the greatest output in history. Let\'s see how much of it you can swallow!' },
+      { who: 'player', text: 'I don\'t have time to be your dinner. Let\'s get this over with.', only: ['yuji', 'megumi'] },
+      { who: 'player', text: 'Nice hair. I\'m going to flatten it.', only: ['nobara'] },
+    ] });
+    b.boss({ id: 'uro', x: -24, z: 18, r: 9, quest: 's_uro', intro: [
+      { who: 'uro', text: 'A thousand years ago I led the Fujiwara clan\'s Moonlit Wings. And this era sends me... you?' },
+      { who: 'uro', text: 'The sky is only a surface. Let me show you what it looks like folded in half.' },
+    ] });
+  },
+};
+
+// ============================================================================
+// Shinjuku — December 24th (Shinjuku Showdown arc)
+// ============================================================================
+const shinjuku: MapDef = {
+  id: 'shinjuku', name: 'Shinjuku Showdown', jp: '新宿決戦', size: [90, 90], night: false,
+  lighting: { sky: 0xf0b0a0, ground: 0x3a2a2e, hemiIntensity: 1.3, sun: 0xffb890, sunIntensity: 1.8, sunDir: [0.5, 0.55, 0.5], ambient: 0xffd8d0, ambientIntensity: 0.22, fog: 0xb07a7a, fogNear: 34, fogFar: 92, bg: 0xc08a84, bloom: 0.5, exposure: 1.0 },
+  music: 'shinjuku', ambience: ['wind', 'fire'], weather: 'snow', levelRange: [68, 82],
+  terrain: {
+    kinds: ['asphalt', 'concrete', 'mud', 'stone'], scales: [0.15, 0.2, 0.2, 0.2],
+    paint: (p) => {
+      p.fill(1);
+      p.rect(0, 0, 0, 12, 90, 0.2); p.rect(0, 0, 8, 90, 10, 0.2);
+      p.circle(2, 0, -24, 14, 1.2);           // the crater where Gojo and Sukuna fought
+      p.circle(3, -24, 6, 9, 0.8); p.circle(3, 24, 6, 9, 0.8);
+      p.patches(2, 0.09, 0.64, 0.6);
+    },
+  },
+  surfaces: ['concrete', 'concrete', 'dirt', 'stone'],
+  spawn: { x: 0, z: 40, facing: Math.PI },
+  build: (b) => {
+    b.keepClear(0, 0, 14, 90).keepClear(0, 8, 90, 12).keepClear(0, -24, 30, 30).keepClear(-24, 6, 20, 20).keepClear(24, 6, 20, 20);
+    for (const [x, z, q, s] of [[-34, -36, 0, 31], [-16, -40, 0, 32], [16, -40, 0, 33], [34, -36, 0, 34], [-38, -14, 1, 35], [38, -14, 3, 36], [-36, 26, 1, 37], [36, 26, 3, 38]] as const) b.building('ruinedTower', x, z, q, { seed: s });
+    b.building('skyscraper', -20, 40, 2, { seed: 9 }).building('skyscraper', 22, 40, 2, { seed: 10 });
+    b.scatter('iceSpike', -24, 6, 16, 16, 9, { minDist: 2.5 });
+    b.scatter(['rubble', 'rubbleBig', 'ruinedWall'], 0, -24, 34, 30, 14, { minDist: 4 });
+    b.scatter(['rubble', 'rubbleBig', 'ruinedWall', 'barricade', 'fireBarrel'], 0, 0, 84, 84, 30, { minDist: 4 });
+    b.scatter(['deadTree', 'utilityPole', 'trafficLight'], 0, 0, 80, 80, 9, { minDist: 6 });
+    b.prop('carWhite', -9, 14, 0.4).prop('carRed', 10, 12, -2.4).prop('van', -12, -4, 1.0).prop('carBlack', 14, -8, 2.2);
+    b.wall('ruinedWall', -45, 45, 45, 45).wall('ruinedWall', -45, -45, 45, -45).wall('ruinedWall', -45, -45, -45, 45).wall('ruinedWall', 45, -45, 45, 45);
+    b.npc({ id: 'ijichi', x: 5, z: 40, facing: Math.PI, shop: 'travel' });
+    b.portal({ x: 9.5, z: 40, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
+    b.npc({ id: 'yuta', x: -4, z: 36, facing: Math.PI });
+    b.npc({ id: 'higuruma', x: -11, z: 37, facing: Math.PI * 0.85 });
+    b.npc({ id: 'hakari', x: 13, z: 35, facing: -Math.PI * 0.85 });
+    b.npc({ id: 'choso', x: -15, z: 33, facing: Math.PI * 0.75 });
+    b.spawner({ enemies: [{ id: 'manipCurse', w: 2 }, { id: 'shinJelly' }], x: 0, z: 20, w: 50, d: 14, count: 8, respawn: 10, level: [68, 72] });
+    b.spawner({ enemies: [{ id: 'shadowHound' }, { id: 'manipCurse' }], x: -26, z: -12, w: 18, d: 18, count: 6, respawn: 11, level: [70, 75] });
+    b.spawner({ enemies: [{ id: 'shinJelly' }, { id: 'manipCurse' }], x: 26, z: -12, w: 18, d: 18, count: 6, respawn: 11, level: [71, 76] });
+    b.spawner({ enemies: [{ id: 'manipCurse' }, { id: 'shadowHound', w: 2 }, { id: 'shinJelly' }], x: 0, z: 0, w: 70, d: 10, count: 7, respawn: 12, level: [74, 80] });
+    b.scene({ x: 0, z: -10, r: 4, flag: 'scene_crater', cond: done('m23'), lines: [
+      { who: 'narrator', text: 'The edge of the crater. The ground is cut clean, as if the world itself had been sliced along a single line.' },
+      { who: 'narrator', text: 'Somewhere in the rubble lies a pair of round black sunglasses.' },
+    ] });
+    b.boss({ id: 'uraume', x: -24, z: 6, r: 10, quest: 'm24', intro: [
+      { who: 'uraume', text: 'Insects. Lord Sukuna is resting. You will not disturb him.' },
+      { who: 'uraume', text: 'I have served him for a thousand years. I will serve him a thousand more. Ice Formation.' },
+    ] });
+    b.boss({ id: 'kenjaku', x: 24, z: 6, r: 10, quest: 'm25', intro: [
+      { who: 'kenjaku', text: 'Ah, there you are. I\'ve watched your generation with great interest. Humanity\'s potential, laid bare.' },
+      { who: 'kenjaku', text: 'A thousand years of experiments, and the Culling Game was the last. Let me see what you\'ve become.' },
+      { who: 'player', text: 'You started all of this. Shibuya. The Culling Game. You don\'t get to walk away from it.', only: ['yuji'] },
+      { who: 'player', text: 'You\'re wearing Geto-san\'s face. Take it off.', only: ['megumi'] },
+      { who: 'player', text: 'Experiments? You\'re just a parasite with stitches.', only: ['nobara'] },
+    ] });
+    b.boss({ id: 'sukunaTrue', x: 0, z: -24, r: 13, quest: 'm26', intro: [
+      { who: 'narrator', text: 'Four arms. Two faces. A mouth across the belly. The King of Curses, as he walked the earth a thousand years ago.' },
+      { who: 'sukuna', text: 'Satoru Gojo was the finest fight of the last thousand years. You will not be.' },
+      { who: 'sukuna', text: 'But you\'ve come this far, and I am in a generous mood. I will kill you with my own hands.' },
+      { who: 'player', text: 'I\'m not here to win your respect. I\'m here to end you.', only: ['yuji'] },
+      { who: 'player', text: 'You don\'t get to use what you took from us anymore.', only: ['megumi', 'nobara'] },
+    ] });
+  },
+};
+
+export const MAPS: Record<string, MapDef> = { sugisawa, hub, eishu, kawasaki, sewer, kyoto, yasohachi, shibuya, zenin, colony1, sendai, shinjuku, ...INTERIORS };
 /** Destinations Ijichi can drive to; `need` is the quest that must be accepted first. */
 export const TRAVEL_LIST: { id: string; need?: string; level: string }[] = [
   { id: 'hub', need: 'm2', level: 'Town' },
@@ -444,7 +780,12 @@ export const TRAVEL_LIST: { id: string; need?: string; level: string }[] = [
   { id: 'eishu', need: 'm4', level: 'Lv 7–13' },
   { id: 'kawasaki', need: 'm6', level: 'Lv 13–19' },
   { id: 'kyoto', need: 'm9', level: 'Lv 19–26' },
-  { id: 'shibuya', need: 'm11', level: 'Lv 26+' },
+  { id: 'yasohachi', need: 'm10y', level: 'Lv 21–27' },
+  { id: 'shibuya', need: 'm11', level: 'Lv 26–40' },
+  { id: 'zenin', need: 'm16', level: 'Lv 38–46' },
+  { id: 'colony1', need: 'm18', level: 'Lv 46–60' },
+  { id: 'sendai', need: 'm20', level: 'Lv 56–68' },
+  { id: 'shinjuku', need: 'm23', level: 'Lv 68–82' },
 ];
 export function travelUnlocked(ps: PlayerState, id: string) {
   const t = TRAVEL_LIST.find(x => x.id === id);

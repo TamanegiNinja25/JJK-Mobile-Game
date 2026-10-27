@@ -107,6 +107,63 @@ export const SPECS: Record<string, HumanoidSpec> = {
     skin: 0xe6c4a4, hair: 0xc8c4bc, hairStyle: 'short', eyes: 0x3a3030, outfit: 'casual',
     top: 0xc8d6de, bottom: 0xb8c6ce, accent: 0xc8d6de, shoes: 0x5a5a5a, height: 0.96, bulk: 0.95,
   },
+  yuta: {
+    skin: 0xf1d6c2, hair: 0x15151c, hairStyle: 'yuta', eyes: 0x2a2a3a, outfit: 'uniform',
+    top: 0xeeeef0, bottom: 0xeeeef0, accent: 0xd8d8de, shoes: 0x1a1a1e, height: 1.04, extras: ['eyeBags', 'katana', 'ring'],
+  },
+  naoya: {
+    skin: 0xf0d4bc, hair: 0xe8d48a, hairStyle: 'naoya', eyes: 0x5a3a2a, outfit: 'kimono',
+    top: 0x2a2a34, bottom: 0x3a3a48, accent: 0xd8c8a0, shoes: 0x111111, height: 1.08, extras: ['piercings'],
+  },
+  higuruma: {
+    skin: 0xe2c0a0, hair: 0x1e1a18, hairStyle: 'short', eyes: 0x2a2a2a, outfit: 'suit',
+    top: 0x24262e, bottom: 0x24262e, accent: 0xd8b04a, shoes: 0x111111, inner: 0xe8e4dc, height: 1.1, extras: ['tie', 'stubble', 'eyeBags', 'gavel'],
+  },
+  hakari: {
+    skin: 0xf0d0b4, hair: 0xb8b4a8, hairStyle: 'pompadour', eyes: 0x4a3a2a, outfit: 'uniformHigh',
+    top: 0x1a1c2a, bottom: 0x1a1c2a, accent: GOLD, shoes: 0x16161a, height: 1.12, bulk: 1.12,
+  },
+  kashimo: {
+    skin: 0xf2dcc8, hair: 0x9adfff, hairStyle: 'kashimo', eyes: 0x3a6a9a, outfit: 'robe',
+    top: 0x2a3448, bottom: 0x1e2636, accent: 0x6adfff, shoes: 0x16161a, inner: 0xe8e8f0, height: 1.06, extras: ['staff', 'cursedEyes'],
+  },
+  ishigori: {
+    skin: 0xdcb08a, hair: 0x15151a, hairStyle: 'pompadour', eyes: 0x2a2a2a, outfit: 'tank',
+    top: 0x2e3440, bottom: 0x2a2e38, accent: 0x2a2e38, shoes: 0x111111, height: 1.22, bulk: 1.65, extras: ['scars'],
+  },
+  uro: {
+    skin: 0xf2dac8, hair: 0x2a2030, hairStyle: 'uro', eyes: 0x5a4a6a, outfit: 'robe',
+    top: 0x2a2236, bottom: 0x1e1828, accent: 0x9a8acc, shoes: 0x14121a, inner: 0xd8d0e8, height: 1.04, bulk: 0.92,
+  },
+  uraume: {
+    skin: 0xf4e8e0, hair: 0xf0f2f8, hairStyle: 'bob', eyes: 0xc83a4a, outfit: 'kimono',
+    top: 0xe8ecf4, bottom: 0xc8d0e0, accent: 0x9ab0d0, shoes: 0x2a2a34, height: 1.04, bulk: 0.9, extras: ['cursedEyes'],
+  },
+  mai: {
+    skin: 0xf2d4b8, hair: 0x1e2a24, hairStyle: 'mai', eyes: 0x6a5a2a, outfit: 'uniformSkirt',
+    top: 0x22242e, bottom: 0x22242e, accent: GOLD, shoes: 0x1a1a1e, height: 0.96, bulk: 0.88,
+  },
+  hei: {
+    skin: 0xe4c4a6, hair: 0x1a1612, hairStyle: 'short', eyes: 0x2a2020, outfit: 'kimono',
+    top: 0x22222a, bottom: 0x1a1a20, accent: 0x8a2a2a, shoes: 0x111111, height: 1.08, bulk: 1.15, extras: ['katana', 'mask'],
+  },
+  heiB: {
+    skin: 0xdcbc9c, hair: 0x2a2018, hairStyle: 'bald', eyes: 0x2a2020, outfit: 'robe',
+    top: 0x2a2a30, bottom: 0x1a1a20, accent: 0x9a7a3a, shoes: 0x111111, inner: 0x8a2a2a, height: 1.04, bulk: 1.05, extras: ['goatee'],
+  },
+  cgBrawler: {
+    skin: 0xe8c4a2, hair: 0x6a3a1a, hairStyle: 'naoya', eyes: 0x2a2020, outfit: 'casual',
+    top: 0x6a2a2a, bottom: 0x2a2e3a, accent: 0x6a2a2a, shoes: 0xe8e8e8, height: 1.06, bulk: 1.25, extras: ['scars', 'gloves'],
+  },
+  cgCaster: {
+    skin: 0xf0d4bc, hair: 0x2a3a2a, hairStyle: 'junpei', eyes: 0x3a6a3a, outfit: 'casual',
+    top: 0x2a3a2e, bottom: 0x1e2224, accent: 0x2a3a2e, shoes: 0x2a2a2a, extras: ['eyeBags', 'scarf'], inner: 0xc8a03a,
+  },
+  sukunaHeian: {
+    skin: 0xf0c4a2, hair: 0xe57b90, hairStyle: 'yuji', eyes: 0xff2a3a, outfit: 'kimono',
+    top: 0xf2eee4, bottom: 0x1a1a1e, accent: 0x111111, shoes: 0x1a1a1a, inner: 0x111111, height: 1.48, bulk: 1.55,
+    extras: ['sukunaMarks', 'cursedEyes', 'secondFace', 'bellyMouth'],
+  },
   civilianA: { skin: 0xf0d0b0, hair: 0x2a2420, hairStyle: 'short', eyes: 0x333333, outfit: 'casual', top: 0x5a6a8a, bottom: 0x2a2e3a, accent: 0x5a6a8a, shoes: 0x333333 },
   civilianB: { skin: 0xe8c8a8, hair: 0x6a4a30, hairStyle: 'long', eyes: 0x4a3020, outfit: 'casual', top: 0xb05a6a, bottom: 0x302a2a, accent: 0xb05a6a, shoes: 0x3a2a2a, bulk: 0.9 },
   civilianC: { skin: 0xd8b090, hair: 0x111111, hairStyle: 'bun', eyes: 0x222222, outfit: 'suit', top: 0x3a3a40, bottom: 0x3a3a40, accent: 0x3a3a40, shoes: 0x111111, inner: 0x7a2a2a, extras: ['tie'] },
@@ -117,7 +174,7 @@ export function buildCharacter(id: string): Humanoid {
   if (id === 'panda') return buildPanda();
   const spec = SPECS[id] ?? SPECS.civilianA;
   const h = buildHumanoid(spec);
-  if (id === 'sukuna') addSukunaArms(h);
+  if (id === 'sukuna' || id === 'sukunaHeian') addSukunaArms(h);
   return h;
 }
 

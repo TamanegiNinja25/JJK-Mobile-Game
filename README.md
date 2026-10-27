@@ -22,7 +22,7 @@
 </div>
 
 Play as Yuji, Megumi or Nobara and fight through the story from the Sugisawa High
-rooftop to the Shibuya Incident. Combat is real-time with combos, skills, dodges and
+rooftop, through the Shibuya Incident and the Culling Game, to the Shinjuku Showdown. Combat is real-time with combos, skills, dodges and
 Black Flashes, wrapped in a classic Zenonia-style RPG loop: quests, loot, stat points,
 skill trees, gear upgrades and boss fights. Schools, cinemas and stations can be
 entered, and their halls are laid out fresh every time you walk in.
@@ -83,6 +83,14 @@ and runs without an internet connection.
     <td><img src="docs/screenshots/map.jpg" alt="World map"><br><sub><b>Map</b>: tap an area to travel; ⛩ travel points, ▣ enterable buildings, ◆ objective</sub></td>
   </tr>
   <tr>
+    <td><img src="docs/screenshots/eso.jpg" alt="Eso at Yasohachi Bridge"><br><sub><b>Death Painting</b>: Eso's Rot Technique on the banks of Yasohachi Bridge</sub></td>
+    <td><img src="docs/screenshots/naoya.jpg" alt="Naoya Zen'in"><br><sub><b>Naoya Zen'in</b> plans his 24-frame path, then runs it. Step off the lines</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/higuruma.jpg" alt="Deadly Sentencing"><br><sub><b>Deadly Sentencing</b>: lose Higuruma's trial and your techniques are confiscated</sub></td>
+    <td><img src="docs/screenshots/sukuna-true.jpg" alt="Sukuna's true form"><br><sub><b>Shinjuku Showdown</b>: Sukuna's true form, World-Cutting Slash inside the Shrine</sub></td>
+  </tr>
+  <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/reforge.jpg" alt="Mechamaru's reforge" width="50%"><br><sub><b>Mechamaru's Reforge</b>: +10 gear on to +30, every stat change explained</sub></td>
   </tr>
 </table>
@@ -98,7 +106,7 @@ and runs without an internet connection.
    open the APK.
 
 **Updating:** from v1.2.0 on, every release is signed with the same key, so a new APK
-installs straight over the old one and keeps your saves. Versions 1.0.0 and 1.1.0 were
+(such as 1.3.0 over 1.2.0) installs straight over the old one and keeps your saves. Versions 1.0.0 and 1.1.0 were
 each signed with a one-off key, so moving from those needs one uninstall first. Before
 uninstalling anything, you can keep your progress with **System → Copy Save Code** (from
 1.2.0 on) and paste it back under **Transfer Save** on the title screen.
@@ -162,18 +170,19 @@ Sovereign (Lv 80) gear starts dropping.
 
 ### Enterable buildings
 
-Sugisawa High, the Jujutsu High dorm, Eishu's admin block, the Kawasaki cinema and
-Shibuya Station each have a lit doorway. Inside, the floor plan is generated on every
+Sugisawa High, the Jujutsu High dorm, Eishu's admin block, the Kawasaki cinema,
+Shibuya Station and the Zen'in clan's cursed spirit storehouse each have a lit doorway. Inside, the floor plan is generated on every
 visit: a random network of halls and rooms with a few loops, themed furniture
-(classrooms, cells, screening rooms, platforms, tatami bedrooms) and cutaway walls on
+(classrooms, cells, screening rooms, platforms, tatami bedrooms, storehouse crates) and cutaway walls on
 the camera side. The story beat for each building sits in the room farthest from the
 door. Some rooms hide sealed caches with yen and gear, and the minimap starts dark and
 fills in as you explore.
 
 ### The story
 
-Five chapters plus an epilogue, with 16 main quests and 14 side quests across seven
-areas and five interiors. Key moments follow the anime and manga:
+Eight chapters, with 31 main quests and 20 side quests across twelve areas and six
+interiors. The main line follows the manga from the first finger to the Shinjuku
+Showdown:
 
 1. **Sugisawa Third High.** Yuji's grandfather's last words, the Occult Research Club
    seniors who broke the seal, and the finger Yuji swallows.
@@ -181,18 +190,42 @@ areas and five interiors. Key moments follow the anime and manga:
    Sukuna's binding vow, and Tadashi Okazaki's name tag for his mother.
 3. **Kawasaki.** Nanami, Screen 3 of the cinema, Junpei and Mahito, and movie training
    with Yaga's cursed dolls while Yuji is "dead".
-4. **Kyoto Goodwill Event.** Todo asks what your type is, then Hanami invades.
-5. **Shibuya Incident.** Veil anchors, the Prison Realm on B5F guarded by Choso, then
-   Dagon, Jogo and the King of Curses.
-6. **Epilogue.** Mahoraga, who adapts to your damage, and a Soul Resonance rematch with
-   Mahito alongside Todo. That fight ends with the man wearing Geto's face.
+4. **Kyoto Goodwill Event and Death Painting.** Todo asks what your type is, then Hanami
+   invades. After that, students start dying after crossing **Yasohachi Bridge**, and the
+   Death Painting brothers Kechizu and Eso are on the riverbank.
+5. **Shibuya Incident.** Veil anchors, the Prison Realm on B5F guarded by Choso (who
+   wants revenge for his brothers), then Dagon, Jogo and the King of Curses.
+6. **Perfect Preparation.** The higher-ups send Yuta Okkotsu to carry out an execution
+   in the ruins of Shibuya. Then Maki goes home to the **Zen'in Clan Estate**: Mai's
+   last gift in the cursed spirit storehouse, the Hei corps and Naoya. Side stories:
+   Mahoraga, and a Soul Resonance rematch with Mahito that ends with Kenjaku.
+7. **The Culling Game.** Inside **Tokyo Colony No. 1** you meet Hakari, stand trial
+   before Higuruma and fight Kashimo. In the **Sendai Colony** you join Yuta against
+   Kurourushi's swarm, Ryu Ishigori's Granite Blast and Takako Uro.
+8. **Shinjuku Showdown.** Gojo returns from the Prison Realm and goes to face Sukuna
+   alone. What follows is Uraume, Kenjaku and, finally, Sukuna in his four-armed
+   Heian form.
+
+Gojo is absent while he is sealed, and Megumi while Sukuna holds his body. Old saves
+pick up where they left off: a save already in Shibuya counts the new Death Painting
+chapter as done.
 
 ### Bosses and domains
 
-Ten bosses, each with its own move set, telegraphs, HP phases and summons. Mahito,
-Dagon, Jogo and Sukuna expand their **domains**: everyone inside takes sure-hit damage.
-Survive it, or cast your ultimate inside it to start a **domain clash** and break it.
-A boss expanding its domain also charges your gauge.
+21 bosses, each with its own move set, telegraphs, HP phases and summons. Mahito,
+Dagon, Jogo, Sukuna and Kenjaku expand their **domains**: everyone inside takes sure-hit
+damage. Survive it, or cast your ultimate inside it to start a **domain clash** and break
+it. A boss expanding its domain also charges your gauge.
+
+Some of the later bosses play by their own rules:
+
+- **Naoya** draws his whole 24-frame path before he moves. Step off the lines.
+- **Higuruma**'s Deadly Sentencing puts you on trial. Clash before the verdict, or your
+  techniques are confiscated and his gavel becomes the Executioner's Sword.
+- **Uro** folds the sky around herself, and projectiles slide off it.
+- **Uraume**'s Frost Calm slows everything it touches.
+- **Sukuna's true form** turns Mahoraga's wheel, adapting to whatever you use most, and
+  telegraphs a World-Cutting Slash across the whole arena.
 
 ### Look and sound
 
@@ -200,9 +233,10 @@ A boss expanding its domain also charges your gauge.
   while faces stay smooth. Ink outlines, rim light, glowing cursed energy and bloom.
 - Characters carry their trademarks: Gojo's blindfold, Nanami's goggles and
   leopard-print tie, Maki's glasses and polearm, Inumaki's zipped collar, Todo's scar,
-  Choso's blood stripe.
-- Day and night lighting, dynamic lights and weather: rain, sakura, falling leaves, ash
-  and fireflies.
+  Choso's blood stripe, Yuta's white uniform and katana, Higuruma's gavel, Kashimo's staff,
+  and Sukuna's four arms and second face in his true form.
+- Day and night lighting, dynamic lights and weather: rain, sakura, falling leaves, ash,
+  embers, fireflies and snow.
 - Trees, roofs and walls fade out when they would hide your character.
 - Synthesized sound for every action, timed to the animation: footsteps land on each
   foot plant and change with the surface, swings sound on the wind-up and hits on the
@@ -258,7 +292,7 @@ To work on the game in a desktop browser, run `npm run serve` in `web/` and open
 **CI:** [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml)
 type-checks, bundles and builds debug and release APKs on every push and pull request.
 To ship a version, publish a release on GitHub (or run **Build APK** by hand from the
-Actions tab with a tag such as `v1.2.0`); the workflow builds the APK and attaches it
+Actions tab with a tag such as `v1.3.0`); the workflow builds the APK and attaches it
 to that release. Pushing a `v*` tag does the same.
 
 **Signing:** Android only installs an APK as an update when it carries the same

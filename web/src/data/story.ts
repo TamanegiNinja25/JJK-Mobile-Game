@@ -46,14 +46,16 @@ export const NPC_NAMES: Record<string, string> = {
   ijichi: 'Kiyotaka Ijichi', nanami: 'Kento Nanami', junpei: 'Junpei Yoshino', todo: 'Aoi Todo', miwa: 'Kasumi Miwa', meimei: 'Mei Mei',
   yuji: 'Yuji Itadori', megumi: 'Megumi Fushiguro', nobara: 'Nobara Kugisaki', narrator: '', sukuna: 'Ryomen Sukuna', mahito: 'Mahito',
   hanami: 'Hanami', jogo: 'Jogo', dagon: 'Dagon', civilian: 'Civilian', student: 'Student', board: 'Notice Board',
-  mechamaru: 'Mechamaru', sasaki: 'Sasaki (Occult Club)', iguchi: 'Iguchi (Occult Club)', choso: 'Choso', kenjaku: '???', grandpa: 'Wasuke Itadori',
+  mechamaru: 'Mechamaru', sasaki: 'Sasaki (Occult Club)', iguchi: 'Iguchi (Occult Club)', choso: 'Choso', kenjaku: 'Kenjaku', grandpa: 'Wasuke Itadori',
+  kechizu: 'Kechizu', eso: 'Eso', yuta: 'Yuta Okkotsu', mai: 'Mai Zen\'in', naoya: 'Naoya Zen\'in', hakari: 'Kinji Hakari', higuruma: 'Hiromi Higuruma',
+  kashimo: 'Hajime Kashimo', ishigori: 'Ryu Ishigori', uro: 'Takako Uro', uraume: 'Uraume',
 };
 
 /** How the UI refers to people in tight spaces (map labels, quest log). */
 export const NPC_SHORT: Record<string, string> = {
   gojo: 'Gojo', yaga: 'Yaga', shoko: 'Shoko', maki: 'Maki', panda: 'Panda', inumaki: 'Inumaki', ijichi: 'Ijichi', nanami: 'Nanami',
   junpei: 'Junpei', todo: 'Todo', miwa: 'Miwa', meimei: 'Mei Mei', sasaki: 'Sasaki', iguchi: 'Iguchi', yuji: 'Yuji', megumi: 'Megumi', nobara: 'Nobara',
-  mechamaru: 'Mechamaru',
+  mechamaru: 'Mechamaru', yuta: 'Yuta', hakari: 'Hakari', higuruma: 'Higuruma', ishigori: 'Ishigori', choso: 'Choso',
 };
 
 export const QUESTS: QuestDef[] = [
@@ -423,9 +425,77 @@ export const QUESTS: QuestDef[] = [
     rewards: { exp: 4500, gold: 1500, items: [{ id: 'g1Uniform', rarity: 1 }] },
   },
 
+  // ===================== Chapter 4.5: Death Painting =====================
+  {
+    id: 'm10y', name: 'Yasohachi Bridge', type: 'main', chapter: 4, giver: 'gojo', turnIn: 'ijichi', prereq: ['m10'], level: 21,
+    summary: 'Students in Saitama are dying after crossing a bridge at night. Cross Yasohachi Bridge and clear the curses on its banks.',
+    objectives: [
+      { type: 'reach', map: 'yasohachi', label: 'Go to Yasohachi Bridge' },
+      { type: 'kill', target: ['riverCurse', 'bloodFetus', 'riverLeech'], count: 10, map: 'yasohachi', label: 'Clear the riverbanks' },
+    ],
+    offer: [
+      { who: 'gojo', text: 'Field trip! Saitama this time. Three middle schoolers died after walking home across the same bridge at night. Yasohachi Bridge.' },
+      { who: 'gojo', text: 'Each of them had a cursed mark on their skin before they died. The curse only goes after people who have crossed it. So... you\'re going to cross it!' },
+      { who: 'player', text: 'A curse that kills kids for walking home. Okay. Let\'s go.', only: ['yuji'] },
+      { who: 'player', text: 'A bridge in the middle of nowhere. Very glamorous. Fine.', only: ['nobara'] },
+      { who: 'player', text: 'If it marks everyone who crosses, the residents are next. We should move tonight.', only: ['megumi'] },
+      { who: 'gojo', text: 'Ijichi\'s driving. Clear the banks, then check in with him. And don\'t look at the water too long.' },
+    ],
+    progress: [{ who: 'ijichi', text: 'The curses gather on both banks after dark. P-please don\'t fall in the river.' }],
+    complete: [
+      { who: 'ijichi', text: 'The banks are quiet... but this residue doesn\'t belong to the bridge curse. Something else came here tonight. Something made of blood.' },
+      { who: 'narrator', text: 'Down by the river, two figures are digging through the reeds. One is small and crouched, its face crowded with eyes. The other is tall, with a split, two-toned face.' },
+      { who: 'ijichi', text: 'Those aren\'t curses. They\'re cursed wombs that took on flesh. Death Paintings. They must be here for something.' },
+    ],
+    rewards: { exp: 9000, gold: 5000, items: [{ id: 'hpL', qty: 3 }, { id: 'fragment', qty: 8 }] },
+    unlock: ['yasohachi'],
+  },
+  {
+    id: 'm10k', name: 'Kechizu', type: 'main', chapter: 4, giver: 'ijichi', prereq: ['m10y'], autoAccept: true,
+    summary: 'The smaller Death Painting is on the west bank. Defeat Kechizu without letting his blood touch you.',
+    objectives: [{ type: 'boss', target: 'kechizu', label: 'Defeat Kechizu' }],
+    offer: [{ who: 'ijichi', text: 'The small one is on the south-west bank. Its blood is corrosive. If it gets on you, it will keep burning. Please be careful!' }],
+    progress: [{ who: 'ijichi', text: 'The west bank, by the reeds. Don\'t let it spit on you.' }],
+    complete: [
+      { who: 'narrator', text: 'Kechizu collapses into the reeds, screaming for his brother until he can\'t.' },
+      { who: 'narrator', text: 'Across the river, someone screams back. It is not a scream of fear.' },
+      { who: 'ijichi', text: 'The other one... it\'s waiting for you on the north bank. By the graves.' },
+    ],
+    rewards: { exp: 8000, gold: 4500, items: [{ id: 'core', qty: 2 }] },
+  },
+  {
+    id: 'm10e', name: 'Death Painting', type: 'main', chapter: 4, giver: 'ijichi', prereq: ['m10k'], autoAccept: true,
+    summary: 'Eso, the elder of the two Death Paintings, wants revenge for his brother. Defeat him among the graves on the north bank.',
+    objectives: [{ type: 'boss', target: 'eso', label: 'Defeat Eso' }],
+    offer: [{ who: 'ijichi', text: 'Eso. The elder brother. He\'s not hiding. He wants you to come to him.' }],
+    progress: [{ who: 'ijichi', text: 'The graveyard, across the bridge on the north bank.' }],
+    complete: [
+      { who: 'narrator', text: 'Eso falls to his knees. With the last of his strength, he looks back across the river toward his brother.' },
+      { who: 'eso', text: 'Kechizu... I\'m sorry. Our big brother... Choso... will...' },
+      { who: 'narrator', text: 'The Death Paintings dissolve into the black water. Among the reeds lies what they came for: a finger.' },
+      { who: 'player', text: 'They cried for each other. They were curses... and they still cried.', only: ['yuji'] },
+      { who: 'player', text: 'Nine Death Paintings were stolen from the school years ago. Two are gone now. And there\'s an older brother.', only: ['megumi'] },
+      { who: 'player', text: 'I\'m not feeling sorry for them. ...Okay, a little. Don\'t tell anyone.', only: ['nobara'] },
+      { who: 'ijichi', text: 'A finger... and a name. Principal Yaga needs to hear about this. Whoever Choso is, he will come looking for whoever did this.' },
+    ],
+    rewards: { exp: 12000, gold: 7000, fingers: 1, items: [{ id: 'core', qty: 3 }, { id: 'fragment', qty: 12 }] },
+  },
+  {
+    id: 's_marks', name: 'The Cursed Marks', type: 'side', chapter: 4, giver: 'ijichi', prereq: ['m10y'], level: 21,
+    summary: 'Collect 6 Cursed Mark Residue from the curses at Yasohachi Bridge so Shoko can lift the marks from the survivors.',
+    objectives: [{ type: 'collect', item: 'cursedMark', count: 6, label: 'Cursed Mark Residue' }],
+    offer: [
+      { who: 'ijichi', text: 'Two more students in the town crossed the bridge last week. They have the mark. Ieiri-san thinks she can lift it — if she can study the curse.' },
+      { who: 'ijichi', text: 'The curses on the banks carry the same residue. Six samples would be enough.' },
+    ],
+    progress: [{ who: 'ijichi', text: 'Six samples. The river curses and the womb spawn both carry it.' }],
+    complete: [{ who: 'ijichi', text: 'This should be enough. I\'ll take them to Ieiri-san tonight. Those two kids are going to be okay. Thank you.' }],
+    rewards: { exp: 6000, gold: 4000, items: [{ id: 'vowCharm', rarity: 1 }, { id: 'hpL', qty: 2 }] },
+  },
+
   // ===================== Chapter 5: Shibuya Incident =====================
   {
-    id: 'm11', name: 'October 31st', type: 'main', chapter: 5, giver: 'yaga', prereq: ['m10'], level: 24,
+    id: 'm11', name: 'October 31st', type: 'main', chapter: 5, giver: 'yaga', prereq: ['m10e'], level: 25,
     summary: 'A veil has fallen over Shibuya. Break its anchors and fight through the curses.',
     objectives: [
       { type: 'reach', map: 'shibuya', label: 'Enter Shibuya' },
@@ -504,8 +574,8 @@ export const QUESTS: QuestDef[] = [
       { who: 'sukuna', text: 'Hah... Hahaha! So this is the strength of this era. You\'ve earned a moment of my attention. Only a moment.' },
       { who: 'narrator', text: 'The manifestation scatters into black smoke, and the fingers fall silent. Above Shibuya, the veil cracks open to the night sky.' },
       { who: 'yaga', text: 'You did what grown sorcerers could not. Rest now. Satoru\'s seal will take time to break — but we have time, thanks to you.' },
-      { who: 'narrator', text: 'THE END — of this chapter. The Culling Game will come. For now: free roam, bounties, and one more shadow that waits in Shibuya...' },
-      { who: 'narrator', text: 'From now on, the curses of Japan grow stronger as you do. The road to level 100 is open.' },
+      { who: 'narrator', text: 'The Shibuya Incident is over. But the higher-ups are already deciding who to blame, and somewhere a man with Geto\'s face is smiling.' },
+      { who: 'narrator', text: 'From now on, the curses of Japan grow stronger as you do. Principal Yaga will send for you soon.' },
     ],
     rewards: { exp: 30000, gold: 20000, fingers: 1, items: [{ id: 'core', qty: 6 }, { id: 'gojoJacket' }] },
   },
@@ -518,15 +588,14 @@ export const QUESTS: QuestDef[] = [
     rewards: { exp: 14000, gold: 6000, items: [{ id: 'hpL', qty: 5 }, { id: 'ceL', qty: 5 }] },
   },
   {
-    id: 's_mahoraga', name: 'The Strongest Shikigami', type: 'side', chapter: 6, giver: 'gojo', prereq: ['m14'], level: 40,
-    summary: 'A Divine General stalks the depths of Shibuya. Defeat Mahoraga.',
+    id: 's_mahoraga', name: 'The Strongest Shikigami', type: 'side', chapter: 6, giver: 'yuta', prereq: ['m14'], level: 40,
+    summary: 'A Divine General stalks the ruins of Shibuya. Defeat Mahoraga.',
     objectives: [{ type: 'boss', target: 'mahoraga', label: 'Defeat Mahoraga' }],
     offer: [
-      { who: 'gojo', text: 'Guess who\'s back! Seals are so last season.' },
-      { who: 'gojo', text: 'Bad news though. Something adaptive is wandering Shibuya. Eight-handled wheel, very rude. Every time you hit it, it learns.' },
-      { who: 'gojo', text: 'Beat it before it adapts to you. Or don\'t, and I\'ll do it. But then I get the credit.' },
+      { who: 'yuta', text: 'During the incident, someone summoned a shikigami nobody could control. Mahoraga, the strongest of the Ten Shadows. It\'s still loose in the ruins.' },
+      { who: 'yuta', text: 'Eight-handled wheel. Every time you hit it, the wheel turns and it learns. Mix up your attacks, and beat it before it adapts to you.' },
     ],
-    complete: [{ who: 'gojo', text: 'Okay, wow. I take back everything I said about you being a first-year. Mostly.' }],
+    complete: [{ who: 'yuta', text: 'You actually beat it. Gojo-sensei would be proud. He\'d also tell everyone he taught you that.' }],
     rewards: { exp: 60000, gold: 40000, items: [{ id: 'core', qty: 10 }], classItems: { yuji: 'bfWraps', megumi: 'dragonBone', nobara: 'crownNail' } },
   },
   {
@@ -551,6 +620,297 @@ export const QUESTS: QuestDef[] = [
       { who: 'todo', text: 'That was Suguru Geto\'s face... but not his soul. Brother, the real enemy has only just shown himself.' },
     ],
     rewards: { exp: 50000, gold: 30000, items: [{ id: 'core', qty: 8 }, { id: 'hpL', qty: 5 }] },
+  },
+
+  // ===================== Chapter 6: Perfect Preparation =====================
+  {
+    id: 'm15', name: 'The Executioner', type: 'main', chapter: 6, giver: 'yaga', turnIn: 'yuta', prereq: ['m14'], level: 36,
+    summary: 'The higher-ups have ordered an execution, and sent a special grade sorcerer to carry it out. Yuta Okkotsu waits in the ruins of Shibuya.',
+    objectives: [{ type: 'boss', target: 'yuta', label: 'Face Yuta Okkotsu in Shibuya' }],
+    offer: [
+      { who: 'yaga', text: 'The higher-ups have made their decision. They are blaming Shibuya on Sukuna\'s vessel, and on everyone who stood beside him.' },
+      { who: 'yaga', text: 'Your suspended execution has been revoked, Yuji. A special grade sorcerer has been ordered to carry it out.', only: ['yuji'] },
+      { who: 'yaga', text: 'Yuji\'s execution has been ordered, and anyone who protects him is to be treated the same. A special grade sorcerer has been sent.', not: ['yuji'] },
+      { who: 'yaga', text: 'Yuta Okkotsu. He returned from abroad this morning. He is waiting for you in the ruins of Shibuya.' },
+      { who: 'player', text: 'If that\'s what they decided... then I\'ll face him. I\'m done running.', only: ['yuji'] },
+      { who: 'player', text: 'Okkotsu-senpai wouldn\'t take an order like that without a reason. I\'m going.', only: ['megumi'] },
+      { who: 'player', text: 'Execute Yuji? Over my dead body. Which is probably what they\'re hoping for.', only: ['nobara'] },
+    ],
+    progress: [{ who: 'yaga', text: 'He waits at the centre of Shibuya. Be careful. He is the strongest of your generation.' }],
+    complete: [
+      { who: 'yuta', text: '...You can stop now. I was never going to kill you.' },
+      { who: 'yuta', text: 'I made a binding vow with the higher-ups so they would give the job to me. That way, nobody else could take it.' },
+      { who: 'yuta', text: 'Ieiri-san will sign the report. As far as the higher-ups know, it\'s done.' },
+      { who: 'yuta', text: 'Before Shibuya, Gojo-sensei asked me to look after you if anything happened to him. I think he knew.' },
+      { who: 'yuta', text: 'Something bigger is coming. The man with Geto-san\'s face — his name is Kenjaku — has started a game. All of Japan is the board.' },
+    ],
+    rewards: { exp: 50000, gold: 28000, items: [{ id: 'yutaRing', rarity: 2 }, { id: 'core', qty: 6 }] },
+  },
+  {
+    id: 'm16', name: 'The Cursed Spirit Storehouse', type: 'main', chapter: 6, giver: 'maki', prereq: ['m15'], level: 38,
+    summary: 'Maki is going home to the Zen\'in estate to take the clan\'s cursed tools. Go with her, and fight through the cursed spirit storehouse.',
+    objectives: [
+      { type: 'reach', map: 'zenin', label: 'Go to the Zen\'in estate' },
+      { type: 'reach', map: 'zeninIn', label: 'Enter the cursed spirit storehouse' },
+      { type: 'kill', target: ['cagedCurse', 'starvedHound'], count: 10, map: 'zeninIn', label: 'Destroy the storehouse curses' },
+    ],
+    offer: [
+      { who: 'maki', text: 'I\'m going back to the Zen\'in estate. The old head left a will naming Megumi his heir, so naturally the clan voted to have him killed.' },
+      { who: 'maki', text: 'The clan keeps a storehouse full of cursed tools. I\'m taking all of them. Mai says she\'s coming too. She says she has something to give me.' },
+      { who: 'maki', text: 'Want to help? Fine. Don\'t get in my way, and don\'t feel sorry for anyone in there.' },
+    ],
+    progress: [{ who: 'maki', text: 'The storehouse is the old building by the east wall.' }],
+    complete: [
+      { who: 'maki', text: '...She made me this with the last of her cursed energy. A sword. And she took the rest of hers with her.' },
+      { who: 'maki', text: 'There\'s nothing left in me now for the clan to call "cursed energy". I\'m finally whole.' },
+      { who: 'maki', text: 'The Hei are gathering in the courtyard. Naoya\'s with them. Let\'s finish this.' },
+    ],
+    rewards: { exp: 45000, gold: 24000, items: [{ id: 'core', qty: 5 }, { id: 'hpL', qty: 4 }] },
+    unlock: ['zenin'],
+  },
+  {
+    id: 'm17', name: 'Projection Sorcery', type: 'main', chapter: 6, giver: 'maki', prereq: ['m16'], autoAccept: true,
+    summary: 'Break through the Hei corps, then defeat Naoya Zen\'in in the inner courtyard.',
+    objectives: [
+      { type: 'kill', target: ['heiGuard', 'heiCaster', 'heiCaptain'], count: 12, map: 'zenin', label: 'Defeat the Hei corps' },
+      { type: 'boss', target: 'naoya', label: 'Defeat Naoya Zen\'in' },
+    ],
+    offer: [
+      { who: 'maki', text: 'The Hei first. Then Naoya. His technique splits a second into twenty-four frames, and he has to stick to the motion he plans.' },
+      { who: 'maki', text: 'Watch where his path is drawn, step off it, and hit him when he lands. He hates that.' },
+    ],
+    progress: [{ who: 'maki', text: 'Courtyard. Hei first, then Naoya.' }],
+    complete: [
+      { who: 'narrator', text: 'Naoya drags himself across the raked gravel, swearing at the sky. His rhythm is broken at last.' },
+      { who: 'maki', text: 'The Zen\'in clan is finished. Megumi can do whatever he wants with the name.' },
+      { who: 'maki', text: '...Thanks. Don\'t make it weird.' },
+      { who: 'narrator', text: 'Across the country, every screen flickers. A man with Geto\'s face announces the rules of a game. The Culling Game has begun.' },
+    ],
+    rewards: { exp: 60000, gold: 32000, items: [{ id: 'frameSandals', rarity: 2 }, { id: 'core', qty: 6 }] },
+  },
+
+  // ===================== Chapter 7: The Culling Game =====================
+  {
+    id: 'm18', name: 'The Culling Game', type: 'main', chapter: 7, giver: 'yuta', turnIn: 'hakari', prereq: ['m17'], level: 46,
+    summary: 'Enter Tokyo Colony No. 1, survive as a player, and meet Kinji Hakari inside the barrier.',
+    objectives: [
+      { type: 'reach', map: 'colony1', label: 'Enter Tokyo Colony No. 1' },
+      { type: 'kill', target: ['cgBrawler', 'cgCaster', 'barrierCurse'], count: 15, map: 'colony1', label: 'Survive as a player' },
+    ],
+    offer: [
+      { who: 'yuta', text: 'Kenjaku\'s game has ten colonies, each sealed by a barrier. Anyone inside with a technique is a player. Players score points by killing other players.' },
+      { who: 'yuta', text: 'There is a player in Tokyo Colony No. 1 whose technique cancels other techniques. With her help, the Prison Realm can be opened.' },
+      { who: 'yuta', text: 'Gojo-sensei comes back. But we need points to find her, and to change the rules. Lots of points.' },
+      { who: 'yuta', text: 'Kinji Hakari is already inside Colony No. 1. Meet him at the barrier. I\'m heading to Sendai.' },
+    ],
+    progress: [{ who: 'hakari', text: 'The fun\'s inside! Score some points, then come find me.' }],
+    complete: [
+      { who: 'hakari', text: 'Not bad! You fight like someone who actually enjoys it. That\'s rare in this business.' },
+      { who: 'hakari', text: 'There\'s a guy here racking up points like crazy. Hiromi Higuruma. Ex-lawyer. Over a hundred points in a week.' },
+      { who: 'hakari', text: 'Word is he\'s a decent man who snapped. Either way, he\'s sitting on exactly what we need.' },
+    ],
+    rewards: { exp: 70000, gold: 36000, items: [{ id: 'core', qty: 6 }, { id: 'ceL', qty: 4 }] },
+    unlock: ['colony1'],
+  },
+  {
+    id: 'm19', name: 'Deadly Sentencing', type: 'main', chapter: 7, giver: 'hakari', prereq: ['m18'], autoAccept: true,
+    summary: 'Hiromi Higuruma holds court in the colony plaza. Defeat him — and survive his trial.',
+    objectives: [{ type: 'boss', target: 'higuruma', label: 'Defeat Hiromi Higuruma' }],
+    offer: [
+      { who: 'hakari', text: 'He\'s in the plaza to the north. Watch his domain. It doesn\'t hurt you — it puts you on trial.' },
+      { who: 'hakari', text: 'Lose the trial and he confiscates your technique. If he starts reading charges, clash with your own domain, fast.' },
+    ],
+    progress: [{ who: 'hakari', text: 'The plaza. Don\'t lose the trial!' }],
+    complete: [
+      { who: 'hakari', text: 'A hundred points! JACKPOT! We can add a rule now — one that lets players hand points to each other.' },
+      { who: 'hakari', text: 'Okkotsu\'s in the Sendai colony, and it\'s a four-way bloodbath up there. He could use you.' },
+    ],
+    rewards: { exp: 90000, gold: 45000, items: [{ id: 'lawyerBadge', rarity: 2 }, { id: 'core', qty: 8 }] },
+  },
+  {
+    id: 's_kashimo', name: 'The Thunder God', type: 'side', chapter: 7, giver: 'hakari', prereq: ['m19'], level: 56,
+    summary: 'Hajime Kashimo, a sorcerer reincarnated from four hundred years ago, wants a fight. Give him one in the scorched east block.',
+    objectives: [{ type: 'boss', target: 'kashimo', label: 'Defeat Hajime Kashimo' }],
+    offer: [
+      { who: 'hakari', text: 'Hajime Kashimo. Four hundred years dead, brought back by Kenjaku. He only wants one thing: a fight with Sukuna.' },
+      { who: 'hakari', text: 'He\'s been throwing lightning at me for an hour. Mind tagging in? He\'s in the burnt-out block to the east.' },
+    ],
+    progress: [{ who: 'hakari', text: 'East block. Follow the thunder.' }],
+    complete: [{ who: 'hakari', text: 'You beat the thunder god! Here — I won this off him. Or he threw it at me. Either way, it\'s yours.' }],
+    rewards: { exp: 80000, gold: 40000, items: [{ id: 'lightningRod', rarity: 2 }, { id: 'core', qty: 6 }] },
+  },
+  {
+    id: 's_points', name: 'Points for the Defence', type: 'side', chapter: 7, giver: 'higuruma', prereq: ['m19'], level: 50,
+    summary: 'Collect 8 Culling Point Tags from the players in Tokyo Colony No. 1 so Higuruma can add rules that protect the players who never wanted to fight.',
+    objectives: [{ type: 'collect', item: 'pointToken', count: 8, label: 'Culling Point Tags' }],
+    offer: [
+      { who: 'higuruma', text: 'Most of the people in this colony never asked to be players. They were sorcerers by accident.' },
+      { who: 'higuruma', text: 'The ones still hunting carry point tags. Bring me eight. I would like, for once, to use the rules to protect someone.' },
+    ],
+    progress: [{ who: 'higuruma', text: 'Eight tags. Take them from the ones still hunting.' }],
+    complete: [{ who: 'higuruma', text: 'Thank you. It\'s been a long time since I had a client worth defending.' }],
+    rewards: { exp: 40000, gold: 30000, items: [{ id: 'pointCharm', rarity: 2 }, { id: 'hpL', qty: 4 }] },
+  },
+  {
+    id: 'm20', name: 'The Sendai Colony', type: 'main', chapter: 7, giver: 'hakari', turnIn: 'yuta', prereq: ['m19'], autoAccept: true, level: 54,
+    summary: 'Four players are fighting for control of the Sendai colony. Get inside and find Yuta.',
+    objectives: [
+      { type: 'reach', map: 'sendai', label: 'Enter the Sendai colony' },
+      { type: 'kill', target: ['roach', 'roachQueen', 'cgBrawler', 'cgCaster', 'barrierCurse'], count: 16, map: 'sendai', label: 'Fight through the colony' },
+    ],
+    offer: [{ who: 'hakari', text: 'Ijichi can drop you at the Sendai barrier. Okkotsu\'s waiting inside. Don\'t keep a special grade waiting!' }],
+    progress: [{ who: 'yuta', text: 'Kurourushi\'s swarm is everywhere. Thin it out before we move.' }],
+    complete: [
+      { who: 'yuta', text: 'Thanks. It\'s been... a lot. Four players were fighting over this colony when I arrived.' },
+      { who: 'yuta', text: 'Kurourushi\'s swarm is mostly scattered. Dhruv is gone. That leaves Takako Uro, and Ryu Ishigori.' },
+      { who: 'yuta', text: 'Ishigori has the highest output I have ever seen. He fires cursed energy like a cannon. He\'s in the big crater, waiting for someone worth fighting.' },
+    ],
+    rewards: { exp: 70000, gold: 38000, items: [{ id: 'core', qty: 6 }, { id: 'ceL', qty: 4 }] },
+    unlock: ['sendai'],
+  },
+  {
+    id: 'm21', name: 'Granite Blast', type: 'main', chapter: 7, giver: 'yuta', prereq: ['m20'], autoAccept: true,
+    summary: 'Ryu Ishigori waits in the crater at the centre of the Sendai colony. Survive his Granite Blast and defeat him.',
+    objectives: [{ type: 'boss', target: 'ishigori', label: 'Defeat Ryu Ishigori' }],
+    offer: [
+      { who: 'yuta', text: 'His beams are wide but slow to charge. When he plants his feet, move sideways. Don\'t try to outrun them.' },
+    ],
+    progress: [{ who: 'yuta', text: 'The crater, north of here. When he plants his feet, move.' }],
+    complete: [
+      { who: 'narrator', text: 'Ishigori lies flat on his back in the crater he made, laughing at the sky.' },
+      { who: 'ishigori', text: 'Hahaha! I\'m STUFFED! Best meal I\'ve had in four hundred years!' },
+      { who: 'yuta', text: '...The Sendai colony is quiet. And there\'s news from Tokyo. Hana Kurusu agreed to help. With her technique, the Prison Realm can be opened.' },
+      { who: 'yuta', text: 'Gojo-sensei is coming back. Go home. Principal Yaga will want to see you first.' },
+    ],
+    rewards: { exp: 130000, gold: 60000, items: [{ id: 'graniteBand', rarity: 2 }, { id: 'core', qty: 10 }] },
+  },
+  {
+    id: 's_uro', name: 'Sky Manipulation', type: 'side', chapter: 7, giver: 'yuta', prereq: ['m21'], level: 62,
+    summary: 'Takako Uro, captain of a Heian-era assassin corps, still holds the west side of the Sendai colony. Defeat her.',
+    objectives: [{ type: 'boss', target: 'uro', label: 'Defeat Takako Uro' }],
+    offer: [
+      { who: 'yuta', text: 'Takako Uro is still in the west of the colony. She can grab the sky like a sheet of cloth and fold it.' },
+      { who: 'yuta', text: 'When she folds it around herself, projectiles slide right off. Get close when you see it.' },
+    ],
+    progress: [{ who: 'yuta', text: 'West side. When the sky bends, get close.' }],
+    complete: [{ who: 'yuta', text: 'That was incredible. She dropped this. I think it\'s a thousand years old.' }],
+    rewards: { exp: 90000, gold: 45000, items: [{ id: 'skyVeil', rarity: 2 }, { id: 'core', qty: 6 }] },
+  },
+  {
+    id: 's_roach', name: 'Pest Control', type: 'side', chapter: 7, giver: 'ishigori', prereq: ['m21'], level: 60,
+    summary: 'Exterminate 25 of Kurourushi\'s cockroaches in the Sendai colony. Ishigori says they ruin his appetite.',
+    objectives: [{ type: 'kill', target: ['roach', 'roachQueen'], count: 25, map: 'sendai', label: 'Exterminate the swarm' }],
+    offer: [
+      { who: 'ishigori', text: 'Those bugs! Every time I sit down to eat, there they are! Clear them out and I\'ll give you something good!' },
+    ],
+    progress: [{ who: 'ishigori', text: 'More bugs! I can hear them crawling!' }],
+    complete: [{ who: 'ishigori', text: 'Peace and quiet! Take this. And here — have a rice ball. No? More for me!' }],
+    rewards: { exp: 60000, gold: 36000, items: [{ id: 'onigiri', qty: 10 }, { id: 'awSgRing', rarity: 1 }] },
+  },
+
+  // ===================== Chapter 8: Shinjuku Showdown =====================
+  {
+    id: 'm22', name: 'The Strongest Returns', type: 'main', chapter: 8, giver: 'yaga', turnIn: 'gojo', prereq: ['m21'], level: 66,
+    summary: 'The Prison Realm has been opened. Gojo is free. Go and see him.',
+    objectives: [{ type: 'talk', npc: 'gojo', label: 'Talk to Gojo at Jujutsu High' }],
+    offer: [
+      { who: 'yaga', text: 'Hana Kurusu opened the Prison Realm. Satoru is free.' },
+      { who: 'yaga', text: 'He wants to see you. He is in the plaza... eating something, I expect.' },
+    ],
+    progress: [{ who: 'yaga', text: 'The plaza. Go.' }],
+    complete: [
+      { who: 'gojo', text: 'Yo! Miss me? Don\'t answer that. I know you did.' },
+      { who: 'gojo', text: 'I heard everything. Shibuya, the execution order, the Culling Game. You all did the hard part while I was stuck in a box. Sorry I was late.' },
+      { who: 'gojo', text: 'Sukuna has a new body, and it\'s Megumi\'s. If we beat him, we can pull Megumi back out.', not: ['megumi'] },
+      { who: 'gojo', text: 'Sukuna wanted your body, Megumi. You kept him out, so he rebuilt the one he had a thousand years ago instead.', only: ['megumi'] },
+      { who: 'gojo', text: 'He\'s waiting in Shinjuku, and so is Kenjaku. December 24th. That\'s when this ends.' },
+    ],
+    rewards: { exp: 60000, gold: 40000, items: [{ id: 'core', qty: 8 }, { id: 'hpL', qty: 6 }, { id: 'ceL', qty: 6 }] },
+  },
+  {
+    id: 'm23', name: 'Shinjuku Showdown', type: 'main', chapter: 8, giver: 'gojo', turnIn: 'yuta', prereq: ['m22'], autoAccept: true,
+    summary: 'Gojo faces Sukuna one on one. Keep Kenjaku\'s curses off the streets of Shinjuku and report to Yuta.',
+    objectives: [
+      { type: 'reach', map: 'shinjuku', label: 'Go to Shinjuku' },
+      { type: 'kill', target: ['manipCurse', 'shadowHound', 'shinJelly'], count: 20, map: 'shinjuku', label: 'Hold back Kenjaku\'s curses' },
+    ],
+    offer: [
+      { who: 'gojo', text: 'Here\'s the plan. I fight Sukuna, one on one. You keep Kenjaku\'s curses off the streets. Yuta\'s leading the second wave.' },
+      { who: 'player', text: 'Sensei... are you going to win?', only: ['yuji'] },
+      { who: 'player', text: '...Will you win?', only: ['megumi', 'nobara'] },
+      { who: 'gojo', text: 'Against him? Ha. Of course I\'ll win. I\'m the strongest, remember?', emote: 'wave' },
+    ],
+    progress: [{ who: 'yuta', text: 'Kenjaku\'s curses are pouring out of every street. Keep them away from the fight.' }],
+    complete: [
+      { who: 'narrator', text: 'The sky over Shinjuku splits along a single straight line. For a moment, everything is silent.' },
+      { who: 'yuta', text: '...Gojo-sensei is gone. Sukuna cut through the world itself. Space, and everything in it.' },
+      { who: 'player', text: 'No. No, no, no... he said he\'d win. He SAID—', only: ['yuji'] },
+      { who: 'player', text: '...He knew. He went anyway, so that we\'d have a chance.', only: ['megumi'] },
+      { who: 'player', text: 'Don\'t. Don\'t tell me that. Not him too.', only: ['nobara'] },
+      { who: 'yuta', text: 'We don\'t get to stop. Sukuna is hurt. Kenjaku is exposed. This is the chance he bought us.' },
+      { who: 'yuta', text: 'Uraume is guarding the approach to Sukuna. We go through them first.' },
+    ],
+    rewards: { exp: 150000, gold: 70000, items: [{ id: 'core', qty: 10 }, { id: 'blindfold', rarity: 2 }] },
+    unlock: ['shinjuku'],
+  },
+  {
+    id: 'm24', name: 'Frost Calm', type: 'main', chapter: 8, giver: 'yuta', prereq: ['m23'], autoAccept: true, level: 70,
+    summary: 'Uraume, Sukuna\'s servant for a thousand years, guards the west side of the battlefield. Break through.',
+    objectives: [{ type: 'boss', target: 'uraume', label: 'Defeat Uraume' }],
+    offer: [{ who: 'yuta', text: 'Uraume\'s ice slows everything it touches. Keep moving, and don\'t stand in the frost.' }],
+    progress: [{ who: 'yuta', text: 'West side, where the ice is. Keep moving.' }],
+    complete: [
+      { who: 'narrator', text: 'Uraume\'s ice shatters. They kneel on the frozen ground, still facing the direction of their master.' },
+      { who: 'yuta', text: 'Kenjaku is on the east side, watching all of this like an experiment. He\'s next.' },
+    ],
+    rewards: { exp: 160000, gold: 75000, items: [{ id: 'frostPin', rarity: 2 }, { id: 'core', qty: 10 }] },
+  },
+  {
+    id: 'm25', name: 'A Thousand Years of Schemes', type: 'main', chapter: 8, giver: 'yuta', prereq: ['m24'], autoAccept: true, level: 74,
+    summary: 'Kenjaku, the architect of Shibuya and the Culling Game, waits on the east side of Shinjuku. End him.',
+    objectives: [{ type: 'boss', target: 'kenjaku', label: 'Defeat Kenjaku' }],
+    offer: [{ who: 'yuta', text: 'He has every curse Geto-san ever absorbed. And his domain is a womb. Don\'t let it close around you.' }],
+    progress: [{ who: 'yuta', text: 'The east side. End it.' }],
+    complete: [
+      { who: 'narrator', text: 'Kenjaku falls. The stitches across his forehead come apart, and the thing that wore Geto\'s face goes still at last.' },
+      { who: 'yuta', text: '...It\'s over for him. A thousand years of schemes, and it ends in a car park in Shinjuku.' },
+      { who: 'yuta', text: 'Only Sukuna is left. Everyone who can still stand is coming.' },
+    ],
+    rewards: { exp: 220000, gold: 90000, items: [{ id: 'prisonShard', rarity: 2 }, { id: 'core', qty: 12 }] },
+  },
+  {
+    id: 'm26', name: 'The King of Curses', type: 'main', chapter: 8, giver: 'yuta', prereq: ['m25'], autoAccept: true, level: 78,
+    summary: 'Ryomen Sukuna waits in the crater at the heart of Shinjuku, in his true Heian form. This is the last fight.',
+    objectives: [{ type: 'boss', target: 'sukunaTrue', label: 'Defeat Ryomen Sukuna' }],
+    offer: [
+      { who: 'yuta', text: 'Higuruma, Hakari, Choso, all of us — we go in together. But he\'s waiting for you.' },
+      { who: 'yuta', text: 'He took Mahoraga\'s wheel. Once it starts turning, he adapts to whatever you use most. Change it up. And when he says "World-Cutting", get off the line.' },
+    ],
+    progress: [{ who: 'yuta', text: 'The crater. Change your attacks, and watch for the long white line.' }],
+    complete: [
+      { who: 'narrator', text: 'The King of Curses begins to come apart, curse by curse, finger by finger.' },
+      { who: 'player', text: 'I\'ll ask you once, Sukuna. Do you want to try again? Living alongside someone, instead of eating them?', only: ['yuji'] },
+      { who: 'sukuna', text: 'Don\'t be absurd, brat. I am what I am. ...But you were not boring. I\'ll give you that.' },
+      { who: 'narrator', text: 'From the ruin of the King\'s body, Megumi stumbles free, blinking at the winter sky.', not: ['megumi'] },
+      { who: 'megumi', text: '...You came all this way for me. Idiots.', not: ['megumi'] },
+      { who: 'narrator', text: 'December 24th. The Shinjuku Showdown is over.' },
+      { who: 'yuta', text: 'Gojo-sensei would say something annoying right now. Something like, "See? I told you you\'d be fine."' },
+      { who: 'narrator', text: 'THE END. Thank you for playing Cursed Chronicles. The curses of Japan still rise to meet you, and the road to level 100 stays open.' },
+    ],
+    rewards: { exp: 400000, gold: 200000, fingers: 1, items: [{ id: 'kingRing', rarity: 2 }, { id: 'core', qty: 20 }], classItems: { yuji: 'svSgFist', megumi: 'svSpiritEdge', nobara: 'svResMallet' } },
+  },
+  {
+    id: 's_choso', name: 'An Older Brother\'s Job', type: 'side', chapter: 8, giver: 'choso', prereq: ['m23'], level: 70,
+    summary: 'Destroy 25 of Kenjaku\'s curses in Shinjuku with Choso.',
+    objectives: [{ type: 'kill', target: ['manipCurse', 'shadowHound', 'shinJelly'], count: 25, map: 'shinjuku', label: 'Destroy Kenjaku\'s curses' }],
+    offer: [
+      { who: 'choso', text: 'Kenjaku made me. Made all nine of us, and threw my brothers away like failed drafts.' },
+      { who: 'choso', text: 'Every curse he lets loose here is another one of his experiments. Help me break them. All of them.' },
+      { who: 'choso', text: 'An older brother protects his siblings. Whether or not they remember him.', only: ['yuji'] },
+    ],
+    progress: [{ who: 'choso', text: 'More. He has more.' }],
+    complete: [{ who: 'choso', text: 'That\'s enough. Take this. As long as I have blood left, you won\'t fight alone.' }],
+    rewards: { exp: 80000, gold: 50000, items: [{ id: 'bloodRing', rarity: 2 }, { id: 'hpL', qty: 6 }] },
   },
 ];
 
@@ -582,6 +942,11 @@ export const IDLE: Record<string, Line[][]> = {
   nobara: [[{ who: 'nobara', text: 'When this is over we are going SHOPPING in Harajuku. I don\'t care how many curses there are.' }], [{ who: 'nobara', text: 'Do I look like I\'m from the countryside? Don\'t answer that.' }]],
   civilian: [[{ who: 'civilian', text: 'The sky... there\'s a black dome over everything! What\'s happening?!' }], [{ who: 'civilian', text: 'I can\'t get out! The station exits are all blocked!' }], [{ who: 'civilian', text: 'Th-thank you! I thought those things were going to eat me!' }]],
   student: [[{ who: 'student', text: 'Did you hear that noise from the field? I\'m staying right here.' }]],
+  yuta: [[{ who: 'yuta', text: 'Rika says hi. ...Okay, she didn\'t. But she was thinking it.' }], [{ who: 'yuta', text: 'Gojo-sensei taught me that the strongest thing you can be is someone people can rely on.' }]],
+  hakari: [[{ who: 'hakari', text: 'Life\'s a gamble! The trick is to love the odds.' }], [{ who: 'hakari', text: 'Feel that? That\'s the fever. Something good\'s about to happen.' }]],
+  higuruma: [[{ who: 'higuruma', text: 'The law exists to protect the weak. I\'d forgotten that, for a while.' }]],
+  ishigori: [[{ who: 'ishigori', text: 'Got any rice? I\'m always hungry after a good fight. Which is every fight.' }]],
+  choso: [[{ who: 'choso', text: 'I am the eldest. Whatever comes, I go first.' }]],
 };
 
 export const SHOP_LINES: Record<string, string> = {

@@ -245,6 +245,7 @@ export class Player extends Actor implements Caster {
     const lv = this.ps.skillLevel(id);
     if (!s || lv <= 0 || !s.cast) return false;
     if (this.castT > 0.05 || this.dashS) return false;
+    if (this.ps.buffs.has('confiscated')) { this.world.game.toast('Confiscated! Deadly Sentencing has sealed your techniques.', 'warn', 1); audio.play('error'); return false; }
     if (this.skillCd(id) > 0) { this.world.game.toast('Not ready yet', 'warn', 0.8); audio.play('error'); return false; }
     if (s.type === 'ultimate') {
       if (this.ps.d.domain < 100) { this.world.game.toast('Domain gauge not full', 'warn', 1); audio.play('error'); return false; }

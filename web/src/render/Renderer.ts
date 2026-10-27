@@ -249,11 +249,12 @@ const _proj = new THREE.Vector3();
 
 const DOMAIN_LIGHT: Record<string, Partial<LightingPreset>> = {
   shrine: { sky: 0x6a0a14, ground: 0x200004, hemiIntensity: 1.2, sun: 0xff5a5a, sunIntensity: 1.5, ambient: 0xff6a6a, ambientIntensity: 0.25, fog: 0x2a0206, fogNear: 18, fogFar: 52, bg: 0x1a0002, exposure: 1.0 },
-  womb: { sky: 0x6a0a14, ground: 0x200004, hemiIntensity: 1.2, sun: 0xff5a5a, sunIntensity: 1.5, ambient: 0xff6a6a, ambientIntensity: 0.25, fog: 0x2a0206, fogNear: 18, fogFar: 52, bg: 0x1a0002, exposure: 1.0 },
+  womb: { sky: 0x8a2a4a, ground: 0x2a0610, hemiIntensity: 1.25, sun: 0xff7a9a, sunIntensity: 1.5, ambient: 0xff8aa8, ambientIntensity: 0.28, fog: 0x2a0612, fogNear: 18, fogFar: 52, bg: 0x1a0208, exposure: 1.0 },
   shadow: { sky: 0x3a3a7a, ground: 0x05050a, hemiIntensity: 1.0, sun: 0x9a9aff, sunIntensity: 0.9, ambient: 0x6a6aaa, ambientIntensity: 0.3, fog: 0x05050c, fogNear: 14, fogFar: 42, bg: 0x020205, exposure: 1.05 },
   nails: { sky: 0x7a1424, ground: 0x1a0408, hemiIntensity: 1.2, sun: 0xff7a8a, sunIntensity: 1.3, ambient: 0xff8a9a, ambientIntensity: 0.25, fog: 0x1a0206, fogNear: 18, fogFar: 50, bg: 0x100002, exposure: 1.0 },
   void: { sky: 0x6a9aff, ground: 0x02020a, hemiIntensity: 1.2, sun: 0xb0e8ff, sunIntensity: 1.5, ambient: 0x9adfff, ambientIntensity: 0.3, fog: 0x02030a, fogNear: 20, fogFar: 60, bg: 0x000004, exposure: 1.05 },
   coffin: { sky: 0xff7a3a, ground: 0x401004, hemiIntensity: 1.3, sun: 0xff9a4a, sunIntensity: 2.0, ambient: 0xff8a4a, ambientIntensity: 0.3, fog: 0x401004, fogNear: 16, fogFar: 46, bg: 0x200800, exposure: 1.0 },
   sea: { sky: 0xcfeaff, ground: 0xe8d8a8, hemiIntensity: 1.5, sun: 0xffffff, sunIntensity: 2.6, ambient: 0xffffff, ambientIntensity: 0.2, fog: 0xbfe4ff, fogNear: 30, fogFar: 90, bg: 0x8ac4ff, exposure: 1.0 },
+  court: { sky: 0x8a6a3a, ground: 0x1a1006, hemiIntensity: 1.2, sun: 0xffd890, sunIntensity: 1.6, ambient: 0xd8b070, ambientIntensity: 0.25, fog: 0x140c04, fogNear: 18, fogFar: 52, bg: 0x0a0602, exposure: 1.0 },
   hands: { sky: 0xa0a8b8, ground: 0x30343c, hemiIntensity: 1.3, sun: 0xd8e0e8, sunIntensity: 1.4, ambient: 0xc0c8d0, ambientIntensity: 0.3, fog: 0x2a2e36, fogNear: 18, fogFar: 50, bg: 0x1a1c22, exposure: 1.0 },
 };

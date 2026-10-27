@@ -11,6 +11,9 @@ import { GRADE_NAME } from '../rpg/enemies';
 import { NPC_SHORT } from '../data/story';
 import { Action } from '../core/Input';
 
+/** Status effects bosses put on the player: glyph and tooltip. */
+const DEBUFFS: Record<string, [string, string]> = { confiscated: ['没', 'Confiscation: techniques sealed'] };
+
 export class Hud {
   root: HTMLDivElement;
   private hpFill!: HTMLDivElement; private hpText!: HTMLDivElement; private hpLag!: HTMLDivElement;
@@ -90,8 +93,9 @@ export class Hud {
       let e = this.buffEls.get(id);
       if (!e) {
         const icon = SKILLS[alias[id] ?? id] ? skillIcon(alias[id] ?? id, 48) : '';
-        e = el('div', 'hbuff', icon ? `<img src="${icon}">` : '<span>呪</span>');
-        e.title = SKILLS[alias[id] ?? id]?.name ?? id;
+        const debuff = DEBUFFS[id];
+        e = el('div', 'hbuff' + (debuff ? ' debuff' : ''), icon ? `<img src="${icon}">` : `<span>${debuff?.[0] ?? '呪'}</span>`);
+        e.title = debuff?.[1] ?? SKILLS[alias[id] ?? id]?.name ?? id;
         this.buffRow.appendChild(e);
         this.buffEls.set(id, e);
       }

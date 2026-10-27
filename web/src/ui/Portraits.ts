@@ -10,9 +10,13 @@ const BG: Record<string, [string, string]> = {
   yuji: ['#ff7a9a', '#2a0c18'], megumi: ['#5a6aff', '#0c0c24'], nobara: ['#ff9a4a', '#2a1208'], gojo: ['#7fdcff', '#08182a'],
   nanami: ['#e8d07a', '#201a08'], sukuna: ['#ff2a3a', '#200004'], mahito: ['#7ac0dc', '#0c1a20'], hanami: ['#8aff6a', '#0c200c'],
   jogo: ['#ff7a2a', '#2a0c04'], dagon: ['#ff6a4a', '#04142a'], todo: ['#ffb05a', '#201008'], panda: ['#ffffff', '#1a1a1a'],
+  kechizu: ['#c8102a', '#1a0408'], eso: ['#8aaa3a', '#140a04'], choso: ['#c8102a', '#14060a'], yuta: ['#ffb0e0', '#1a0c18'],
+  naoya: ['#e8d48a', '#14120a'], mai: ['#6a9a7a', '#0a140e'], hakari: ['#ffd04a', '#1a1404'], higuruma: ['#d8b04a', '#140e04'],
+  kashimo: ['#7ae0ff', '#04121a'], ishigori: ['#9adfff', '#08121a'], uro: ['#9ad0ff', '#0a0c1a'], uraume: ['#bfe4ff', '#0a1018'],
+  kenjaku: ['#b07aff', '#10061a'],
 };
 
-const CREATURE_IDS = new Set(['hanami', 'jogo', 'dagon', 'mahoraga']);
+const CREATURE_IDS = new Set(['hanami', 'jogo', 'dagon', 'mahoraga', 'kechizu', 'eso']);
 
 export class Portraits {
   private cache = new Map<string, string>();
@@ -43,8 +47,8 @@ export class Portraits {
     model.root.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(model.root);
     const h = box.max.y;
-    const headY = id === 'dagon' ? h * 0.8 : id === 'panda' ? h * 0.82 : h * 0.87;
-    const dist = id === 'dagon' ? 4.5 : id === 'panda' ? 2.6 : 1.9 * (h / 1.75);
+    const headY = id === 'dagon' ? h * 0.8 : id === 'panda' ? h * 0.82 : id === 'kechizu' ? h * 0.66 : h * 0.87;
+    const dist = id === 'dagon' ? 4.5 : id === 'panda' ? 2.6 : id === 'kechizu' ? 2.9 : 1.9 * (h / 1.75);
     this.cam.position.set(0.25 * dist / 2, headY + 0.05, dist);
     this.cam.lookAt(0, headY - 0.02, 0);
     const gl = this.r.gl;

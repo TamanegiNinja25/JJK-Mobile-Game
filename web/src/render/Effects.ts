@@ -177,6 +177,13 @@ void main(){
   } else if (uKind == 5) { // Horizon of the Captivating Skandha
     c = mix(vec3(0.95, 0.85, 0.6), vec3(0.2, 0.55, 0.9), smoothstep(-0.05, 0.25, el));
     c = mix(c, vec3(0.1, 0.4, 0.7), smoothstep(0.02, 0.0, abs(el - 0.02)) * 0.8);
+  } else if (uKind == 7) { // Deadly Sentencing: a dark courtroom, panelled walls
+    float panel = step(0.92, fract(az * 5.0)) + step(0.94, fract(el * 6.0));
+    c = mix(vec3(0.05, 0.04, 0.03), vec3(0.22, 0.16, 0.1), smoothstep(-0.1, 0.5, el)) + vec3(0.85, 0.65, 0.25) * panel * 0.35;
+  } else if (uKind == 8) { // Womb Profusion: flesh and veins
+    float v = fbm(uv * 3.0 + vec2(uTime * 0.05, uTime * 0.03));
+    float vein = smoothstep(0.03, 0.0, abs(v - 0.5));
+    c = mix(vec3(0.3, 0.06, 0.12), vec3(0.62, 0.22, 0.32), v) + vec3(0.9, 0.2, 0.4) * vein;
   } else { // Self-Embodiment of Perfection
     float cell = n2(uv * 6.0 + uTime * 0.2);
     c = mix(vec3(0.15, 0.17, 0.22), vec3(0.75, 0.78, 0.82), smoothstep(0.55, 0.75, cell));
@@ -195,12 +202,14 @@ void main(){
   else if (uKind == 3) c = vec3(0.0, 0.0, 0.05) + vec3(0.2, 0.3, 0.8) * rip * 0.3;
   else if (uKind == 4) c = vec3(0.35, 0.08, 0.0) + vec3(0.9, 0.3, 0.0) * rip * 0.6;
   else if (uKind == 5) c = vec3(0.85, 0.78, 0.55) + vec3(0.1, 0.3, 0.5) * rip * 0.3;
+  else if (uKind == 7) c = vec3(0.16, 0.1, 0.05) + vec3(0.4, 0.3, 0.1) * step(0.5, fract(vP.x * 0.5)) * 0.4;
+  else if (uKind == 8) c = vec3(0.35, 0.08, 0.14) + vec3(0.5, 0.1, 0.2) * rip * 0.4;
   else c = vec3(0.3, 0.32, 0.36) + vec3(0.3) * rip * 0.3;
   float edge = smoothstep(1.0, 0.95, r);
   gl_FragColor = vec4(c, uFade * edge * 0.92);
 }`;
 
-export const DOMAIN_KIND: Record<string, number> = { shrine: 0, shadow: 1, nails: 2, void: 3, coffin: 4, sea: 5, hands: 6, womb: 0 };
+export const DOMAIN_KIND: Record<string, number> = { shrine: 0, shadow: 1, nails: 2, void: 3, coffin: 4, sea: 5, hands: 6, court: 7, womb: 8 };
 
 export class Effects implements FxAPI {
   r: Renderer;
@@ -560,6 +569,7 @@ export class Effects implements FxAPI {
     // Domain-specific set pieces
     if (kind === 'shrine') group.add(shrineModel(r));
     if (kind === 'nails') group.add(nailRing(r));
+    if (kind === 'court') group.add(courtModel(r));
     const intro = 1.1;
     this.sigil(x, z, 2.5, kind === 'shadow' ? 0x111122 : kind === 'void' ? 0x7fdcff : 0xff2a3a, intro + 0.3);
     this.flash(kind === 'void' ? '#bfefff' : kind === 'shadow' ? '#000000' : '#30000a', 0.65, 0.9);
@@ -626,6 +636,34 @@ function shrineModel(r: number) {
     g.add(skull);
   }
   g.add(base, roof);
+  return g;
+}
+
+/** Deadly Sentencing: the judge's bench, the dock, and Judgeman presiding. */
+function courtModel(r: number) {
+  const g = new THREE.Group();
+  const wood = new THREE.MeshBasicMaterial({ color: 0x3a2414 });
+  const gold = new THREE.MeshBasicMaterial({ color: 0xd8b04a });
+  const bench = new THREE.Mesh(new THREE.BoxGeometry(6, 2.2, 1.4), wood);
+  bench.position.set(0, 1.1, -r * 0.72);
+  const dock = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.2, 0.3), wood);
+  dock.position.set(0, 0.6, r * 0.45);
+  // Judgeman: a hooded shikigami with a wide stitched grin and scales held out
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.1, 3, 8), new THREE.MeshBasicMaterial({ color: 0x14141a }));
+  body.position.set(0, 3.6, -r * 0.78);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.75, 10, 8), new THREE.MeshBasicMaterial({ color: 0x1e1e26 }));
+  head.position.set(0, 5.5, -r * 0.78);
+  const grin = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.06, 4, 12, Math.PI), new THREE.MeshBasicMaterial({ color: 0xf0e8d0 }));
+  grin.position.set(0, 5.35, -r * 0.78 + 0.7);
+  grin.rotation.z = Math.PI;
+  for (const sx of [-1.5, 1.5]) {
+    const pan = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.06, 12), gold);
+    pan.position.set(sx, 3.6, -r * 0.78 + 1.0);
+    g.add(pan);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.08, 0.08), gold);
+  beam.position.set(0, 4.2, -r * 0.78 + 1.0);
+  g.add(bench, dock, body, head, grin, beam);
   return g;
 }
 
