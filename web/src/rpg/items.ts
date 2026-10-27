@@ -96,6 +96,21 @@ reg(
   A('flashBoots', 'Flash Boots', 'shoes', 31, { moveSpd: 0.11, def: 15, evasion: 0.05 }, 6300, 'shoes', '#1a1a1a', '#ffd04a'),
 );
 
+// ---- Rewards from the Death Painting arc to the Shinjuku Showdown ----
+reg(
+  A('yutaRing', "Okkotsu's Promise Ring", 'ring', 36, { atk: 34, maxCe: 40 }, 16000, 'ring', '#e8ecf4', '#ffb0e0', { unique: [{ k: 'cePct', v: 0.15 }, { k: 'skillPow', v: 0.12 }, { k: 'ce', v: 12 }], desc: 'A plain silver ring. A promise made as a child, and the strongest curse in the world.' }),
+  A('frameSandals', 'Frame-Step Sandals', 'shoes', 44, { moveSpd: 0.12, def: 20, evasion: 0.05 }, 19000, 'shoes', '#2a2a34', '#e8d48a', { unique: [{ k: 'atkSpd', v: 0.08 }, { k: 'evasion', v: 0.04 }, { k: 'dex', v: 14 }], desc: 'Naoya swore by them. Twenty-four steps a second, and every one of them planned.' }),
+  A('lawyerBadge', "Higuruma's Lawyer Badge", 'charm', 50, { maxCe: 200, skillPow: 0.1 }, 24000, 'charm', '#d8b04a', '#1a1a22', { unique: [{ k: 'cdr', v: 0.12 }, { k: 'ce', v: 16 }, { k: 'dmgReduce', v: 0.05 }], desc: 'Sunflowers and a balance. He stopped wearing it the day he stopped believing in it.' }),
+  A('pointCharm', 'Kogane\'s Point Tally', 'charm', 52, { maxCe: 170, ceRegen: 2.2 }, 18000, 'charm', '#ffd04a', '#2a2a3a', { unique: [{ k: 'crit', v: 0.05 }, { k: 'bfChance', v: 0.02 }], desc: 'Every point a life. Higuruma wants them spent on rules that save players, not kill them.' }),
+  A('lightningRod', 'Amber Lightning Rod', 'ring', 56, { atk: 52, crit: 0.04 }, 26000, 'ring', '#6adfff', '#ffffff', { unique: [{ k: 'critDmg', v: 0.3 }, { k: 'atkSpd', v: 0.08 }, { k: 'str', v: 16 }], desc: 'Hakari won it from Kashimo. Or Kashimo threw it at him. The story changes.' }),
+  A('graniteBand', "Ishigori's Headband", 'head', 60, { def: 34, maxHp: 420, skillPow: 0.1 }, 28000, 'headband', '#2a2e38', '#9adfff', { unique: [{ k: 'skillPow', v: 0.12 }, { k: 'maxHp', v: 300 }, { k: 'str', v: 12 }], desc: 'Smells faintly of rice. He says the greatest output starts with a full stomach.' }),
+  A('skyVeil', 'Moonlit Wings Mantle', 'outfit', 62, { def: 88, maxHp: 900, evasion: 0.04 }, 32000, 'uniform', '#2a2236', '#9ad0ff', { unique: [{ k: 'evasion', v: 0.06 }, { k: 'moveSpd', v: 0.05 }, { k: 'dex', v: 14 }], desc: 'Takako Uro\'s mantle from the Heian era. The sky folds a little around whoever wears it.' }),
+  A('frostPin', "Uraume's Ice Hairpin", 'head', 72, { def: 44, maxHp: 560, crit: 0.04 }, 36000, 'circlet', '#e8f4ff', '#c83a4a', { unique: [{ k: 'cdr', v: 0.1 }, { k: 'ceRegen', v: 3 }, { k: 'ce', v: 18 }], desc: 'Cold to the touch, forever. A thousand years of loyalty, frozen.' }),
+  A('prisonShard', 'Prison Realm Shard', 'charm', 76, { maxCe: 320, skillPow: 0.14 }, 42000, 'eye', '#2a2a32', '#b07aff', { unique: [{ k: 'cdr', v: 0.15 }, { k: 'cePct', v: 0.2 }, { k: 'ce', v: 20 }], desc: 'A sliver of the cube that once held the strongest sorcerer. It still looks at you.' }),
+  A('bloodRing', "Choso's Blood Ring", 'ring', 74, { atk: 74, lifesteal: 0.03 }, 38000, 'bracelet', '#5a0e16', '#ff3a4a', { unique: [{ k: 'lifesteal', v: 0.03 }, { k: 'critDmg', v: 0.3 }, { k: 'str', v: 18 }], desc: 'An older brother\'s promise: as long as he has blood, you will not fight alone.' }),
+  A('kingRing', 'Ring of the King of Curses', 'ring', 82, { atk: 110, crit: 0.06, critDmg: 0.2 }, 90000, 'ring', '#111111', '#ff2a3a', { unique: [{ k: 'bfChance', v: 0.06 }, { k: 'critDmg', v: 0.45 }, { k: 'atkPct', v: 0.15 }, { k: 'str', v: 24 }], desc: 'Taken from the ashes in Shinjuku. It is very quiet now.' }),
+);
+
 // ---- Post-story tiers (Lv 55 and Lv 80) ----
 // Built from the best regular item in each slot so levels 51-100 keep dropping upgrades.
 // Flat stats scale fully; percentage stats grow more gently so speed and crit stay sane.
@@ -134,6 +149,10 @@ reg(
   { id: 'veilTag', name: 'Veil Talisman', kind: 'quest', req: 1, price: 0, icon: { shape: 'charm', c1: '#2a2a3a', c2: '#9a4aff' }, questItem: true, stack: 99, desc: 'Torn from a barrier anchor.' },
   { id: 'nameTag', name: 'Inmate Name Tag', kind: 'quest', req: 1, price: 0, icon: { shape: 'nametag', c1: '#e8e4d8', c2: '#3a4a6a' }, questItem: true, stack: 1, desc: 'A laminated tag from Eishu. OKAZAKI TADASHI.' },
   { id: 'filmTicket', name: 'Cinema Ticket Stub', kind: 'quest', req: 1, price: 0, icon: { shape: 'ticket', c1: '#ffd04a', c2: '#8a2a2a' }, questItem: true, stack: 99, desc: 'Found near the scene of the incident.' },
+  { id: 'cursedMark', name: 'Cursed Mark Residue', kind: 'quest', req: 1, price: 0, icon: { shape: 'crystal', c1: '#2a1a2a', c2: '#ff3a6a' }, questItem: true, stack: 99, desc: 'The mark the Yasohachi curse left on its victims, scraped from one of its spawn.' },
+  { id: 'pointToken', name: 'Culling Point Tag', kind: 'quest', req: 1, price: 0, icon: { shape: 'nametag', c1: '#ffd04a', c2: '#2a2a3a' }, questItem: true, stack: 99, desc: 'Kogane tallies a point every time a player falls. This tag is one of them.' },
+  { id: 'heiCrest', name: 'Hei Corps Crest', kind: 'material', req: 1, price: 220, icon: { shape: 'charm', c1: '#1e1e26', c2: '#8a2a2a' }, stack: 999, desc: 'Worn by the Zen\'in clan\'s Hei. Sells well to collectors who never met one.' },
+  { id: 'shinjukuAsh', name: 'Cursed Ash', kind: 'material', req: 1, price: 520, icon: { shape: 'crystal', c1: '#3a2a4a', c2: '#ff8aa8' }, stack: 999, desc: 'What is left of Kenjaku\'s curses. Mei Mei pays well for it. Do not ask why.' },
 );
 
 export const RARITY_NAME = ['Common', 'Graded', 'Special Grade', 'Cursed Tool'];

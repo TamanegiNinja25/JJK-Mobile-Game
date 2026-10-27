@@ -40,7 +40,7 @@ export interface LightSrc { x: number; y: number; z: number; color: number; inte
 /** A one-shot story beat that plays when the player first walks into its circle. */
 export interface SceneDef { x: number; z: number; r: number; flag: string; lines: Line[]; cond?: (ps: PlayerState) => boolean }
 
-export type Weather = 'rain' | 'sakura' | 'fireflies' | 'embers' | 'leaves' | 'ash' | 'none' | 'confetti' | 'drips';
+export type Weather = 'rain' | 'sakura' | 'fireflies' | 'embers' | 'leaves' | 'ash' | 'none' | 'confetti' | 'drips' | 'snow';
 
 export interface MapDef {
   id: string;

@@ -71,6 +71,7 @@ export class Weather {
       case 'embers': return { n: 160, h: 10, fall: [-1.2, -0.4] as [number, number], wind: 0.2, colors: [0xff8a2a, 0xffc04a, 0xff4a1a], size: 0.1, additive: true, petal: false, alpha: 1 };
       case 'fireflies': return { n: 70, h: 4, fall: [-0.1, 0.1] as [number, number], wind: 0, colors: [0xd8ff6a, 0xa8ff8a], size: 0.14, additive: true, petal: false, alpha: 1 };
       case 'drips': return { n: 60, h: 8, fall: [5, 8] as [number, number], wind: 0, colors: [0x7aa08a], size: 0.08, additive: false, petal: false, alpha: 0.7 };
+      case 'snow': return { n: 220, h: 14, fall: [0.6, 1.3] as [number, number], wind: 0.35, colors: [0xffffff, 0xe8f0ff, 0xd8e4f4], size: 0.14, additive: false, petal: false, alpha: 0.9 };
       case 'confetti': return { n: 140, h: 14, fall: [0.8, 1.5] as [number, number], wind: 0.2, colors: [0xff4a8a, 0x4ad8ff, 0xffd04a, 0x9a6aff], size: 0.16, additive: false, petal: true, alpha: 0.95 };
       default: return { n: 1, h: 1, fall: [0, 0] as [number, number], wind: 0, colors: [0xffffff], size: 0, additive: false, petal: false, alpha: 0 };
     }

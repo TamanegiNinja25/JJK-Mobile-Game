@@ -436,6 +436,8 @@ button { font-family: inherit; color: inherit; }
 .hbuff span { display: block; text-align: center; line-height: 24px; font-size: 13px; color: #d8ccff; }
 .hbuff::after { content: ''; position: absolute; inset: 0; background: conic-gradient(transparent calc(var(--p, 1) * 360deg), rgba(0, 0, 0, .62) 0); }
 .hbuff.ending { animation: buffBlink .35s infinite alternate; }
+.hbuff.debuff { background: #2a1c06; box-shadow: 0 0 0 1px #d8b04a, 0 0 8px rgba(216, 176, 74, .6); }
+.hbuff.debuff span { color: #ffd870; font-weight: 700; }
 @keyframes buffBlink { to { opacity: .45; } }
 
 /* Save transfer */

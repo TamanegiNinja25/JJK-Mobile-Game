@@ -7,7 +7,7 @@ import { TAU, clamp, lerp } from '../../core/util';
 export type HairStyle =
   | 'yuji' | 'megumi' | 'nobara' | 'gojo' | 'nanami' | 'maki' | 'inumaki' | 'shoko' | 'todo'
   | 'yaga' | 'ijichi' | 'junpei' | 'meimei' | 'mahito' | 'geto' | 'miwa' | 'bald' | 'short' | 'bun' | 'long'
-  | 'bob' | 'choso';
+  | 'bob' | 'choso' | 'yuta' | 'naoya' | 'pompadour' | 'kashimo' | 'uro' | 'mai';
 
 export type Outfit = 'uniform' | 'uniformHood' | 'uniformSkirt' | 'suit' | 'labcoat' | 'casual' | 'robe' | 'tank' | 'patchwork' | 'kimono' | 'uniformHigh';
 
@@ -27,7 +27,8 @@ export interface HumanoidSpec {
   head?: number;        // head size multiplier
   glasses?: 'round' | 'goggles' | 'shades' | 'blindfold' | 'none';
   extras?: ('scars' | 'stitches' | 'collar' | 'tie' | 'braid' | 'eyepatch' | 'mask' | 'facescar' | 'sukunaMarks' | 'cursedEyes' | 'gloves' | 'bloodStripe' | 'browStitch' | 'bandage'
-    | 'goatee' | 'leopardTie' | 'eyeBags' | 'mole' | 'backPolearm' | 'hairpin' | 'zipper')[];
+    | 'goatee' | 'leopardTie' | 'eyeBags' | 'mole' | 'backPolearm' | 'hairpin' | 'zipper'
+    | 'katana' | 'gavel' | 'staff' | 'stubble' | 'piercings' | 'secondFace' | 'bellyMouth' | 'ring' | 'scarf')[];
   outline?: number;
 }
 
@@ -258,6 +259,46 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
     r.part('head', G.box(0.008, 0.2, 0.008), 0x2a2030, { pos: [-headR * 0.42, eyeY - 0.05, eyeZ + 0.02], rot: [0, 0, 0.5] });
   }
 
+  if (spec.extras?.includes('stubble')) {
+    r.part('head', G.ellipsoid(headR * 0.6, headR * 0.34, headR * 0.5, 10, 6), darken(skin, 0.78), { pos: [0, headR * 0.42, headR * 0.34] });
+  }
+  if (spec.extras?.includes('piercings')) {
+    for (const sx of [1, -1]) for (let i = 0; i < 2; i++) r.part('head', G.torus(0.014, 0.004, 4, 8), 0xd8dce4, { pos: [sx * headR * 0.97, headR * (0.86 - i * 0.07), 0.01], rot: [0, Math.PI / 2, 0], glow: 0.3 });
+  }
+  if (spec.extras?.includes('secondFace')) {
+    // Heian-era Sukuna: a second face grown over the right side of the head
+    const fx = -headR * 0.72, fz = headR * 0.62;
+    r.part('head', G.ellipsoid(headR * 0.36, headR * 0.48, headR * 0.2, 10, 8), darken(skin, 0.9), { pos: [fx, hc[1] - headR * 0.05, fz], rot: [0, -0.9, 0] });
+    for (const dy of [0.08, -0.04]) r.part('head', G.ellipsoid(0.026, 0.014, 0.01), 0xff2a3a, { pos: [fx - 0.02, hc[1] + dy, fz + 0.06], rot: [0, -0.9, 0], glow: 1.4 });
+    r.part('head', G.box(0.06, 0.01, 0.01), 0x4a0a10, { pos: [fx - 0.03, hc[1] - headR * 0.32, fz + 0.06], rot: [0, -0.9, 0] });
+  }
+  if (spec.extras?.includes('bellyMouth')) {
+    r.part('spine', G.ellipsoid(torsoW * 0.5, 0.05, 0.03, 12, 6), 0x3a0810, { pos: [0, 0.12, torsoW * 0.82], glow: 0.2 });
+    for (let i = 0; i < 6; i++) r.part('spine', G.cone(0.012, 0.035, 4), 0xf4efe0, { pos: [(i - 2.5) * torsoW * 0.16, 0.145, torsoW * 0.84], rot: [Math.PI, 0, 0] });
+  }
+  if (spec.extras?.includes('scarf')) {
+    r.part('neck', G.torus(0.09, 0.035, 6, 14), spec.inner ?? 0x8a2a2a, { pos: [0, -0.02, 0.01], rot: [Math.PI / 2, 0, 0] });
+    r.part('chest', G.box(0.08, 0.26, 0.03), spec.inner ?? 0x8a2a2a, { pos: [0.08, torsoLen * 0.62, torsoW * 0.78], rot: [0.15, 0, 0.12] });
+  }
+  if (spec.extras?.includes('ring')) {
+    r.part('handL', G.torus(0.016, 0.005, 4, 8), 0xd8dce4, { pos: [-0.01, -0.07, 0.02], rot: [Math.PI / 2, 0, 0], glow: 0.6 });
+  }
+  // held weapons for NPCs and human bosses (the player's weapon is attached separately)
+  if (spec.extras?.includes('katana')) {
+    r.part('handR', G.cyl(0.018, 0.02, 0.24, 6), 0x1a1a22, { pos: [0, -0.06, 0.02], rot: [Math.PI / 2, 0, 0] });
+    r.part('handR', G.box(0.1, 0.02, 0.04), 0x8a7a4a, { pos: [0, -0.06, 0.15], rot: [Math.PI / 2, 0, 0] });
+    r.part('handR', G.box(0.03, 0.008, 0.82), 0xe8ecf4, { pos: [0, -0.06, 0.57], glow: 0.15 });
+  }
+  if (spec.extras?.includes('gavel')) {
+    r.part('handR', G.cyl(0.018, 0.022, 0.5, 6), 0x5a3a24, { pos: [0, -0.06, 0.18], rot: [Math.PI / 2, 0, 0] });
+    r.part('handR', G.cyl(0.07, 0.07, 0.24, 10), 0x7a5232, { pos: [0, -0.06, 0.44], rot: [0, 0, Math.PI / 2] });
+    for (const sx of [-1, 1]) r.part('handR', G.cyl(0.075, 0.075, 0.025, 10), 0xd8b04a, { pos: [sx * 0.11, -0.06, 0.44], rot: [0, 0, Math.PI / 2], glow: 0.2 });
+  }
+  if (spec.extras?.includes('staff')) {
+    r.part('handR', G.cyl(0.02, 0.02, 1.5, 6), 0x2a3a5a, { pos: [0, -0.06, 0.1], rot: [Math.PI / 2, 0, 0] });
+    for (const z of [-0.62, 0.82]) r.part('handR', G.cyl(0.03, 0.03, 0.08, 6), 0x6adfff, { pos: [0, -0.06, z], rot: [Math.PI / 2, 0, 0], glow: 0.9 });
+  }
+
   buildHair(r, spec, headR, hc);
 
   const model = r.build({ outline: spec.outline ?? 0.018 });
@@ -474,6 +515,55 @@ function buildHair(r: RigBuilder, spec: HumanoidSpec, headR: number, hc: V3) {
         for (let i = 0; i < 3; i++) spike(0.42, sx * (0.9 + i * 0.25), 0.14, 0.04, [sx * 0.6, 1.4, -0.3]);
       }
       for (let i = -2; i <= 2; i++) lock(i * 0.24, 0.13, 0.035, 0.55, c, 0.88);
+      break;
+    }
+    case 'yuta': {
+      // messy black hair falling over the eyes
+      shell(0, 1.3, TAUh, c, 1.03);
+      shell(1.1, 1.95, Math.PI * 1.4, c, 1.02);
+      for (let i = 0; i < 14; i++) spike(0.35 + (i % 3) * 0.3, (i / 14) * TAUh + 0.2, 0.12 + (i % 2) * 0.03, 0.05, [0, 0.2, -0.3]);
+      for (let i = -3; i <= 3; i++) lock(i * 0.22, 0.17 - Math.abs(i) * 0.012, 0.042, 0.4, c, 0.86);
+      break;
+    }
+    case 'naoya': {
+      // short bleached hair, darker roots, swept back from the forehead
+      shell(0, 1.15, TAUh, c, 1.02);
+      shell(1.0, 1.65, Math.PI * 1.3, darken(c, 0.55), 0.99);
+      for (let i = 0; i < 12; i++) spike(0.3 + (i % 3) * 0.22, (i / 12) * TAUh, 0.11, 0.05, [0, 0.4, -0.8]);
+      for (let i = -1; i <= 1; i++) lock(i * 0.3 + 0.2, 0.08, 0.03, 0.7, c, 0.86);
+      break;
+    }
+    case 'pompadour': {
+      // a towering quiff swept forward (Ishigori; Hakari wears it shorter)
+      shell(0, 1.2, TAUh, c, 1.02);
+      shell(1.05, 1.7, Math.PI * 1.3, c, 1.0);
+      r.part('head', G.ellipsoid(R * 0.7, R * 0.42, R * 0.85, 12, 8), c, { pos: [hc[0], hc[1] + R * 1.0, hc[2] + R * 0.45], rot: [0.35, 0, 0], topColor: hi });
+      r.part('head', G.ellipsoid(R * 0.5, R * 0.32, R * 0.5, 10, 6), c, { pos: [hc[0], hc[1] + R * 0.95, hc[2] + R * 1.05], rot: [0.8, 0, 0], topColor: hi });
+      break;
+    }
+    case 'kashimo': {
+      // long pale-blue hair gathered high on the head
+      shell(0, 1.25, TAUh, c, 1.03);
+      shell(1.05, 1.8, Math.PI * 1.3, c, 1.01);
+      r.part('head', G.sphere(0.07, 10, 8), c, { pos: [0, hc[1] + R * 1.1, hc[2] - R * 0.3], topColor: hi });
+      for (let i = 0; i < 4; i++) r.part('head', G.ellipsoid(0.05 - i * 0.006, 0.09, 0.05), c, { pos: [0, hc[1] + R * 0.9 - i * 0.12, hc[2] - R * 0.75 - i * 0.05], rot: [-0.4, 0, 0], topColor: hi });
+      for (let i = -2; i <= 2; i++) lock(i * 0.26, 0.15, 0.035, 0.5, c, 0.86);
+      break;
+    }
+    case 'uro': {
+      // long dark hair with a centre parting, tied low behind
+      shell(0, 1.25, TAUh, c, 1.03);
+      shell(0.95, 2.4, Math.PI * 1.4, c, 1.05);
+      for (let i = 0; i < 6; i++) r.part('head', G.ellipsoid(0.07, 0.08, 0.06), c, { pos: [0, hc[1] - R * 0.7 - i * 0.1, hc[2] - R * 1.0 - i * 0.02], topColor: hi });
+      for (const sx of [1, -1]) for (let i = 0; i < 2; i++) lock(sx * (0.35 + i * 0.25), 0.2, 0.04, 0.35, c, 0.85);
+      break;
+    }
+    case 'mai': {
+      // short bob with one long lock on the left
+      shell(0, 1.25, TAUh, c, 1.03);
+      shell(0.9, 2.0, Math.PI * 1.45, c, 1.05);
+      for (let i = -3; i <= 3; i++) lock(i * 0.2, 0.11, 0.04, 0.3, c, 0.86);
+      r.part('head', G.ellipsoid(0.04, 0.2, 0.05), c, { pos: [hc[0] + R * 0.88, hc[1] - R * 0.65, hc[2] + R * 0.2], topColor: hi });
       break;
     }
     case 'short':

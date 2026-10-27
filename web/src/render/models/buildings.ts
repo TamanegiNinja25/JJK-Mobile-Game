@@ -431,6 +431,81 @@ function wombGrowth(o: BuildOpts): BuildingDef {
   return { geo: b.build(), colliders: [], height: 4, outline: 0.02 };
 }
 
+/** Yasohachi Bridge: a concrete road bridge over the river, railings and lamps along both sides. */
+function riverBridge(o: BuildOpts): BuildingDef {
+  const b = new PartBag();
+  const L = 18, W = 6;
+  const conc = 0x9a968c;
+  b.add(G.box(W, 0.3, L), conc, { pos: [0, 0.05, 0], topColor: 0x8a8678 });
+  for (const sz of [-1, 1]) b.add(G.box(W + 0.4, 0.5, 0.6), darken(conc, 0.8), { pos: [0, -0.2, sz * 2.5] });
+  // the arch underneath, seen from the banks
+  for (let i = 0; i < 9; i++) {
+    const t = (i / 8) * Math.PI;
+    b.add(G.box(W - 0.4, 0.3, 1.2), darken(conc, 0.75), { pos: [0, -0.3 - Math.sin(t) * 1.2, -L / 2 + 1 + i * (L - 2) / 8] });
+  }
+  for (const sx of [-1, 1]) {
+    b.add(G.box(0.25, 1.1, L), 0xb8b4a8, { pos: [sx * (W / 2 - 0.12), 0.65, 0], topColor: 0xd0ccc0 });
+    for (let i = 0; i < 4; i++) {
+      const z = -L / 2 + 2 + i * (L - 4) / 3;
+      b.add(G.cyl(0.07, 0.09, 3.2, 6), 0x3a3e44, { pos: [sx * (W / 2 - 0.12), 1.6, z] });
+      b.add(G.box(0.5, 0.15, 0.3), 0x3a3e44, { pos: [sx * (W / 2 - 0.35), 3.2, z] });
+      b.add(G.box(0.3, 0.1, 0.25), o.night ? 0xfff0c0 : 0xe8e4d8, { pos: [sx * (W / 2 - 0.5), 3.1, z], glow: o.night ? 2.0 : 0.1 });
+    }
+  }
+  const sign = () => {
+    const s = signPlane('八十八橋', 2.2, 0.6, '#1a1a1a', 'rgba(230,226,214,1)', 'bold 96px serif', false);
+    s.position.set(W / 2 - 0.1, 0.7, L / 2 - 0.6);
+    s.rotation.y = Math.PI / 2;
+    return [s];
+  };
+  return {
+    geo: b.build(),
+    colliders: [{ x: -(W / 2 - 0.12), z: 0, w: 0.3, d: L }, { x: W / 2 - 0.12, z: 0, w: 0.3, d: L }],
+    lights: o.night ? [{ pos: [0, 3, -5], color: 0xfff0c0, intensity: 6, range: 10 }, { pos: [0, 3, 5], color: 0xfff0c0, intensity: 6, range: 10 }] : [],
+    height: 4, extras: sign, outline: 0.015,
+  };
+}
+
+/** A tower gutted by the fighting: jagged top floors, blown-out windows, rubble at its feet. */
+function ruinedTower(o: BuildOpts): BuildingDef {
+  const rng = new Rng((o.seed ?? 1) * 71 + 9);
+  const floors = rng.int(5, 8), W = rng.pick([10, 12]), D = 9;
+  const col = rng.pick([0x5a5a60, 0x6a645c, 0x4a4e58, 0x5e5650]);
+  const d = concreteBlock({ ...o, night: false }, W, D, floors, col, { glass: 0x101418, bands: darken(col, 0.7) });
+  const b = new PartBag();
+  b.addBaked(d.geo);
+  const H = floors * 3.2 + 0.4;
+  // the broken crown
+  for (let i = 0; i < 6; i++) {
+    const h = rng.range(1, 4.5);
+    b.add(G.box(W / 6, h, D), darken(col, rng.range(0.75, 0.95)), { pos: [-W / 2 + W / 12 + i * W / 6, H + h / 2, 0], topColor: darken(col, 0.6) });
+  }
+  // a scorched gash down one face
+  b.add(G.box(rng.range(2, 4), H * 0.6, 0.2), 0x1a1614, { pos: [rng.range(-W / 4, W / 4), H * 0.55, D / 2 + 0.08] });
+  for (let i = 0; i < 6; i++) b.add(G.box(rng.range(0.6, 1.4), rng.range(0.4, 0.9), rng.range(0.6, 1.4)), darken(col, 0.85), { pos: [rng.range(-W / 2, W / 2), 0.3, D / 2 + rng.range(0.6, 2)], rot: [rng.range(-0.5, 0.5), rng.next() * TAU, 0] });
+  return { geo: b.build(), colliders: [{ x: 0, z: 0, w: W, d: D }], height: H + 5, outline: 0.02 };
+}
+
+/** The Zen'in estate's main gate: a roofed wooden gateway with heavy doors left open. */
+function manorGate(o: BuildOpts): BuildingDef {
+  const b = new PartBag();
+  const wood = 0x3a2a20, dark = 0x1e1814;
+  for (const sx of [-1, 1]) {
+    b.add(G.box(0.6, 4.2, 0.6), wood, { pos: [sx * 2.6, 2.1, 0] });
+    b.add(G.box(0.4, 3.6, 0.4), wood, { pos: [sx * 2.6, 1.8, -1.4] });
+    b.add(G.box(1.8, 3.4, 0.15), dark, { pos: [sx * 3.4, 1.7, -0.6], rot: [0, sx * 0.9, 0] });
+  }
+  b.add(G.box(6.4, 0.4, 0.5), wood, { pos: [0, 4.0, 0] });
+  b.add(G.box(6.4, 0.3, 2.2), wood, { pos: [0, 4.4, -0.7] });
+  hipRoof(b, 8, 3.6, 1.6, 4.6, 0x2a2e36, 0.4);
+  const extras = () => {
+    const s = signPlane('禪院', 1.4, 0.6, '#e8d8a8', 'rgba(30,20,14,1)', 'bold 96px serif', !!o.night);
+    s.position.set(0, 3.5, 0.32);
+    return [s];
+  };
+  return { geo: b.build(), colliders: [{ x: -2.6, z: -0.7, w: 0.8, d: 2.2 }, { x: 2.6, z: -0.7, w: 0.8, d: 2.2 }], height: 6.5, extras, outline: 0.025 };
+}
+
 // ---------- registry ----------
 
 const BUILDERS: Record<string, (o: BuildOpts) => BuildingDef> = {
@@ -441,6 +516,10 @@ const BUILDERS: Record<string, (o: BuildOpts) => BuildingDef> = {
   storehouse: (o) => woodHouse(o, 6, 5, 1, 0xf0ece0, 0x2a2e36),
   prisonAdmin: (o) => concreteBlock(o, 14, 9, 3, 0x9a9c98, { entrance: true, sign: '英集少年院', signColor: '#1a1a1a', bands: 0x7a7c78 }),
   office: (o) => concreteBlock(o, 12, 9, 5, 0x9aa4ae, { glass: 0x2a3a4e, ac: true }),
+  riverBridge, ruinedTower, manorGate,
+  manorHouse: (o) => woodHouse(o, 14, 8, 1, 0xe4dccb, 0x262a32, '禪院家'),
+  manorWing: (o) => woodHouse(o, 10, 6, 1, 0xdcd4c2, 0x2a2e36),
+  zeninStore: (o) => woodHouse(o, 8, 6, 1, 0xf0ece0, 0x1e2228, '呪霊蔵'),
 };
 
 const cache = new Map<string, BuildingDef>();

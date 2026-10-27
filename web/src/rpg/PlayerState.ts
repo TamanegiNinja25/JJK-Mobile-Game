@@ -7,7 +7,7 @@ import { QUESTS, QUEST_BY_ID, QuestDef, Objective } from '../data/story';
 
 export const INV_SIZE = 48;
 const SAVE_KEY = 'cursedChronicles.save.';
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 /** Attribute points granted per level-up. */
 export const STAT_POINTS_PER_LEVEL = 10;
 
@@ -365,9 +365,10 @@ export class PlayerState {
     return true;
   }
 
-  /** Quests whose giver is this NPC and that could be offered (ignoring level for hint). */
+  /** Quests this NPC can offer right now, main story first so side requests never hold the plot up. */
   offersFor(npc: string) {
-    return QUESTS.filter(q => q.giver === npc && this.isAvailable(q));
+    const list = QUESTS.filter(q => q.giver === npc && this.isAvailable(q));
+    return [...list.filter(q => q.type === 'main'), ...list.filter(q => q.type !== 'main')];
   }
 
   /** Active quests that this NPC turns in. */
@@ -635,6 +636,15 @@ function migrate(d: SaveData) {
     if (q.m12 && !q.m11p) q.m11p = { state: 'done', progress: [1, 1] };
     // m6 gained "investigate the cinema" as its second objective
     if (q.m6 && q.m6.progress.length === 2) q.m6.progress.splice(1, 0, q.m6.progress[0] >= 1 ? 1 : 0);
+  }
+  if (v < 4) {
+    // the Death Painting arc now sits between Kyoto and Shibuya
+    const q = d.quests;
+    if (q.m11 && !q.m10y) {
+      q.m10y = { state: 'done', progress: [1, 10] };
+      q.m10k = { state: 'done', progress: [1] };
+      q.m10e = { state: 'done', progress: [1] };
+    }
   }
   d.version = SAVE_VERSION;
 }

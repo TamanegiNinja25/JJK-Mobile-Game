@@ -389,7 +389,15 @@ export class Menus {
   // Map
   // ------------------------------------------------------------------
   /** World-map positions of each travel destination (canvas pixels, 640x440). */
-  private static NODES: Record<string, [number, number]> = { sugisawa: [560, 110], hub: [430, 296], eishu: [500, 240], kawasaki: [392, 342], kyoto: [240, 350], shibuya: [462, 330] };
+  private static NODES: Record<string, [number, number]> = {
+    sugisawa: [560, 110], sendai: [600, 162], hub: [430, 292], eishu: [502, 236], yasohachi: [418, 236], colony1: [506, 292],
+    kawasaki: [390, 340], shibuya: [462, 326], shinjuku: [440, 372], kyoto: [240, 350], zenin: [186, 318],
+  };
+  /** Short names for the world map, where full area names would run into each other. */
+  private static NODE_LABEL: Record<string, string> = {
+    sugisawa: 'Sugisawa', sendai: 'Sendai Colony', hub: 'Jujutsu High', eishu: 'Eishu', yasohachi: 'Yasohachi Bridge', colony1: 'Colony No. 1',
+    kawasaki: 'Kawasaki', shibuya: 'Shibuya', shinjuku: 'Shinjuku', kyoto: 'Kyoto', zenin: 'Zen\'in Estate',
+  };
 
   /** The area a map belongs to on the world map (interiors and the sewer sit inside their area). */
   private areaOf(id: string) {
@@ -445,9 +453,12 @@ export class Menus {
     for (const [a, b] of coast) x.lineTo(a, b);
     x.closePath(); x.fill(); x.stroke();
     const nodes = Menus.NODES;
-    const labelOff: Record<string, [number, number, CanvasTextAlign]> = { sugisawa: [0, -22, 'center'], hub: [-20, -10, 'right'], eishu: [20, 4, 'left'], kawasaki: [-20, 18, 'right'], kyoto: [0, -22, 'center'], shibuya: [20, 20, 'left'] };
+    const labelOff: Record<string, [number, number, CanvasTextAlign]> = {
+      sugisawa: [0, -22, 'center'], sendai: [-20, 5, 'right'], hub: [-20, -8, 'right'], eishu: [20, 5, 'left'], yasohachi: [-20, -6, 'right'], colony1: [20, 5, 'left'],
+      kawasaki: [-20, 16, 'right'], shibuya: [20, 14, 'left'], shinjuku: [20, 10, 'left'], kyoto: [0, -22, 'center'], zenin: [-18, 5, 'right'],
+    };
     x.strokeStyle = 'rgba(106,223,255,0.35)'; x.setLineDash([6, 6]); x.lineWidth = 2;
-    for (const id of ['sugisawa', 'eishu', 'kawasaki', 'kyoto', 'shibuya']) { x.beginPath(); x.moveTo(...nodes.hub); x.lineTo(...nodes[id]); x.stroke(); }
+    for (const id of Object.keys(nodes)) { if (id === 'hub') continue; x.beginPath(); x.moveTo(...nodes.hub); x.lineTo(...nodes[id]); x.stroke(); }
     x.setLineDash([]);
     for (const [id, [nx, ny]] of Object.entries(nodes)) {
       const ok = travelUnlocked(ps, id);
@@ -472,7 +483,7 @@ export class Menus {
       x.restore();
       const [lx, ly, al] = labelOff[id] ?? [0, -22, 'center'];
       x.fillStyle = ok ? '#fff' : '#777'; x.font = 'bold 15px sans-serif'; x.textAlign = al;
-      x.fillText(MAPS[id].name + (ok ? '' : ' 🔒'), nx + lx, ny + ly);
+      x.fillText((Menus.NODE_LABEL[id] ?? MAPS[id].name) + (ok ? '' : ' 🔒'), nx + lx, ny + ly);
     }
     x.fillStyle = 'rgba(255,255,255,0.5)'; x.font = '13px serif'; x.textAlign = 'left';
     x.fillText('呪術地図 — tap an area to travel', 16, 26);

@@ -499,6 +499,90 @@ function koi(): PropDef {
 
 function dummyPost(): PropDef { return trainingPost(); }
 
+// ---- Ruins, riverbanks and colonies ----
+
+function rubble(s = 1, seed = 3): PropDef {
+  const b = new PartBag();
+  const rng = new Rng(seed);
+  for (let i = 0; i < 7; i++) {
+    const a = rng.next() * TAU, r = rng.range(0, 0.7) * s;
+    const col = rng.pick([0x8a8a86, 0x7a7670, 0x9a968e, 0x5a5a5e]);
+    b.add(G.box(rng.range(0.3, 0.8) * s, rng.range(0.2, 0.5) * s, rng.range(0.3, 0.8) * s), col, { pos: [Math.sin(a) * r, rng.range(0.1, 0.35) * s, Math.cos(a) * r], rot: [rng.range(-0.4, 0.4), rng.next() * TAU, rng.range(-0.4, 0.4)], topColor: lighten(col, 1.1) });
+  }
+  // a twisted length of rebar sticking out
+  b.add(G.cyl(0.025, 0.025, 1.1 * s, 4), 0x6a4a3a, { pos: [0.2 * s, 0.5 * s, 0], rot: [0.5, 0, 0.6] });
+  return { geo: b.build(), collide: { r: 0.75 * s }, outline: 0.012, shadow: true };
+}
+
+function ruinedWall(): PropDef {
+  const b = new PartBag();
+  const col = 0x8a8682;
+  // a wall segment with a jagged broken top
+  for (let i = 0; i < 5; i++) {
+    const h = [2.6, 1.8, 2.9, 1.2, 2.2][i];
+    b.add(G.box(0.82, h, 0.4), col, { pos: [-1.64 + i * 0.82, h / 2, 0], topColor: lighten(col, 1.1), colorFn: (_x, y, _z, c) => { if (y > h / 2 - 0.12) c.multiplyScalar(0.8); } });
+  }
+  b.add(G.box(0.6, 0.4, 0.6), 0x7a7670, { pos: [1.2, 0.2, 0.7], rot: [0, 0.4, 0.2] });
+  return { geo: b.build(), collide: { box: [4, 0.5] }, outline: 0.012, shadow: true };
+}
+
+function fireBarrel(): PropDef {
+  const b = new PartBag();
+  b.add(G.cyl(0.38, 0.38, 0.9, 12), 0x5a3a2a, { pos: [0, 0.45, 0], colorFn: (_x, y, _z, c) => { if (Math.abs(y) > 0.36) c.setHex(0x2a1a14); } });
+  for (let i = 0; i < 4; i++) b.add(G.cone(0.14, 0.5, 5), i % 2 ? 0xff8a2a : 0xffc04a, { pos: [Math.sin(i * 1.6) * 0.14, 1.1, Math.cos(i * 1.6) * 0.14], glow: 2.2 });
+  return { geo: b.build(), collide: { r: 0.4 }, outline: 0.01, shadow: false, light: { y: 1.4, color: 0xff9a4a, intensity: 6, range: 8, flicker: true } };
+}
+
+function reeds(): PropDef {
+  const b = new PartBag();
+  const rng = new Rng(9);
+  for (let i = 0; i < 9; i++) {
+    const a = rng.next() * TAU, r = rng.range(0, 0.4), h = rng.range(0.9, 1.6);
+    b.add(G.cone(0.03, h, 3), rng.pick([0x6a7a3a, 0x7a8a4a, 0x5a6a32]), { pos: [Math.sin(a) * r, h / 2, Math.cos(a) * r], rot: [rng.range(-0.2, 0.2), 0, rng.range(-0.2, 0.2)] });
+    if (rng.chance(0.4)) b.add(G.ellipsoid(0.04, 0.12, 0.04), 0x6a4a2a, { pos: [Math.sin(a) * r, h * 0.9, Math.cos(a) * r] });
+  }
+  return { geo: b.build(), outline: false, shadow: false };
+}
+
+function snowPine(): PropDef {
+  const b = new PartBag();
+  const h = 3.6;
+  b.add(G.cyl(0.12, 0.2, h * 0.5, 7), 0x4a3424, { pos: [0, h * 0.25, 0] });
+  for (let i = 0; i < 4; i++) {
+    const rr = 1.3 * (1 - (i / 4) * 0.7);
+    b.add(G.cone(rr, h * 0.42, 9), i % 2 ? 0x2a4a3a : 0x24402e, { pos: [0, h * 0.35 + i * h * 0.2, 0], topColor: 0xf4f8ff });
+  }
+  return { geo: b.build(), collide: { r: 0.35 }, outline: 0.03, shadow: true };
+}
+
+function barrierPost(): PropDef {
+  // the colony barrier's anchor: a black obelisk humming with cursed energy
+  const b = new PartBag();
+  b.add(G.box(0.9, 0.4, 0.9), 0x2a2a30, { pos: [0, 0.2, 0] });
+  b.add(G.cyl(0.25, 0.35, 3.4, 4), 0x16161c, { pos: [0, 2.0, 0], rot: [0, Math.PI / 4, 0] });
+  for (let i = 0; i < 3; i++) b.add(G.box(0.52, 0.06, 0.52), 0x9a6aff, { pos: [0, 1.2 + i * 0.8, 0], rot: [0, Math.PI / 4, 0], glow: 1.6 });
+  b.add(G.octa(0.3), 0xc8a8ff, { pos: [0, 4.0, 0], glow: 2.0 });
+  return { geo: b.build(), collide: { r: 0.55 }, outline: 0.015, shadow: true, light: { y: 3.5, color: 0x9a6aff, intensity: 5, range: 8 } };
+}
+
+function iceSpike(): PropDef {
+  const b = new PartBag();
+  const rng = new Rng(4);
+  for (let i = 0; i < 5; i++) {
+    const a = rng.next() * TAU, h = rng.range(0.8, 2.2);
+    b.add(G.cone(rng.range(0.15, 0.3), h, 5), rng.pick([0xc8e4ff, 0xa8d0f4, 0xe8f4ff]), { pos: [Math.sin(a) * 0.3, h / 2, Math.cos(a) * 0.3], rot: [Math.cos(a) * 0.3, 0, -Math.sin(a) * 0.3], glow: 0.35 });
+  }
+  return { geo: b.build(), collide: { r: 0.5 }, outline: 0.012, shadow: true };
+}
+
+function grave(): PropDef {
+  const b = new PartBag();
+  b.add(G.box(0.6, 1.1, 0.25), 0x8a8a86, { pos: [0, 0.55, 0], topColor: 0xa8a8a4 });
+  b.add(G.box(0.9, 0.2, 0.6), 0x6a6a66, { pos: [0, 0.1, 0.1] });
+  b.add(G.cyl(0.05, 0.05, 0.3, 5), 0x3a6a3a, { pos: [0.3, 0.3, 0.32] });
+  return { geo: b.build(), collide: { r: 0.45 }, outline: 0.01, shadow: true };
+}
+
 export const PROP_BUILDERS: Record<string, Builder> = {
   sakura, roundTree, autumnTree, darkTree, pine: () => pine(), pineDark: () => pine(3.6, 0x1e3a2a, 5), cedar, bamboo: () => bamboo(),
   deadTree, rock1: () => rock(1), rock2: () => rock(2, 1.5), rock3: () => rock(3, 0.7), mossRock,
@@ -511,6 +595,7 @@ export const PROP_BUILDERS: Record<string, Builder> = {
   postBox, utilityPole, trafficLight, trainingPost, dummyPost, goal, bikeRack, cocoon, pipe,
   signPink: () => billboardSign(0xff4aa8), signCyan: () => billboardSign(0x2ae0ff), signGold: () => billboardSign(0xffc02a, 2.0, 1.0), signPurple: () => billboardSign(0x9a4aff),
   hachiko, well, signboard, veilAnchor: wire, stairs, lilyPad, koi,
+  rubble: () => rubble(1, 3), rubbleBig: () => rubble(1.8, 7), ruinedWall, fireBarrel, reeds, snowPine, barrierPost, iceSpike, grave,
   ...INTERIOR_PROPS,
 };
 
