@@ -233,9 +233,19 @@ export class AudioSys {
   // Sound effect library
   // ------------------------------------------------------------------
 
+  /** start times of recent sounds, for the voice budget */
+  private recent: number[] = [];
+
   play(name: string, o: SfxOpts = {}) {
     if (!this.ctx || this.muted) return;
     if (this.throttle(name + (o.pitch ?? ''), name === 'step' ? 60 : 28)) return;
+    // Voice budget: a crowd fight can trigger dozens of sounds in a few frames. Past a dozen in
+    // 120 ms, quiet (distant) ones are dropped so the audio thread never falls behind the picture.
+    const ms = performance.now();
+    while (this.recent.length && ms - this.recent[0] > 120) this.recent.shift();
+    if (this.recent.length >= 12 && (o.vol ?? 1) < 0.6 && !UI_SFX.has(name)) return;
+    if (this.recent.length >= 20 && !UI_SFX.has(name)) return;
+    this.recent.push(ms);
     const t = this.now + (o.delay ?? 0);
     const p = o.pitch ?? 1;
     const fn = (SFX as any)[name] as ((a: AudioSys, t: number, p: number, o: SfxOpts) => void) | undefined;
@@ -611,5 +621,8 @@ const SFX: Record<string, SfxFn> = {
     for (let i = 0; i < 2; i++) { a.osc('sine', 260 * p, 90, t + i * 0.22, 0.12, d, 0.9); a.noiseBurst(t + i * 0.22, 0.05, d, { type: 'bandpass', f0: 1800, q: 2, vol: 0.6 }); }
   },
 };
+
+/** Interface sounds always play, whatever else is going on. */
+const UI_SFX = new Set(['click', 'tab', 'open', 'close', 'error', 'equip', 'coin', 'buy', 'pickup', 'rare', 'dialog', 'levelup', 'questAccept', 'questDone', 'skillUp', 'save', 'enhanceOk', 'enhanceFail', 'potion', 'heal']);
 
 export const audio = new AudioSys();

@@ -194,7 +194,7 @@ export class MapBuilder {
       const cx = q === 0 ? c.x : q === 1 ? c.z : q === 2 ? -c.x : -c.z;
       const cz = q === 0 ? c.z : q === 1 ? -c.x : q === 2 ? -c.z : c.x;
       const w = q % 2 ? c.d : c.w, d = q % 2 ? c.w : c.d;
-      this.col.addBox(x + cx, z + cz, w, d);
+      this.col.addBox(x + cx, z + cz, w, d, def.height > 3.5 && Math.min(w, d) > 1.5);
       this.keepClear(x + cx, z + cz, w + 2, d + 2);
     }
     for (const l of def.lights ?? []) {

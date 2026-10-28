@@ -513,6 +513,7 @@ export class Menus {
     const sl = (id: string, label: string, v: number) => `<label class="set"><span>${label}</span><input type="range" min="0" max="100" value="${Math.round(v * 100)}" data-set="${id}"></label>`;
     const q = (v: string, l: string) => `<button class="chip ${s.quality === v ? 'on' : ''}" data-act="quality" data-q="${v}">${l}</button>`;
     const z = (v: number, l: string) => `<button class="chip ${s.zoom === v ? 'on' : ''}" data-act="zoom" data-z="${v}">${l}</button>`;
+    const sh = (v: number, l: string) => `<button class="chip ${s.shake === v ? 'on' : ''}" data-act="shake" data-v="${v}">${l}</button>`;
     return `<div class="system">
       <div class="sys-col">
         <div class="panel-title">Game</div>
@@ -530,6 +531,8 @@ export class Menus {
         <div class="chips">${q('low', 'Low')}${q('medium', 'Medium')}${q('high', 'High')}</div>
         <div class="panel-title">Camera</div>
         <div class="chips">${z(0.8, 'Near')}${z(1, 'Normal')}${z(1.25, 'Far')}</div>
+        <div class="panel-title">Screen shake</div>
+        <div class="chips">${sh(0, 'Off')}${sh(0.5, 'Light')}${sh(1, 'Full')}</div>
         <div class="credits">Cursed Chronicles is an unofficial, non-commercial fan game inspired by Jujutsu Kaisen and Zenonia. All models, sounds and music are procedurally generated. Jujutsu Kaisen © Gege Akutami / Shueisha.</div>
       </div>
     </div>`;
@@ -767,6 +770,7 @@ export class Menus {
       case 'title': this.game.save(false); this.close(); this.game.toTitle(); return;
       case 'quality': this.game.settings.quality = t.dataset.q as any; this.game.settings.autoQ = false; this.game.applySettings(); break;
       case 'zoom': this.game.settings.zoom = +t.dataset.z!; this.game.applySettings(); break;
+      case 'shake': this.game.settings.shake = +t.dataset.v!; this.game.applySettings(); break;
       case 'cheat-t': {
         const on = toggleCheat(this.game, t.dataset.id as any);
         audio.play(on ? 'equip' : 'click');

@@ -1,6 +1,6 @@
 // Static collision: axis-aligned boxes and circles in a spatial hash.
 
-export interface BoxCol { kind: 'box'; x0: number; z0: number; x1: number; z1: number }
+export interface BoxCol { kind: 'box'; x0: number; z0: number; x1: number; z1: number; tall?: boolean }
 export interface CircleCol { kind: 'circle'; x: number; z: number; r: number }
 export type Col = BoxCol | CircleCol;
 
@@ -28,9 +28,10 @@ export class CollisionWorld {
     }
   }
 
-  addBox(cx: number, cz: number, w: number, d: number) {
+  /** `tall` marks buildings: the only things the camera swings up to see past. */
+  addBox(cx: number, cz: number, w: number, d: number, tall = false) {
     if (w <= 0 || d <= 0) return;
-    this.insert({ kind: 'box', x0: cx - w / 2, z0: cz - d / 2, x1: cx + w / 2, z1: cz + d / 2 });
+    this.insert({ kind: 'box', x0: cx - w / 2, z0: cz - d / 2, x1: cx + w / 2, z1: cz + d / 2, tall });
   }
   addCircle(x: number, z: number, r: number) {
     if (r <= 0) return;
@@ -101,6 +102,17 @@ export class CollisionWorld {
         const pz = Math.max(c.z0, Math.min(z, c.z1));
         if ((x - px) ** 2 + (z - pz) ** 2 < r * r) return true;
       } else if ((x - c.x) ** 2 + (z - c.z) ** 2 < (r + c.r) ** 2) return true;
+    }
+    return false;
+  }
+
+  /** Like `blocked`, but only buildings count (lamps, trees and walls fade instead). */
+  blockedTall(x: number, z: number, r: number) {
+    for (const c of this.near(x, z, r + 0.5)) {
+      if (c.kind !== 'box' || !c.tall) continue;
+      const px = Math.max(c.x0, Math.min(x, c.x1));
+      const pz = Math.max(c.z0, Math.min(z, c.z1));
+      if ((x - px) ** 2 + (z - pz) ** 2 < r * r) return true;
     }
     return false;
   }

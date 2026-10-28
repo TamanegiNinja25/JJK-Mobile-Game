@@ -25,6 +25,9 @@ export class Player extends Actor implements Caster {
   potionCd = 0;
   dodgeCd = 0;
   dashS: { vx: number; vz: number; t: number } | null = null;
+  /** smoothed walking velocity */
+  private vx = 0;
+  private vz = 0;
   lastDamageT = -99;
   private weaponObjs: THREE.Object3D[] = [];
   controlsLocked = false;
@@ -91,6 +94,11 @@ export class Player extends Actor implements Caster {
   // Caster interface
   // ------------------------------------------------------------------
 
+  place(x: number, z: number) {
+    super.place(x, z);
+    this.vx = this.vz = 0;
+  }
+
   dash(dirX: number, dirZ: number, dist: number, dur: number, invuln = false) {
     if (dist <= 0.01) return;
     const d = Math.hypot(dirX, dirZ) || 1;
@@ -145,15 +153,23 @@ export class Player extends Actor implements Caster {
       this.dashS.t -= dt;
       if (Math.random() < 0.6) this.world.fx.burst(this.x, 0.9, this.z, this.ps.cls.id === 'megumi' ? 0x2a2a4a : 0x9ad0ff, 2, 1, 0.3, 0.3, this.ps.cls.id !== 'megumi');
       if (this.dashS.t <= 0) this.dashS = null;
-    } else if (!locked) {
+      this.vx = this.vz = 0;
+    } else {
+      // walking eases in and out (about a tenth of a second) instead of starting and stopping dead
+      let tvx = 0, tvz = 0;
       const mx = inp.moveX, mz = inp.moveZ;
       const mag = Math.hypot(mx, mz);
       const busy = this.attackT > 0.05 || this.castT > 0;
-      if (mag > 0.1) {
+      if (!locked && mag > 0.1) {
         const spd = st.moveSpd * (this.slowT > 0 ? this.slowMul : 1) * (busy ? 0.25 : 1) * clamp(mag, 0.35, 1);
-        this.move((mx / mag) * spd, (mz / mag) * spd, dt);
+        tvx = (mx / mag) * spd; tvz = (mz / mag) * spd;
         if (!busy) this.faceTowards(this.x + mx, this.z + mz, dt, 16);
       }
+      const k = 1 - Math.exp(-dt * (tvx || tvz ? 16 : 22));
+      this.vx += (tvx - this.vx) * k;
+      this.vz += (tvz - this.vz) * k;
+      if (Math.abs(this.vx) + Math.abs(this.vz) > 0.02) this.move(this.vx, this.vz, dt);
+      else this.vx = this.vz = 0;
     }
 
     if (!locked) this.handleActions();

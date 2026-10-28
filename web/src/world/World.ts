@@ -22,6 +22,7 @@ import { LEVEL_CAP } from '../rpg/classes';
 import { getAtlas, AtlasEntry } from './atlas';
 import { npcName } from '../rpg/PlayerState';
 import { ITEMS, makeItem, randomGear, rollRarity, uniquesForLevel } from '../rpg/items';
+import { warmIcons } from '../ui/Icons';
 import { QUEST_BY_ID } from '../data/story';
 import { triggerReactions } from '../rpg/skills';
 import { Caster, DamageOpts, DamageSource, ProjectileSpec, Target, WorldAPI } from './api';
@@ -38,6 +39,8 @@ interface SpawnerState { def: SpawnerDef; alive: Set<Enemy>; timers: number[] }
 
 /** Bosses that get the final-boss theme instead of the regular one. */
 const FINAL_BOSSES = new Set(['sukuna', 'mahoraga', 'kenjaku', 'sukunaTrue']);
+const _projScreen = new THREE.Matrix4();
+const _sphere = new THREE.Sphere();
 export class World implements WorldAPI {
   game: Game;
   r: Renderer;
@@ -59,6 +62,8 @@ export class World implements WorldAPI {
   time = 0;
   private tasks: { t: number; fn: () => void }[] = [];
   hitstopT = 0;
+  private lookX = 0;
+  private lookZ = 0;
   private spawners: SpawnerState[] = [];
   bossActive: { def: BossDef; enemy: Enemy } | null = null;
   private bossPending: BossDef | null = null;
@@ -80,7 +85,7 @@ export class World implements WorldAPI {
     this.weather = new Weather(r);
     r.scene.add(this.root);
     // indoors the walls are cut away, so the camera never needs to swing overhead
-    r.cameraBlocked = (x, z) => !this.mapDef?.interior && this.col.blocked(x, z, 1.2);
+    r.cameraBlocked = (x, z) => !this.mapDef?.interior && this.col.blockedTall(x, z, 1.2);
   }
 
   // ------------------------------------------------------------------
@@ -108,6 +113,8 @@ export class World implements WorldAPI {
     this.weather.set(def.weather, this.root);
     music.clearStack();
     music.play(def.music);
+    // in town, paint every shop's stock in the background (it's quiet there)
+    if (def.town && this.game.ps) warmIcons([], Object.values(ITEMS).map(b => b.icon));
     music.ambience(def.ambience);
 
     const ps = this.game.ps!;
@@ -188,10 +195,11 @@ export class World implements WorldAPI {
       this.hitstopT -= dt;
       this.fx.update(dt * 0.25);
       this.updateLights();
-      this.r.updateCamera(dt, this.player.x, this.player.z);
+      this.followCamera(dt);
       return;
     }
     this.time += dt;
+    this.updateMusic();
     this.game.ps!.tick(dt);
     this.guideT -= dt;
     if (this.guideT <= 0) { this.guideT = 0.3; this.updateGuide(); }
@@ -231,8 +239,11 @@ export class World implements WorldAPI {
     this.updateLights();
     this.fillOverlay();
     if (p.wantsInteract) { p.wantsInteract = false; this.tryInteract(); }
-    const look = 1.2;
-    this.r.updateCamera(dt, p.x, p.z, Math.sin(p.facing) * look * 0.5, Math.cos(p.facing) * look * 0.35);
+    // Lead the camera in the direction you're walking. Facing isn't used: it snaps to each enemy you
+    // hit, which used to swing the view back and forth in fights. Standing still keeps the last lead.
+    const mx = p.input.moveX, mz = p.input.moveZ, mm = Math.hypot(mx, mz);
+    if (mm > 0.2 && !p.controlsLocked) { this.lookX = (mx / mm) * 0.6; this.lookZ = (mz / mm) * 0.42; }
+    this.followCamera(dt);
     occlusion.uOccA.value.copy(this.r.camera.position);
     occlusion.uOccB.value.set(p.x, 1.0, p.z);
     occlusion.uViewInv.value.copy(this.r.camera.matrixWorld);
@@ -271,6 +282,9 @@ export class World implements WorldAPI {
   private separate() {
     const list: Actor[] = this.enemies.filter(e => e.alive && e.d.speed > 0);
     const p = this.player;
+    const px0 = p.x, pz0 = p.z;
+    const starts: number[] = [];
+    for (const a of list) starts.push(a.x, a.z);
     for (const n of this.npcs) {
       const dx = p.x - n.x, dz = p.z - n.z;
       const rr = p.radius + n.radius;
@@ -301,6 +315,15 @@ export class World implements WorldAPI {
         }
       }
     }
+    // Crowd pushes never carry anyone through a wall (a boss shoving you used to press you through
+    // one): each push is replayed from where the actor stood, in collision-checked steps.
+    const replay = (a: Actor, x0: number, z0: number) => {
+      const dx = a.x - x0, dz = a.z - z0;
+      a.x = x0; a.z = z0;
+      a.move(dx, dz, 1);
+    };
+    if (p.x !== px0 || p.z !== pz0) replay(p, px0, pz0);
+    list.forEach((a, i) => { if (a.x !== starts[i * 2] || a.z !== starts[i * 2 + 1]) replay(a, starts[i * 2], starts[i * 2 + 1]); });
   }
 
   // ------------------------------------------------------------------
@@ -390,7 +413,6 @@ export class World implements WorldAPI {
         this.enemies = this.enemies.filter(e => e !== enemy);
         this.bossActive = null;
         this.bossDom = null;
-        music.pop();
         this.game.ui.hud?.setBoss(null);
         this.game.toast('The curse withdrew… it will be waiting.', 'boss');
       }
@@ -440,7 +462,7 @@ export class World implements WorldAPI {
       e.target = this.player;
       e.atkCd = 1.5;
       this.bossActive = { def: b, enemy: e };
-      music.push(FINAL_BOSSES.has(b.id) ? 'finalBoss' : 'boss');
+      this.updateMusic();
       this.game.ui.hud?.setBoss(e);
       this.game.ui.banner(GRADE_NAME[def.grade].toUpperCase(), def.name, '#ff3a4a');
     };
@@ -450,6 +472,14 @@ export class World implements WorldAPI {
   }
 
   inBossFight() { return !!this.bossActive || this.bossStarting; }
+
+  /** A fight is on: a boss, or a curse within reach that has noticed you. */
+  inCombat() {
+    if (this.bossActive || this.bossStarting) return true;
+    const p = this.player;
+    for (const e of this.enemies) if (e.alive && e.aggro && Math.abs(e.x - p.x) < 18 && Math.abs(e.z - p.z) < 18) return true;
+    return false;
+  }
 
   /** True inside the arena of the boss currently being fought (spawners stay out of it). */
   private inArena(x: number, z: number) {
@@ -880,7 +910,6 @@ export class World implements WorldAPI {
       if (this.bossActive?.enemy === e) {
         this.bossActive = null;
         this.bossDom = null;
-        music.pop();
         this.game.ui.hud?.setBoss(null);
         this.game.ui.banner('EXORCISED', d.name, '#ffd23a');
         this.fx.flash('#ffffff', 0.6, 0.6);
@@ -1025,8 +1054,40 @@ export class World implements WorldAPI {
     this.domainOwner = 'player';
     this.domainUntil = this.time + dur;
     this.game.ui.banner('DOMAIN EXPANSION', kind === 'shrine' ? 'Malevolent Shrine' : kind === 'shadow' ? 'Chimera Shadow Garden' : kind === 'nails' ? 'Resonance: Thousand Nails' : 'Unlimited Void', kind === 'shadow' ? '#8a8aff' : '#ff2a3a');
-    music.push('domain');
-    this.schedule(dur, () => music.pop());
+    this.updateMusic();
+  }
+
+  /**
+   * The soundtrack follows what is happening right now: your domain, else a boss fight, else the
+   * area theme. It used to be a stack of pushes and pops, which drifted out of step when events
+   * overlapped (a boss dying inside your domain brought its fight music back afterwards).
+   */
+  private updateMusic() {
+    const want = this.domainOwner === 'player' && this.time < this.domainUntil ? 'domain'
+      : this.bossActive?.enemy.alive ? (FINAL_BOSSES.has(this.bossActive.def.id) ? 'finalBoss' : 'boss')
+      : this.mapDef.music;
+    if (music.current !== want) music.play(want, want === this.mapDef.music ? 1.4 : 0.6);
+  }
+
+  /** Camera follow with the current walking lead (used by every game state, so it never jumps). */
+  followCamera(dt: number) {
+    this.r.updateCamera(dt, this.player.x, this.player.z, this.lookX, this.lookZ);
+    this.updateFrustum();
+  }
+
+  updateFrustum() {
+    const cam = this.r.camera;
+    cam.updateMatrixWorld();
+    _projScreen.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+    this.frustum.setFromProjectionMatrix(_projScreen);
+  }
+
+  private frustum = new THREE.Frustum();
+  /** Is a spot (with a radius) inside the camera view, as of the last camera update. */
+  onScreen(x: number, z: number, r: number) {
+    _sphere.center.set(x, 1, z);
+    _sphere.radius = r;
+    return this.frustum.intersectsSphere(_sphere);
   }
 
   blocked(x: number, z: number, r: number) { return this.col.blocked(x, z, r); }
