@@ -74,11 +74,18 @@ export abstract class Actor {
     this.lastX = x; this.lastZ = z;
   }
 
-  /** Move with static collision. */
+  /**
+   * Move with static collision. Fast moves (dashes, lunges, knockback) are split into steps no
+   * longer than half the actor's radius, so a single frame can never carry it past the middle of a
+   * wall, where the push-out would land it on the far side.
+   */
   move(vx: number, vz: number, dt: number) {
-    const nx = this.x + vx * dt, nz = this.z + vz * dt;
-    const [rx, rz] = this.world.col.resolve(nx, nz, this.radius);
-    this.x = rx; this.z = rz;
+    const dx = vx * dt, dz = vz * dt;
+    const n = Math.min(32, Math.max(1, Math.ceil(Math.hypot(dx, dz) / Math.max(0.08, this.radius * 0.5))));
+    for (let i = 0; i < n; i++) {
+      const [rx, rz] = this.world.col.resolve(this.x + dx / n, this.z + dz / n, this.radius);
+      this.x = rx; this.z = rz;
+    }
   }
 
   faceTowards(tx: number, tz: number, dt = 1, rate = 14) {
@@ -128,7 +135,11 @@ export abstract class Actor {
     this.model.speed = this.stunned ? 0 : this.moveSpeed;
     this.model.root.position.set(this.x, this.y + this.hover, this.z);
     this.model.root.rotation.y = this.facing;
-    this.model.update(dt);
+    // Skinned models skip frustum culling, so off-screen actors used to be animated, skinned and
+    // drawn every frame anyway. Hide them (and skip their animation) until they come into view.
+    const seen = this.world.onScreen(this.x, this.z, this.radius * this.scale + 1.5);
+    this.model.root.visible = seen;
+    if (seen) this.model.update(dt);
   }
 
   dispose() {

@@ -16,7 +16,7 @@ import { MAPS } from './world/maps';
 import { audio } from './audio/Audio';
 import { music } from './audio/Music';
 import { IconSpec, ITEMS } from './rpg/items';
-import { warmIcons } from './ui/Icons';
+import { setIconWarmGate, warmIcons } from './ui/Icons';
 import { classSkills } from './rpg/skills';
 import { pick } from './core/util';
 import { occlusion } from './render/toon';
@@ -35,7 +35,8 @@ export class Game {
   portraits: Portraits;
   ps: PlayerState | null = null;
   state: GameState = 'boot';
-  settings = { music: 0.55, sfx: 0.85, amb: 0.6, quality: 'high' as Quality, zoom: 1, autoQ: true };
+  private dtS = 1 / 60;
+  settings = { music: 0.55, sfx: 0.85, amb: 0.6, quality: 'high' as Quality, zoom: 1, autoQ: true, shake: 1 };
   private last = performance.now();
   private autosaveT = 0;
   private titleT = 0;
@@ -88,6 +89,10 @@ export class Game {
     this.last = t;
     if (dt > 0.1) dt = 0.1;
     if (dt <= 0) return;
+    // Phones hand out slightly uneven frame times (16, 18, 15 ms...), which shows up as stutter in
+    // anything moving. Smooth small wobbles; a real hitch is taken as-is so the game doesn't lag behind.
+    this.dtS += (dt - this.dtS) * (Math.abs(dt - this.dtS) > 0.04 ? 1 : 0.2);
+    dt = this.dtS;
     this.fpsAcc += dt; this.fpsN++;
     if (this.fpsAcc > 1) { this.fps = this.fpsN / this.fpsAcc; this.fpsAcc = 0; this.fpsN = 0; this.autoQuality(); }
     this.input.update();
@@ -118,6 +123,7 @@ export class Game {
         for (const n of w.npcs) n.update(dt);
         this.r.camera.position.set(Math.sin(a) * 26, 14, Math.cos(a) * 26 + 2);
         this.r.camera.lookAt(0, 2, -6);
+        w.updateFrustum();
         this.r.target.set(0, 0, 0);
         this.r.sun.target.position.set(0, 0, 0);
         this.r.sun.position.set(-20, 30, 20);
@@ -133,14 +139,14 @@ export class Game {
       case 'dialogue':
         this.dialogue.update(dt);
         this.world.fx.update(dt);
-        this.world.r.updateCamera(dt, this.world.player.x, this.world.player.z);
+        this.world.followCamera(dt);
         for (const n of this.world.npcs) n.update(dt);
         this.world.player.syncModel(dt);
         break;
       case 'menu':
       case 'dead':
         this.world.fx.update(dt);
-        this.world.r.updateCamera(dt, this.world.player.x, this.world.player.z);
+        this.world.followCamera(dt);
         if (this.state === 'dead') this.world.player.syncModel(dt);
         break;
       default:
@@ -193,6 +199,7 @@ export class Game {
       this.world.fx.quality = s.quality === 'low' ? 0.5 : s.quality === 'medium' ? 0.75 : 1;
     }
     this.r.zoom = s.zoom;
+    this.r.shakeScale = s.shake;
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch { /* ignore */ }
   }
 
@@ -230,7 +237,8 @@ export class Game {
     this.ui.hud!.buildMinimap();
     // paint this class's skill icons and the player's gear icons in the background
     warmIcons(classSkills(ps.d.cls).map(s => s.id), [...ps.d.inventory, ...Object.values(ps.d.equip)].filter(Boolean).map(it => ITEMS[it!.base].icon), true);
-    warmIcons([], Object.values(ITEMS).map(b => b.icon)); // then everything else, for shops
+    // shop stock is painted while in town (see World.loadMap); combat pauses all of this
+    setIconWarmGate(() => this.state === 'play' && this.world.inCombat());
     this.state = 'play';
     this.input.enabled = true;
     this.applySettings();
@@ -346,8 +354,13 @@ export class Game {
     // 3. progress hints for active quests involving this NPC
     const activeQ = ps.turnInsFor(id).find(q => ps.questState(q.id)?.state === 'active');
     const gated = QUESTS.find(q => q.giver === id && !ps.questState(q.id) && (q.prereq ?? []).every(p => ps.questState(p)?.state === 'done') && q.level && ps.d.level < q.level);
-    if (n.d.shop && !activeQ) {
-      if (gated) this.toast(`${n.name} will have a request for you at Lv ${gated.level}.`, 'info', 2.5);
+    if (n.d.shop) {
+      // A shop always opens, even mid-quest: Yaga's infusion request is finished inside his
+      // workshop, and Ijichi still has to drive you places while his errands are open.
+      if (activeQ) {
+        const i = activeQ.objectives.findIndex((_, k) => !ps.objectiveDone(activeQ, k));
+        if (i >= 0) this.toast(`${activeQ.name}: ${activeQ.objectives[i].label}`, 'quest', 2.5);
+      } else if (gated) this.toast(`${n.name} will have a request for you at Lv ${gated.level}.`, 'info', 2.5);
       this.ui.menus.openShop(n.d.shop === 'workshop' ? 'workshop' : n.d.shop, n.d.model ?? id);
       return;
     }

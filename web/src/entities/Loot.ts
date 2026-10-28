@@ -18,6 +18,29 @@ function coins() {
   coinGeo = b.build();
   return coinGeo;
 }
+// Halos, beams and their materials are shared by every drop: a crowd dying at once used to build
+// and upload a fresh sphere, cylinder and two materials per coin bag, then throw them away.
+let lootMat: THREE.Material | null = null;
+let haloGeo: THREE.BufferGeometry | null = null;
+const beamGeos = new Map<number, THREE.BufferGeometry>();
+const haloMats = new Map<number, THREE.Material>();
+const beamMats = new Map<number, THREE.Material>();
+function haloMat(r: number) {
+  let m = haloMats.get(r);
+  if (!m) { m = new THREE.MeshBasicMaterial({ color: new THREE.Color(RARITY_COLOR[r]), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }); haloMats.set(r, m); }
+  return m;
+}
+function beamMat(r: number) {
+  let m = beamMats.get(r);
+  if (!m) { m = new THREE.MeshBasicMaterial({ color: new THREE.Color(RARITY_COLOR[r]), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }); beamMats.set(r, m); }
+  return m;
+}
+function beamGeo(h: number) {
+  let g = beamGeos.get(h);
+  if (!g) { g = new THREE.CylinderGeometry(0.12, 0.25, h, 10, 1, true); beamGeos.set(h, g); }
+  return g;
+}
+
 function bag() {
   if (bagGeo) return bagGeo;
   const b = new PartBag();
@@ -48,19 +71,16 @@ export class Loot {
     const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 2;
     this.vx = Math.cos(a) * s; this.vz = Math.sin(a) * s;
     this.obj = new THREE.Group();
-    const mesh = new THREE.Mesh(item ? bag() : coins(), toonMaterial());
+    const mesh = new THREE.Mesh(item ? bag() : coins(), lootMat ??= toonMaterial());
     mesh.castShadow = true;
     this.obj.add(mesh);
     if (item) {
       const r = item.rarity;
-      const col = new THREE.Color(RARITY_COLOR[r]);
-      const glowM = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false });
-      const halo = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), glowM);
+      const halo = new THREE.Mesh(haloGeo ??= new THREE.SphereGeometry(0.32, 10, 8), haloMat(r));
       halo.position.y = 0.22;
       this.obj.add(halo);
       if (r >= 1 || ITEMS[item.base].kind === 'quest') {
-        const bm = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-        this.beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.25, r >= 2 ? 6 : 3, 10, 1, true), bm);
+        this.beam = new THREE.Mesh(beamGeo(r >= 2 ? 6 : 3), beamMat(r));
         this.beam.position.y = r >= 2 ? 3 : 1.5;
         this.obj.add(this.beam);
       }
@@ -113,7 +133,7 @@ export class Loot {
   remove() {
     this.dead = true;
     this.world.root.remove(this.obj);
-    this.obj.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh && m.geometry !== coinGeo && m.geometry !== bagGeo) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); } });
+    // geometry and materials are shared between drops; nothing to free
   }
 }
 

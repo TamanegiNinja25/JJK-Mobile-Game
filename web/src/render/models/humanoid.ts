@@ -613,7 +613,10 @@ export class HumanoidAnimator {
   idleT = Math.random() * 10;
   stance: 'fist' | 'blade' | 'hammer' | 'none' = 'none';
   lean = 0;
-  blend = 0;          // smooths in/out of actions
+  /** 0 = standing pose, 1 = full walk cycle; eased so starting and stopping don't pop */
+  moveW = 0;
+  /** base pose saved before an action is layered on, so actions ease in and out of it */
+  private snap: Float32Array | null = null;
   /** called on every foot plant of the walk cycle */
   onStep: (() => void) | null = null;
 
@@ -641,52 +644,66 @@ export class HumanoidAnimator {
     const run = clamp(sp / 6, 0, 1);
     const ph = this.walkPhase;
 
-    // ---- locomotion ----
-    if (moving && !this.dead) {
+    // ---- locomotion ---- (walk cycle and standing pose cross-fade instead of switching)
+    this.moveW = clamp(this.moveW + (moving ? 1 : -1) * dt * 7, 0, 1);
+    const ww = this.moveW * this.moveW * (3 - 2 * this.moveW);
+    if (ww > 0.001 && !this.dead) {
       const sw = Math.sin(ph);
-      const amp = lerp(0.55, 0.95, run);
+      const amp = lerp(0.55, 0.95, run) * ww;
       b.legUpL.rotation.x = sw * amp;
       b.legUpR.rotation.x = -sw * amp;
-      b.legLowL.rotation.x = Math.max(0, -Math.cos(ph)) * amp * 1.3 + 0.1;
-      b.legLowR.rotation.x = Math.max(0, Math.cos(ph)) * amp * 1.3 + 0.1;
+      b.legLowL.rotation.x = (Math.max(0, -Math.cos(ph)) * 1.3) * amp + 0.1 * ww;
+      b.legLowR.rotation.x = (Math.max(0, Math.cos(ph)) * 1.3) * amp + 0.1 * ww;
       b.armUpL.rotation.x = -sw * amp * 0.8;
       b.armUpR.rotation.x = sw * amp * 0.8;
-      b.armLowL.rotation.x = -0.4 - run * 0.7;
-      b.armLowR.rotation.x = -0.4 - run * 0.7;
-      b.hips.position.y += Math.abs(Math.cos(ph)) * 0.05 * (0.5 + run);
-      b.spine.rotation.x = 0.08 + run * 0.18;
-      b.hips.rotation.y = sw * 0.12;
-      b.chest.rotation.y = -sw * 0.18;
-      b.head.rotation.x = -0.05 - run * 0.1;
-    } else if (!this.dead) {
-      // idle breathing + guard stance
+      b.armLowL.rotation.x = (-0.4 - run * 0.7) * ww;
+      b.armLowR.rotation.x = (-0.4 - run * 0.7) * ww;
+      b.hips.position.y += Math.abs(Math.cos(ph)) * 0.05 * (0.5 + run) * ww;
+      b.spine.rotation.x = (0.08 + run * 0.18) * ww;
+      b.hips.rotation.y = sw * 0.12 * ww;
+      b.chest.rotation.y = -sw * 0.18 * ww;
+      b.head.rotation.x = (-0.05 - run * 0.1) * ww;
+    }
+    if (ww < 0.999 && !this.dead) {
+      // idle breathing + guard stance, layered on top with the remaining weight
+      const iw = 1 - ww;
       const br = Math.sin(this.idleT * 2.2);
-      b.chest.rotation.x = br * 0.025;
-      b.hips.position.y -= 0.01 + br * 0.006;
-      b.armUpL.rotation.z = 0.12 + br * 0.02;
-      b.armUpR.rotation.z = -0.12 - br * 0.02;
+      b.chest.rotation.x += br * 0.025 * iw;
+      b.hips.position.y -= (0.01 + br * 0.006) * iw;
+      b.armUpL.rotation.z += (0.12 + br * 0.02) * iw;
+      b.armUpR.rotation.z += (-0.12 - br * 0.02) * iw;
       if (this.stance === 'fist') {
-        b.legUpL.rotation.x = -0.25; b.legLowL.rotation.x = 0.35;
-        b.legUpR.rotation.x = 0.2; b.legLowR.rotation.x = 0.25;
-        b.armUpL.rotation.x = -0.7; b.armLowL.rotation.x = -1.6;
-        b.armUpR.rotation.x = -0.4; b.armLowR.rotation.x = -1.8;
-        b.hips.position.y -= 0.04;
-        b.chest.rotation.y = 0.2;
+        b.legUpL.rotation.x += -0.25 * iw; b.legLowL.rotation.x += 0.35 * iw;
+        b.legUpR.rotation.x += 0.2 * iw; b.legLowR.rotation.x += 0.25 * iw;
+        b.armUpL.rotation.x += -0.7 * iw; b.armLowL.rotation.x += -1.6 * iw;
+        b.armUpR.rotation.x += -0.4 * iw; b.armLowR.rotation.x += -1.8 * iw;
+        b.hips.position.y -= 0.04 * iw;
+        b.chest.rotation.y += 0.2 * iw;
       } else if (this.stance === 'blade') {
-        b.armUpR.rotation.x = -0.4; b.armLowR.rotation.x = -0.6;
-        b.legUpL.rotation.x = -0.15; b.legUpR.rotation.x = 0.15;
+        b.armUpR.rotation.x += -0.4 * iw; b.armLowR.rotation.x += -0.6 * iw;
+        b.legUpL.rotation.x += -0.15 * iw; b.legUpR.rotation.x += 0.15 * iw;
       } else if (this.stance === 'hammer') {
-        b.armUpR.rotation.x = -0.15; b.armLowR.rotation.x = -0.9;
-        b.armUpL.rotation.x = -0.2; b.armLowL.rotation.x = -0.4;
+        b.armUpR.rotation.x += -0.15 * iw; b.armLowR.rotation.x += -0.9 * iw;
+        b.armUpL.rotation.x += -0.2 * iw; b.armLowL.rotation.x += -0.4 * iw;
       }
-      b.head.rotation.y = Math.sin(this.idleT * 0.4) * 0.15;
+      b.head.rotation.y += Math.sin(this.idleT * 0.4) * 0.15 * iw;
     }
 
     // ---- actions ----
     if (this.action && !this.dead) {
       this.actionT += dt / this.actionDur;
       if (this.actionT >= 1) { this.action = null; this.actionT = 0; }
-      else this.applyAction(this.action, this.actionT);
+      else {
+        // ease from the current stance into the action and back out, instead of snapping to it
+        const el = this.actionT * this.actionDur, left = (1 - this.actionT) * this.actionDur;
+        const w = Math.min(1, el / 0.07, left / 0.1);
+        if (w >= 1) this.applyAction(this.action, this.actionT);
+        else {
+          this.savePose();
+          this.applyAction(this.action, this.actionT);
+          this.mixPose(w);
+        }
+      }
     }
 
     // ---- hit flinch ----
@@ -707,6 +724,31 @@ export class HumanoidAnimator {
       b.armUpL.rotation.z = k * 1.2; b.armUpR.rotation.z = -k * 1.2;
       b.legUpL.rotation.x = k * 0.3;
       b.head.rotation.x = -k * 0.4;
+    }
+  }
+
+  private savePose() {
+    const bones = this.m.bones;
+    let n = 0;
+    for (const k in bones) n++;
+    if (!this.snap || this.snap.length !== n * 4) this.snap = new Float32Array(n * 4);
+    let i = 0;
+    for (const k in bones) {
+      const b = bones[k];
+      this.snap[i++] = b.rotation.x; this.snap[i++] = b.rotation.y; this.snap[i++] = b.rotation.z; this.snap[i++] = b.position.y;
+    }
+  }
+
+  /** Blend the freshly applied action pose with the saved base pose: w = 1 keeps the action. */
+  private mixPose(w: number) {
+    const bones = this.m.bones, sn = this.snap!;
+    let i = 0;
+    for (const k in bones) {
+      const b = bones[k];
+      b.rotation.x = sn[i] + (b.rotation.x - sn[i]) * w; i++;
+      b.rotation.y = sn[i] + (b.rotation.y - sn[i]) * w; i++;
+      b.rotation.z = sn[i] + (b.rotation.z - sn[i]) * w; i++;
+      b.position.y = sn[i] + (b.position.y - sn[i]) * w; i++;
     }
   }
 

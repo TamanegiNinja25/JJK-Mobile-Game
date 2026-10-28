@@ -18,6 +18,12 @@ export class Overlay2D {
   private p = { x: 0, y: 0 };
   dpr = 1;
   time = 0;
+  /**
+   * Outlined text is costly to draw (strokeText), and a crowd fight puts dozens of labels and
+   * damage numbers on screen every frame. Each distinct label is drawn once into a small canvas
+   * here and stamped with drawImage after that.
+   */
+  private sprites = new Map<string, HTMLCanvasElement>();
 
   constructor(canvas: HTMLCanvasElement, private r: Renderer) {
     this.canvas = canvas;
@@ -25,7 +31,38 @@ export class Overlay2D {
     this.resize();
   }
 
+  /** A cached, pre-outlined text stamp; `glow` bakes in the crit shadow. */
+  private sprite(txt: string, font: string, px: number, fill: string, stroke: string, lw: number, glow = 0) {
+    const key = `${txt}|${font}|${px}|${fill}|${stroke}|${lw}|${glow}`;
+    let cv = this.sprites.get(key);
+    if (cv) return cv;
+    const d = this.dpr, pad = Math.ceil(lw + glow + 2);
+    const m = this.ctx;
+    m.font = font;
+    const w = Math.ceil(m.measureText(txt).width) + pad * 2, h = Math.ceil(px * 1.25) + pad * 2;
+    cv = document.createElement('canvas');
+    cv.width = Math.ceil(w * d); cv.height = Math.ceil(h * d);
+    const x = cv.getContext('2d')!;
+    x.scale(d, d);
+    x.font = font; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.lineJoin = 'round';
+    x.lineWidth = lw; x.strokeStyle = stroke;
+    x.strokeText(txt, w / 2, h / 2);
+    if (glow) { x.shadowColor = fill; x.shadowBlur = glow; }
+    x.fillStyle = fill;
+    x.fillText(txt, w / 2, h / 2);
+    if (this.sprites.size > 400) { let n = 0; for (const k of this.sprites.keys()) { this.sprites.delete(k); if (++n > 100) break; } }
+    this.sprites.set(key, cv);
+    return cv;
+  }
+
+  private stamp(cv: HTMLCanvasElement, x: number, y: number, scale = 1) {
+    const w = (cv.width / this.dpr) * scale, h = (cv.height / this.dpr) * scale;
+    this.ctx.drawImage(cv, x - w / 2, y - h / 2, w, h);
+  }
+
   resize() {
+    this.sprites.clear();
     this.dpr = Math.min(2, window.devicePixelRatio || 1);
     this.canvas.width = Math.floor(window.innerWidth * this.dpr);
     this.canvas.height = Math.floor(window.innerHeight * this.dpr);
@@ -57,18 +94,13 @@ export class Overlay2D {
       const k = Math.max(0, Math.min(1, b.hp / b.max));
       c.fillStyle = 'rgba(0,0,0,0.65)';
       c.fillRect(x - 1, y - 1, w + 2, h + 2);
-      const grad = c.createLinearGradient(x, y, x, y + h);
-      grad.addColorStop(0, '#ff5a6a'); grad.addColorStop(1, '#b0182c');
-      c.fillStyle = grad;
+      c.fillStyle = '#b0182c';
       c.fillRect(x, y, w * k, h);
+      c.fillStyle = '#ff5a6a';
+      c.fillRect(x, y, w * k, h * 0.5);
       if (b.name) {
-        c.font = `600 ${b.elite ? 12 : 10}px system-ui, sans-serif`;
-        c.lineWidth = 3;
-        c.strokeStyle = 'rgba(0,0,0,0.8)';
-        const label = b.grade ? `${b.name}` : b.name;
-        c.strokeText(label, this.p.x, y - 9);
-        c.fillStyle = b.gradeColor ?? '#fff';
-        c.fillText(label, this.p.x, y - 9);
+        const px = b.elite ? 12 : 10;
+        this.stamp(this.sprite(b.name, `600 ${px}px system-ui, sans-serif`, px, b.gradeColor ?? '#fff', 'rgba(0,0,0,0.8)', 3), this.p.x, y - 9);
       }
       if (b.marked && b.marked > 0) {
         c.fillStyle = '#ff4a6a';
@@ -109,14 +141,7 @@ export class Overlay2D {
         c.fillStyle = m.kind === 'travel' ? '#7fdcff' : '#ffffff';
         c.fillText(m.kind === 'shop' ? '¥' : m.kind === 'travel' ? '⛩' : '…', this.p.x, y);
       }
-      if (m.name && m.near) {
-        c.font = '600 12px system-ui, sans-serif';
-        c.lineWidth = 3;
-        c.strokeStyle = 'rgba(0,0,0,0.8)';
-        c.strokeText(m.name, this.p.x, this.p.y + 22);
-        c.fillStyle = '#fff';
-        c.fillText(m.name, this.p.x, this.p.y + 22);
-      }
+      if (m.name && m.near) this.stamp(this.sprite(m.name, '600 12px system-ui, sans-serif', 12, '#fff', 'rgba(0,0,0,0.8)', 3), this.p.x, this.p.y + 22);
     }
 
     // floating combat text
@@ -128,16 +153,11 @@ export class Overlay2D {
       this.v.set(t.x + t.vx * k, t.y + k * 1.4, t.z);
       if (!this.r.project(this.v, this.p)) continue;
       const pop = k < 0.12 ? 0.6 + (k / 0.12) * 0.7 : k < 0.25 ? 1.3 - (k - 0.12) / 0.13 * 0.3 : 1;
-      const size = t.size * pop;
+      // drawn once at the biggest size of the pop, then scaled down
+      const big = Math.round(t.size * 1.3);
       c.globalAlpha = k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1;
-      c.font = `900 ${size}px "Arial Black", system-ui, sans-serif`;
-      c.lineWidth = Math.max(3, size / 5);
-      c.strokeStyle = t.color === '#ff2a3a' ? '#000' : 'rgba(10,6,16,0.9)';
-      c.strokeText(t.txt, this.p.x, this.p.y);
-      c.fillStyle = t.color;
-      if (t.crit) { c.shadowColor = t.color; c.shadowBlur = 10; }
-      c.fillText(t.txt, this.p.x, this.p.y);
-      c.shadowBlur = 0;
+      const cv = this.sprite(t.txt, `900 ${big}px "Arial Black", system-ui, sans-serif`, big, t.color, t.color === '#ff2a3a' ? '#000' : 'rgba(10,6,16,0.9)', Math.max(3, big / 5), t.crit ? 10 : 0);
+      this.stamp(cv, this.p.x, this.p.y, pop / 1.3);
       c.globalAlpha = 1;
     }
     this.bars.length = 0;

@@ -210,7 +210,7 @@ export class Enemy extends Actor {
           // strafe
           const side = Math.sin(this.zigT += dt) > 0 ? 1 : -1;
           const nx = -(t.z - this.z) / dist * side, nz = (t.x - this.x) / dist * side;
-          this.move(nx * spd * 0.5, nz * spd * 0.5, dt);
+          this.steer(nx * spd * 0.5, nz * spd * 0.5, dt);
         }
       }
       return;
@@ -235,8 +235,21 @@ export class Enemy extends Actor {
     const dx = tx - this.x, dz = tz - this.z;
     const d = Math.hypot(dx, dz);
     if (d < 0.05) return;
-    this.move((dx / d) * spd, (dz / d) * spd, dt);
+    this.steer((dx / d) * spd, (dz / d) * spd, dt);
     this.faceTowards(tx, tz, dt, 10);
+  }
+
+  private svx = 0;
+  private svz = 0;
+  private steerT = -1;
+  /** Walk with an eased velocity, so turns, strafes and restarts don't snap. */
+  steer(vx: number, vz: number, dt: number) {
+    if (this.world.time - this.steerT > 0.15) { this.svx = 0; this.svz = 0; }
+    this.steerT = this.world.time;
+    const k = 1 - Math.exp(-dt * 9);
+    this.svx += (vx - this.svx) * k;
+    this.svz += (vz - this.svz) * k;
+    this.move(this.svx, this.svz, dt);
   }
 
   beginAttack() {

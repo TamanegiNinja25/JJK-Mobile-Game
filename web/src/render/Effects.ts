@@ -544,6 +544,9 @@ export class Effects implements FxAPI {
     this.sigil(t.x, t.z, 0.02, 0xffffff, 0.05);
     this.telegraph('circle', t.x, t.z, 0.02, 0.05, 0xffffff);
     this.telegraph('line', t.x, t.z, 0.02, 0.05, 0xffffff, 0, 0.01);
+    this.shockwave(t.x, t.z, 0.02, 0xffffff);
+    this.pillar(t.x, t.z, 0.01, 0.02, 0xffffff, 0.05);
+    this.spikes(t.x, t.z, 0.02, 0xffffff, 1);
     // Custom shaders are only identified as "the same" while some material using them is alive;
     // when the last one is disposed three forgets them and the next copy compiles from scratch.
     // So the slash material and one domain pair are drawn here and kept for the whole session.
@@ -551,6 +554,9 @@ export class Effects implements FxAPI {
     const g = new THREE.Group();
     g.position.set(t.x, 0, t.z);
     g.add(...this.keepers, new THREE.Mesh(this.keeperQuad, this.slashMat));
+    // domain set pieces use their own materials; draw them once, shrunk to nothing, so the first
+    // Malevolent Shrine, Thousand Nails or Deadly Sentencing of a session doesn't compile mid-fight
+    for (const piece of [shrineModel(4), nailRing(4), courtModel(4)]) { piece.scale.setScalar(0.001); g.add(piece); }
     this.r.scene.add(g);
     try { this.r.render(); } catch { /* warming up is only an optimisation */ }
     this.r.scene.remove(g);

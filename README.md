@@ -17,7 +17,7 @@
 
 ### [⬇ Download CursedChronicles.apk](https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases/latest/download/CursedChronicles.apk)
 
-<sub>Latest release · Android 7.0+ · about 1.5 MB · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a></sub>
+<sub>Latest release · Android 7.0+ · about 1.6 MB · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a> · <a href="CHANGELOG.md">changelog</a></sub>
 
 </div>
 
@@ -106,14 +106,16 @@ and runs without an internet connection.
    open the APK.
 
 **Updating:** from v1.2.0 on, every release is signed with the same key, so a new APK
-(such as 1.3.0 over 1.2.0) installs straight over the old one and keeps your saves. Versions 1.0.0 and 1.1.0 were
+(such as 1.3.1 over 1.3.0) installs straight over the old one and keeps your saves. What
+changed in each version is in [CHANGELOG.md](CHANGELOG.md). Versions 1.0.0 and 1.1.0 were
 each signed with a one-off key, so moving from those needs one uninstall first. Before
 uninstalling anything, you can keep your progress with **System → Copy Save Code** (from
 1.2.0 on) and paste it back under **Transfer Save** on the title screen.
 
 Requirements: Android 7.0 (API 24) or newer with OpenGL ES 3.0. The game plays in
 landscape. If the frame rate stays low, it lowers the graphics quality automatically;
-you can also set it under **Settings**.
+you can also set it under **System**, along with camera distance and screen shake
+(Off / Light / Full).
 
 ## Features
 

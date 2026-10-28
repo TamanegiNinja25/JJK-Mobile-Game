@@ -49,14 +49,28 @@ export class Renderer {
   /** returns true when the camera's ground footprint is inside a solid object */
   cameraBlocked: ((x: number, z: number) => boolean) | null = null;
   private pitchK = 1;
+  /** where the building check wants the pitch; it rises again only after staying clear for a moment */
+  private pitchGoal = 1;
+  private clearT = 0;
+  /** look-ahead eases on its own slower clock, so snapping to face an enemy doesn't swing the view */
+  private lookX = 0;
+  private lookZ = 0;
   private shakeAmt = 0;
   private shakeT = 0;
+  private shakeDur = 0.25;
+  private shakePhase = 0;
+  /** 0 = off, 0.5 = light, 1 = full (Settings → Screen shake) */
+  shakeScale = 1;
   private bloomBase = 0.6;
   width = 1;
   height = 1;
 
   constructor(canvas: HTMLCanvasElement) {
     this.gl = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
+    // Reading back every shader's compile log forces the driver to finish compiling on the spot,
+    // a stall each time a new material shows up mid-fight. The shaders are fixed, so only check
+    // them when debugging (?debug in the URL).
+    this.gl.debug.checkShaderErrors = typeof location !== 'undefined' && location.search.includes('debug');
     this.gl.outputColorSpace = THREE.SRGBColorSpace;
     this.gl.toneMapping = THREE.ACESFilmicToneMapping;
     this.gl.toneMappingExposure = 1.05;
@@ -173,35 +187,53 @@ export class Renderer {
   }
 
   shake(amount: number, time = 0.25) {
-    this.shakeAmt = Math.max(this.shakeAmt, amount);
-    this.shakeT = Math.max(this.shakeT, time);
+    amount = Math.min(0.6, amount) * this.shakeScale;
+    if (amount <= 0.01) return;
+    // a new shake only takes over if it is stronger than what is left of the current one
+    const left = this.shakeT > 0 ? this.shakeAmt * (this.shakeT / this.shakeDur) : 0;
+    if (amount < left) return;
+    this.shakeAmt = amount;
+    this.shakeT = this.shakeDur = Math.max(0.12, time);
   }
 
   /** Snap camera to target instantly (map changes). */
   snap(x: number, z: number) {
     this.target.set(x, 0, z);
-    this.pitchK = 1;
+    this.pitchK = this.pitchGoal = 1;
+    this.lookX = this.lookZ = 0;
+    this.shakeT = 0;
     this.camPos.copy(this.target).addScaledVector(this.camOffset, this.zoom);
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.target.x, 0.8, this.target.z);
   }
 
   updateCamera(dt: number, tx: number, tz: number, lookAheadX = 0, lookAheadZ = 0) {
+    const kl = 1 - Math.exp(-dt * 2.2);
+    this.lookX = lerp(this.lookX, lookAheadX, kl);
+    this.lookZ = lerp(this.lookZ, lookAheadZ, kl);
     const k = 1 - Math.exp(-dt * 6);
-    this.target.x = lerp(this.target.x, tx + lookAheadX, k);
-    this.target.z = lerp(this.target.z, tz + lookAheadZ, k);
-    // swing the camera more overhead when it would end up inside a building
+    this.target.x = lerp(this.target.x, tx + this.lookX, k);
+    this.target.z = lerp(this.target.z, tz + this.lookZ, k);
+    // Swing the camera more overhead when a building stands between it and the player. The check
+    // samples the full, unpitched offset, so moving the camera can't change its own answer (that
+    // feedback used to make it bob back and forth beside walls), and it waits before rising again.
     const ox = this.camOffset.x * this.zoom, oz = this.camOffset.z * this.zoom;
-    const blocked = this.cameraBlocked?.(this.target.x + ox * this.pitchK, this.target.z + oz * this.pitchK) || this.cameraBlocked?.(this.target.x + ox * 0.6, this.target.z + oz * 0.6);
-    this.pitchK = lerp(this.pitchK, blocked ? 0.35 : 1, 1 - Math.exp(-dt * (blocked ? 5 : 1.5)));
+    let blocked = false;
+    if (this.cameraBlocked) for (const f of [0.45, 0.7, 1]) if (this.cameraBlocked(this.target.x + ox * f, this.target.z + oz * f)) { blocked = true; break; }
+    if (blocked) { this.pitchGoal = 0.4; this.clearT = 0; }
+    else if ((this.clearT += dt) > 0.6) this.pitchGoal = 1;
+    this.pitchK = lerp(this.pitchK, this.pitchGoal, 1 - Math.exp(-dt * (this.pitchGoal < this.pitchK ? 4 : 1.6)));
     this.camPos.set(this.target.x + ox * this.pitchK, this.target.y + this.camOffset.y * this.zoom * (1 + (1 - this.pitchK) * 0.15), this.target.z + oz * this.pitchK);
     this.camera.position.copy(this.camPos);
     if (this.shakeT > 0) {
-      this.shakeT -= dt;
-      const a = this.shakeAmt * clamp(this.shakeT / 0.25, 0, 1);
-      this.camera.position.x += (Math.random() - 0.5) * a;
-      this.camera.position.y += (Math.random() - 0.5) * a;
-      this.camera.position.z += (Math.random() - 0.5) * a;
+      // smooth, decaying wobble instead of per-frame random jumps
+      this.shakeT = Math.max(0, this.shakeT - dt);
+      this.shakePhase += dt * 38;
+      const f = this.shakeT / this.shakeDur;
+      const a = this.shakeAmt * f * f, ph = this.shakePhase;
+      this.camera.position.x += Math.sin(ph) * 0.5 * a + Math.sin(ph * 2.3 + 1.7) * 0.2 * a;
+      this.camera.position.y += Math.sin(ph * 1.7 + 0.6) * 0.35 * a;
+      this.camera.position.z += Math.sin(ph * 1.3 + 2.9) * 0.35 * a;
       if (this.shakeT <= 0) this.shakeAmt = 0;
     }
     this.camera.lookAt(this.target.x, 0.8, this.target.z);

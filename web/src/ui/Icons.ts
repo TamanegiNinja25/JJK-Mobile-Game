@@ -7,7 +7,8 @@ import { SKILLS } from '../rpg/skills';
 type Ctx = CanvasRenderingContext2D;
 const cache = new Map<string, string>();
 const INK = '#0b0812';
-const DPR = () => Math.min(3, Math.max(1, (typeof window !== 'undefined' && window.devicePixelRatio) || 1));
+// Icons show at 40-64 CSS px, so 2x is already sharp; 3x only tripled the PNG work on phones.
+const DPR = () => Math.min(2, Math.max(1, (typeof window !== 'undefined' && window.devicePixelRatio) || 1));
 
 // ---------------------------------------------------------------------------
 // Colour helpers
@@ -425,10 +426,16 @@ const SKILL_ART: Record<string, (x: Ctx, c: string) => void> = {
 const ICON_PX = 96;
 
 export function skillIcon(id: string, _size = 96): string {
-  const size = ICON_PX;
   const key = `s:${id}`;
   const hit = cache.get(key);
   if (hit) return hit;
+  const url = paintSkill(id).toDataURL();
+  cache.set(key, url);
+  return url;
+}
+
+function paintSkill(id: string) {
+  const size = ICON_PX;
   const s = SKILLS[id];
   const color = s?.color ?? '#9a7aff';
   const { c, x } = makeCanvas(size);
@@ -439,9 +446,7 @@ export function skillIcon(id: string, _size = 96): string {
   if (art) art(x, color);
   else { x.fillStyle = '#fff'; x.font = '900 56px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(KANJI[id] ?? '呪', 50, 53); }
   x.restore();
-  const url = c.toDataURL();
-  cache.set(key, url);
-  return url;
+  return c;
 }
 
 // ---------------------------------------------------------------------------
@@ -523,10 +528,16 @@ const ITEM_ART: Record<string, ItemArt> = {
 };
 
 export function itemIcon(spec: IconSpec, _size = 96): string {
-  const size = ICON_PX;
   const key = `i:${spec.shape}:${spec.c1}:${spec.c2 ?? ''}`;
   const hit = cache.get(key);
   if (hit) return hit;
+  const url = paintItem(spec).toDataURL();
+  cache.set(key, url);
+  return url;
+}
+
+function paintItem(spec: IconSpec) {
+  const size = ICON_PX;
   const { c, x } = makeCanvas(size);
   tile(x, ITEM_TINT[spec.shape] ?? '#4a4a6a', 'item');
   const art = ITEM_ART[spec.shape];
@@ -534,9 +545,7 @@ export function itemIcon(spec: IconSpec, _size = 96): string {
   if (art) art(x, spec.c1, spec.c2 ?? spec.c1);
   else cel(x, G.orb(26), spec.c1);
   x.restore();
-  const url = c.toDataURL();
-  cache.set(key, url);
-  return url;
+  return c;
 }
 
 /** The icon if it has already been painted; otherwise queues it (first) and returns null. */
@@ -550,7 +559,27 @@ export function itemIconIfReady(spec: IconSpec): string | null {
 // Background pre-painting
 // ---------------------------------------------------------------------------
 const warmQueue: (() => void)[] = [];
+/** keys waiting in the queue, so repeated requests (every loot pickup) don't pile up */
+const queued = new Set<string>();
+/** keys painted and waiting for their PNG */
+const encoding = new Set<string>();
 let warming = false;
+
+/**
+ * Paint now, encode later: toBlob compresses the PNG off the main thread, where toDataURL used to
+ * stall the frame for every icon, which in a crowd fight with loot raining down was most of the CPU.
+ */
+function warmOne(key: string, paint: () => HTMLCanvasElement) {
+  queued.delete(key);
+  if (cache.has(key) || encoding.has(key)) return;
+  const c = paint();
+  if (!c.toBlob) { cache.set(key, c.toDataURL()); return; }
+  encoding.add(key);
+  c.toBlob((b) => {
+    encoding.delete(key);
+    if (b && !cache.has(key)) cache.set(key, URL.createObjectURL(b));
+  });
+}
 type Idle = { timeRemaining(): number; didTimeout: boolean };
 const onIdle: (cb: (d: Idle) => void) => void = (window as any).requestIdleCallback
   ? (cb) => (window as any).requestIdleCallback(cb, { timeout: 2500 })
@@ -560,14 +589,29 @@ const onIdle: (cb: (d: Idle) => void) => void = (window as any).requestIdleCallb
  * Paints icons in the background, only in the idle part of frames, so menus and buff icons open
  * without a hitch and gameplay never pays for it. `first` jumps the queue (the bag, the skills).
  */
+let warmGate: (() => boolean) | null = null;
+/** While the gate returns true (a fight is on), background painting waits. */
+export function setIconWarmGate(busy: () => boolean) { warmGate = busy; }
+
 export function warmIcons(skills: string[], items: IconSpec[], first = false) {
   const jobs: (() => void)[] = [];
-  for (const id of skills) if (!cache.has(`s:${id}`)) jobs.push(() => { skillIcon(id); });
-  for (const spec of items) if (!cache.has(`i:${spec.shape}:${spec.c1}:${spec.c2 ?? ''}`)) jobs.push(() => { itemIcon(spec); });
+  for (const id of skills) {
+    const key = `s:${id}`;
+    if (cache.has(key) || encoding.has(key) || (queued.has(key) && !first)) continue;
+    queued.add(key);
+    jobs.push(() => warmOne(key, () => paintSkill(id)));
+  }
+  for (const spec of items) {
+    const key = `i:${spec.shape}:${spec.c1}:${spec.c2 ?? ''}`;
+    if (cache.has(key) || encoding.has(key) || (queued.has(key) && !first)) continue;
+    queued.add(key);
+    jobs.push(() => warmOne(key, () => paintItem(spec)));
+  }
   if (first) warmQueue.unshift(...jobs); else warmQueue.push(...jobs);
   if (warming || !warmQueue.length) return;
   warming = true;
   const step = (d: Idle) => {
+    if (warmGate?.()) { onIdle(step); return; }
     // always make some progress, otherwise only paint while the frame has room to spare
     do warmQueue.shift()?.(); while (warmQueue.length && d.timeRemaining() > 6);
     if (warmQueue.length) onIdle(step); else warming = false;

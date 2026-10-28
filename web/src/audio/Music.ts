@@ -125,6 +125,17 @@ class Sequencer {
     if (this.stopped) return;
     const a = this.a;
     const spb = 60 / this.theme.bpm / 4; // seconds per 16th
+    // After a stall (an area loading, a long frame, the app returning from the background) the
+    // timer is late. Drop the missed steps instead of firing them all at once, which used to come
+    // out as a garbled burst before the track found its beat again. The bar count keeps advancing so
+    // the chord progression stays in place.
+    if (this.next < a.now - 0.05) {
+      const missed = Math.ceil((a.now - this.next) / spb);
+      this.next += missed * spb;
+      this.step += missed;
+      this.bar += Math.floor(this.step / 16);
+      this.step %= 16;
+    }
     while (this.next < a.now + 0.15) {
       this.schedule(this.next, spb);
       this.next += spb;
