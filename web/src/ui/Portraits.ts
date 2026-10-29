@@ -14,9 +14,12 @@ const BG: Record<string, [string, string]> = {
   naoya: ['#e8d48a', '#14120a'], mai: ['#6a9a7a', '#0a140e'], hakari: ['#ffd04a', '#1a1404'], higuruma: ['#d8b04a', '#140e04'],
   kashimo: ['#7ae0ff', '#04121a'], ishigori: ['#9adfff', '#08121a'], uro: ['#9ad0ff', '#0a0c1a'], uraume: ['#bfe4ff', '#0a1018'],
   kenjaku: ['#b07aff', '#10061a'],
+  sukunaYuji: ['#ff2a3a', '#200004'], sukunaMegumi: ['#c83a7a', '#14040e'], heianSukuna: ['#ff6a2a', '#200800'], moduloYuji: ['#ff8aa0', '#1a0a10'],
+  toji: ['#8a6aa0', '#0e0a14'], geto: ['#c8a050', '#140e04'], gojoMemory: ['#7fdcff', '#08182a'], kuchisake: ['#c83a3a', '#140404'],
+  kamo: ['#c84a4a', '#140808'], tengen: ['#e8e0c8', '#141210'], naoyaCurse: ['#e8d48a', '#100c06'],
 };
 
-const CREATURE_IDS = new Set(['hanami', 'jogo', 'dagon', 'mahoraga', 'kechizu', 'eso']);
+const CREATURE_IDS = new Set(['hanami', 'jogo', 'dagon', 'mahoraga', 'kechizu', 'eso', 'smallpox', 'rainbowDragon', 'naoyaCurse']);
 
 export class Portraits {
   private cache = new Map<string, string>();

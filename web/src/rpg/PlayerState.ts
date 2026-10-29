@@ -1,13 +1,13 @@
 // Persistent player progression: stats, inventory, equipment, skills, quests and saving.
-import { Attr, ClassId, ItemInstance, SaveData, Slot, Stats, StatKey } from './types';
+import { Attr, ClassId, ItemInstance, RosterEntry, SaveData, Slot, Stats, StatKey } from './types';
 import { CLASSES, LEVEL_CAP, expToNext } from './classes';
-import { REFORGE_MAX, reforgeCost, ITEMS, makeItem, itemStats, isGear, enhanceCost, getUidCounter, setUidCounter } from './items';
+import { REFORGE_MAX, reforgeCost, ITEMS, makeItem, itemStats, isGear, enhanceCost, getUidCounter, setUidCounter, classRewardItem } from './items';
 import { SKILLS, classSkills } from './skills';
 import { QUESTS, QUEST_BY_ID, QuestDef, Objective } from '../data/story';
 
 export const INV_SIZE = 48;
 const SAVE_KEY = 'cursedChronicles.save.';
-const SAVE_VERSION = 4;
+const SAVE_VERSION = 5;
 /** Attribute points granted per level-up. */
 export const STAT_POINTS_PER_LEVEL = 10;
 
@@ -221,6 +221,71 @@ export class PlayerState {
       const free = this.d.quick.findIndex((q, i) => q === null && i < 5);
       if (free >= 0) this.d.quick[free] = s.id;
     }
+  }
+
+  /** Spends unspent attribute points along the sorcerer's natural build, then learns techniques in level order. */
+  autoSpend() {
+    const c = this.cls, d = this.d;
+    if (d.statPoints > 0) {
+      const keys: Attr[] = ['str', 'dex', 'vit', 'ce'];
+      const tot = keys.reduce((a, k) => a + c.attrs[k], 0);
+      let left = d.statPoints;
+      for (const k of keys) { const n = Math.floor(d.statPoints * c.attrs[k] / tot); d.attrs[k] += n; left -= n; }
+      d.attrs.str += left;
+      d.statPoints = 0;
+    }
+    // every technique to level 1 first (the ultimate before the rest), then raise them in turn
+    for (let guard = 0; guard < 600 && d.skillPoints > 0; guard++) {
+      const list = classSkills(d.cls).filter(s => !this.canLearn(s.id))
+        .sort((a, b) => this.skillLevel(a.id) - this.skillLevel(b.id) || (a.type === 'ultimate' ? -1 : 0) - (b.type === 'ultimate' ? -1 : 0) || a.req - b.req);
+      if (!list.length) break;
+      this.learn(list[0].id);
+    }
+    // the bar gets the strongest techniques: four attacks and a buff, with the ultimate in slot 6
+    const known = classSkills(d.cls).filter(s => this.skillLevel(s.id) > 0);
+    const acts = known.filter(s => s.type === 'active').sort((a, b) => b.req - a.req);
+    const buffs = known.filter(s => s.type === 'buff').sort((a, b) => b.req - a.req);
+    const bar = [...acts.slice(0, 4), ...buffs.slice(0, 1), ...acts.slice(4), ...buffs.slice(1)].slice(0, 5)
+      .sort((a, b) => (a.type === 'buff' ? 1 : 0) - (b.type === 'buff' ? 1 : 0) || a.req - b.req);
+    d.quick = [...bar.map(s => s.id), null, null, null, null, null].slice(0, 5);
+    d.quick.push(known.find(s => s.type === 'ultimate')?.id ?? null);
+    this.recalc();
+  }
+
+  /** A sorcerer joining this save for the first time: same level, first technique known, best weapon of their line. */
+  private static joinEntry(cls: ClassId, level: number): RosterEntry {
+    const first = classSkills(cls).find(s => s.type === 'active' && s.req === 1)!;
+    const line = Object.values(ITEMS).filter(b => b.kind === 'weapon' && b.cls === cls && !b.unique && b.req <= level).sort((a, b) => b.req - a.req);
+    const wid = line[0]?.id ?? CLASSES[cls].startGear[0];
+    return {
+      level, exp: 0, statPoints: (level - 1) * STAT_POINTS_PER_LEVEL, skillPoints: level - 1,
+      attrs: { str: 0, dex: 0, vit: 0, ce: 0 }, skills: { [first.id]: 1 }, quick: [first.id, null, null, null, null, null],
+      weapon: makeItem(wid, ITEMS[wid].req > 1 ? 1 : 0),
+    };
+  }
+
+  /** Swap the active sorcerer. Each keeps their own level, points, techniques and weapon; armour, the bag, yen and quests are shared. */
+  switchClass(cls: ClassId): 'switched' | 'joined' | null {
+    const d = this.d;
+    if (cls === d.cls || !CLASSES[cls]) return null;
+    d.roster = d.roster ?? {};
+    d.roster[d.cls] = { level: d.level, exp: d.exp, statPoints: d.statPoints, skillPoints: d.skillPoints, attrs: { ...d.attrs }, skills: { ...d.skills }, quick: [...d.quick], weapon: d.equip.weapon ?? null };
+    const had = d.roster[cls];
+    const e = had ?? PlayerState.joinEntry(cls, d.level);
+    delete d.roster[cls];
+    d.cls = cls;
+    d.level = e.level; d.exp = e.exp; d.statPoints = e.statPoints; d.skillPoints = e.skillPoints;
+    d.attrs = { ...e.attrs }; d.skills = { ...e.skills }; d.quick = [...e.quick];
+    while (d.quick.length < 6) d.quick.push(null);
+    if (e.weapon) d.equip.weapon = e.weapon; else delete d.equip.weapon;
+    this.buffs.clear();
+    if (!had) this.autoSpend();
+    this.recalc();
+    d.hp = this.stats.maxHp;
+    d.ce = this.stats.maxCe;
+    this.emit('skills');
+    this.emit('equip', 'weapon');
+    return had ? 'switched' : 'joined';
   }
 
   // ------------------------------------------------------------------
@@ -464,10 +529,12 @@ export class PlayerState {
     const r = q.rewards;
     if (r.fingers) { this.d.fingers += r.fingers; this.addItem(makeItem('finger', 0, r.fingers)); }
     for (const it of r.items ?? []) this.addItem(makeItem(it.id, it.rarity ?? 0, it.qty ?? 1));
-    const ci = r.classItems?.[this.d.cls];
+    const ci = classRewardItem(r.classItems, this.d.cls);
     if (ci) this.addItem(makeItem(ci, 1));
     this.addGold(r.gold);
     if (q.unlock) for (const u of q.unlock) this.d.flags['unlock_' + u] = true;
+    // finishing the story is remembered per sorcerer (Modulo Yuji asks for a Yuji clear)
+    if (id === 'm26') this.d.flags['finished_' + this.d.cls] = true;
     this.emit('questDone', q);
     this.gainExp(r.exp);
     this.recalc();

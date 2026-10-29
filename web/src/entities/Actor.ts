@@ -42,6 +42,8 @@ export abstract class Actor {
   dotSrc: Actor | null = null;
   flashT = 0;
   invulnT = 0;
+  /** seconds left unseen (Toji has no cursed energy to sense) */
+  cloakT = 0;
   scale = 1;
   /** visual-only extra height offset (flyers, jumps) */
   hover = 0;
@@ -138,7 +140,8 @@ export abstract class Actor {
     // Skinned models skip frustum culling, so off-screen actors used to be animated, skinned and
     // drawn every frame anyway. Hide them (and skip their animation) until they come into view.
     const seen = this.world.onScreen(this.x, this.z, this.radius * this.scale + 1.5);
-    this.model.root.visible = seen;
+    if (this.cloakT > 0) this.cloakT -= dt;
+    this.model.root.visible = seen && this.cloakT <= 0;
     if (seen) this.model.update(dt);
   }
 

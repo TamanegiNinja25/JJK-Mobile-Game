@@ -22,9 +22,13 @@
 </div>
 
 Play as Yuji, Megumi or Nobara and fight through the story from the Sugisawa High
-rooftop, through the Shibuya Incident and the Culling Game, to the Shinjuku Showdown. Combat is real-time with combos, skills, dodges and
-Black Flashes, wrapped in a classic Zenonia-style RPG loop: quests, loot, stat points,
-skill trees, gear upgrades and boss fights. Schools, cinemas and stations can be
+rooftop, through the Shibuya Incident and the Culling Game, to the Shinjuku Showdown and
+the memories in Tengen's barrier. Finish the right chapters and Sukuna (in Yuji's body,
+in Megumi's body and in his Heian form) and Yuji decades later join as playable
+sorcerers. Combat is real-time with combos, skills, dodges and Black Flashes, wrapped in a
+classic Zenonia-style RPG loop: quests, loot, stat points, skill trees, gear upgrades and
+boss fights. Past the east gate of Jujutsu High, an open region of forest, villages,
+lakes and ruins connects on foot to the city. Schools, cinemas and stations can be
 entered, and their halls are laid out fresh every time you walk in.
 
 Every model, building, texture, icon, portrait, music track and sound effect is
@@ -51,7 +55,7 @@ and runs without an internet connection.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/class-select.jpg" alt="Class select"><br><sub><b>Choose your sorcerer</b>: three classes, each with its own skill tree</sub></td>
+    <td width="50%"><img src="docs/screenshots/class-select.jpg" alt="Class select"><br><sub><b>Choose your sorcerer</b>: three first-years and four unlockable sorcerers, each with its own skill tree</sub></td>
     <td width="50%"><img src="docs/screenshots/jujutsu-high.jpg" alt="Jujutsu High"><br><sub><b>Tokyo Jujutsu High</b>: the hub, with shops, quests and fast travel</sub></td>
   </tr>
   <tr>
@@ -91,6 +95,14 @@ and runs without an internet connection.
     <td><img src="docs/screenshots/sukuna-true.jpg" alt="Sukuna's true form"><br><sub><b>Shinjuku Showdown</b>: Sukuna's true form, World-Cutting Slash inside the Shrine</sub></td>
   </tr>
   <tr>
+    <td><img src="docs/screenshots/heian-shrine.jpg" alt="Heian Sukuna's Malevolent Shrine"><br><sub><b>Heian Sukuna</b>, unlocked by finishing the story, opens the Shrine in the open world</sub></td>
+    <td><img src="docs/screenshots/outskirts-map.jpg" alt="Tokyo Outskirts map"><br><sub><b>Tokyo Outskirts</b>: roads to the city, landmarks to find and sealed caches to open</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/toji.jpg" alt="Toji Fushiguro"><br><sub><b>Hidden Inventory</b>: Toji Fushiguro in the Tombs of the Star, under Jujutsu High</sub></td>
+    <td><img src="docs/screenshots/gojo.jpg" alt="Gojo's last lesson"><br><sub><b>The Strongest's Last Lesson</b>: Gojo's Infinity and Unlimited Void</sub></td>
+  </tr>
+  <tr>
     <td colspan="2" align="center"><img src="docs/screenshots/reforge.jpg" alt="Mechamaru's reforge" width="50%"><br><sub><b>Mechamaru's Reforge</b>: +10 gear on to +30, every stat change explained</sub></td>
   </tr>
 </table>
@@ -106,7 +118,7 @@ and runs without an internet connection.
    open the APK.
 
 **Updating:** from v1.2.0 on, every release is signed with the same key, so a new APK
-(such as 1.3.1 over 1.3.0) installs straight over the old one and keeps your saves. What
+(such as 1.4.0 over 1.3.1) installs straight over the old one and keeps your saves. What
 changed in each version is in [CHANGELOG.md](CHANGELOG.md). Versions 1.0.0 and 1.1.0 were
 each signed with a one-off key, so moving from those needs one uninstall first. Before
 uninstalling anything, you can keep your progress with **System → Copy Save Code** (from
@@ -119,13 +131,27 @@ you can also set it under **System**, along with camera distance and screen shak
 
 ## Features
 
-### Three sorcerers
+### Seven sorcerers
+
+Three first-years from the start, and four more you unlock:
 
 | | Style | Signature skills | Ultimate |
 |---|---|---|---|
 | **Yuji Itadori** | Close-range brawler with the best Black Flash odds | Divergent Fist · Manji Kick · Black Flash · Piercing Blood · Supernova · Dismantle | King of Curses: Malevolent Shrine |
 | **Megumi Fushiguro** | Shikigami summoner and swordsman | Divine Dogs · Nue · Max Elephant · Great Serpent · Piercing Ox · Divine Dog: Totality | Domain Expansion: Chimera Shadow Garden |
 | **Nobara Kugisaki** | Mid-range nails, hammer and Resonance | Hairpin · Resonance · Straw Doll Curse · Nail Lance · Chain Resonance · Blood Resonance | Resonance: Thousand Nails |
+| **Sukuna (Yuji's body)** 🔒 | Cuts at any range, heals himself | Dismantle · Cleave · Open: Flame Arrow · Spiderweb · Black Flash · Reverse Cursed Technique | Malevolent Shrine, closed with Fuga |
+| **Sukuna (Megumi's body)** 🔒 | The Ten Shadows and Kamutoke's lightning | Dismantle · Totality · Nue · Kamutoke · Cleave · Agito · Open: Fuga | Mahoraga, then the World-Cutting Slash |
+| **Heian Sukuna** 🔒 | The strongest stats in the game, four arms | Four-Armed Barrage · Dismantle · Cleave · Divine Flame · Calamity Stomp · World-Cutting Slash | Malevolent Shrine: True Form |
+| **Modulo Yuji** 🔒 | Yuji decades on, with everything he learned | Divergent Fist · Piercing Blood · Supernova · Dismantle · Soul Strike · Black Flash: The Zone | His own Domain Expansion |
+
+The locked four show on the select screen with what unlocks them: clearing the Shibuya
+Incident (Sukuna in Yuji's body), clearing "Shinjuku Showdown" (Sukuna in Megumi's body),
+finishing the story (Heian Sukuna), and finishing the story as Yuji or clearing the
+Memories chapter (Modulo Yuji). Unlocks belong to the phone, so they work in every slot.
+Start a new game with one, or switch inside a save from **Status → Sorcerers** while in
+Jujutsu High. Each sorcerer keeps their own level, techniques and weapon, while armour,
+items, yen and quests are shared.
 
 Each class has about twenty techniques of five kinds:
 
@@ -170,6 +196,26 @@ Sovereign (Lv 80) gear starts dropping.
   speed, double EXP, all areas unlocked, plus one-tap level-ups, gear, items and quest
   completion. Toggles are saved per slot.
 
+### The open world
+
+The **Tokyo Outskirts** start at the east gate of Jujutsu High: about seven story areas'
+worth of cedar forest, a farming village with rice paddies, a river, a mountain lake and
+shrine, the abandoned Tamagawa Hospital and a special grade tree in the middle. Roads
+lead out on foot to Jujutsu High, Kawasaki and Shibuya. The curses get stronger the
+further you wander (Lv 6 by the school, up to Lv 90 by the tree).
+
+- **Landmarks:** walk into a named place for the first time to record it and earn EXP.
+- **Sealed caches:** twenty are hidden off the roads, each opened once per save, with
+  gear, fragments and sometimes a Grade 1 Core.
+- **Wandering special grades:** the Smallpox Deity, the Rainbow Dragon and
+  Kuchisake-onna match your level, come back a few minutes after they fall and drop boss
+  loot each time.
+- **Sakurajima Colony**, from the Culling Game, is a second open region: a volcanic
+  island with a harbour town, ash fields, a lava gorge and a crater.
+
+Only what is near you runs: curses far away sleep, distant groups empty out and refill
+as you approach, and scenery off screen is not drawn.
+
 ### Enterable buildings
 
 Sugisawa High, the Jujutsu High dorm, Eishu's admin block, the Kawasaki cinema,
@@ -182,9 +228,9 @@ fills in as you explore.
 
 ### The story
 
-Eight chapters, with 31 main quests and 20 side quests across twelve areas and six
+Nine chapters, with 35 main quests and 28 side quests across seventeen areas and six
 interiors. The main line follows the manga from the first finger to the Shinjuku
-Showdown:
+Showdown, then revisits its past inside Tengen's barrier:
 
 1. **Sugisawa Third High.** Yuji's grandfather's last words, the Occult Research Club
    seniors who broke the seal, and the finger Yuji swallows.
@@ -203,10 +249,15 @@ Showdown:
    Mahoraga, and a Soul Resonance rematch with Mahito that ends with Kenjaku.
 7. **The Culling Game.** Inside **Tokyo Colony No. 1** you meet Hakari, stand trial
    before Higuruma and fight Kashimo. In the **Sendai Colony** you join Yuta against
-   Kurourushi's swarm, Ryu Ishigori's Granite Blast and Takako Uro.
+   Kurourushi's swarm, Ryu Ishigori's Granite Blast and Takako Uro. On **Sakurajima**,
+   Maki and Noritoshi Kamo face what is left of Naoya: a cursed spirit.
 8. **Shinjuku Showdown.** Gojo returns from the Prison Realm and goes to face Sukuna
    alone. What follows is Uraume, Kenjaku and, finally, Sukuna in his four-armed
    Heian form.
+9. **Memories in the Barrier** (after the ending). Tengen calls you down to the Tombs
+   of the Star to lay old memories to rest: Toji Fushiguro in 2006 (*Hidden Inventory*),
+   Suguru Geto's Night Parade of a Hundred Demons in 2017, and a last lesson Gojo left
+   behind for his students.
 
 Gojo is absent while he is sealed, and Megumi while Sukuna holds his body. Old saves
 pick up where they left off: a save already in Shibuya counts the new Death Painting
@@ -214,8 +265,8 @@ chapter as done.
 
 ### Bosses and domains
 
-21 bosses, each with its own move set, telegraphs, HP phases and summons. Mahito,
-Dagon, Jogo, Sukuna and Kenjaku expand their **domains**: everyone inside takes sure-hit
+28 bosses, each with its own move set, telegraphs, HP phases and summons. Mahito,
+Dagon, Jogo, Sukuna, Kenjaku, Naoya's cursed spirit and Gojo expand their **domains**: everyone inside takes sure-hit
 damage. Survive it, or cast your ultimate inside it to start a **domain clash** and break
 it. A boss expanding its domain also charges your gauge.
 
@@ -228,6 +279,12 @@ Some of the later bosses play by their own rules:
 - **Uraume**'s Frost Calm slows everything it touches.
 - **Sukuna's true form** turns Mahoraga's wheel, adapting to whatever you use most, and
   telegraphs a World-Cutting Slash across the whole arena.
+- **Toji Fushiguro** has no cursed energy: domains barely touch him, he vanishes and
+  reappears behind you, and the Inverted Spear of Heaven strips your buffs.
+- **Naoya's cursed spirit** runs its paths at the speed of sound, and inside Time Cell
+  Moon Palace anyone who stands still freezes.
+- **Gojo** turns on Infinity: only a Black Flash or a domain gets through. Then Hollow
+  Purple and Unlimited Void.
 
 ### Look and sound
 
@@ -347,8 +404,8 @@ web/                    the game (TypeScript + three.js)
   src/core/             input, math, noise
   src/render/           renderer, toon shaders, rigs, models, effects, weather, textures
   src/audio/            synthesized SFX, music sequencer, ambience
-  src/rpg/              stats, classes, skills, items, enemies, player state
-  src/world/            maps, map builder, collision, world simulation
+  src/rpg/              stats, classes, skills (and the unlockable sorcerers'), items, enemies, unlocks, player state
+  src/world/            maps (story areas, open regions, interiors), map builder, collision, world simulation
   src/entities/         player, enemies, bosses, summons, projectiles, NPCs
   src/ui/               HUD, menus, dialogue, icons, portraits
   src/data/story.ts     quests and dialogue

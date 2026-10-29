@@ -18,7 +18,9 @@ import { music } from './audio/Music';
 import { IconSpec, ITEMS } from './rpg/items';
 import { setIconWarmGate, warmIcons } from './ui/Icons';
 import { classSkills } from './rpg/skills';
+import './rpg/skillsUnlock';
 import { pick } from './core/util';
+import { checkUnlocks, isUnlocked } from './rpg/Unlocks';
 import { occlusion } from './render/toon';
 
 export type GameState = 'boot' | 'title' | 'play' | 'dialogue' | 'menu' | 'dead' | 'loading';
@@ -218,7 +220,10 @@ export class Game {
       }
       if (ev === 'questAccept') { audio.play('questAccept'); this.toast(`Quest accepted: ${data.name}`, 'quest', 2.5); }
       if (ev === 'questReady') { audio.play('questDone'); this.toast(`Objective complete — report to ${NPC_NAMES[data.turnIn ?? data.giver] ?? ''}`, 'quest', 3); }
-      if (ev === 'questDone') { this.toast(`Quest complete: ${data.name}`, 'quest', 3); }
+      if (ev === 'questDone') {
+        this.toast(`Quest complete: ${data.name}`, 'quest', 3);
+        this.announceUnlocks(checkUnlocks(ps.d));
+      }
       if (ev === 'invFull') this.toast('Inventory full!', 'warn');
       if (ev === 'inventory' || ev === 'stats' || ev === 'skills' || ev === 'gold') this.ui.menus.refresh();
     });
@@ -262,6 +267,53 @@ export class Game {
     if (!ps) { this.toast('Save data could not be read', 'warn'); return; }
     await this.enterWorld(ps, MAPS[ps.d.map] ? ps.d.map : 'hub', ps.d.x, ps.d.z);
     this.toast(`Welcome back, ${CLASSES[ps.d.cls].name.split(' ')[0]}.`, 'info', 2.5);
+    this.announceUnlocks(checkUnlocks(ps.d));
+  }
+
+  /** Banner for sorcerers that were just unlocked (several at once when an old save is loaded). */
+  private announceUnlocks(ids: ClassId[]) {
+    ids.forEach((id, i) => setTimeout(() => {
+      const c = CLASSES[id];
+      audio.play('rare');
+      this.ui.banner('NEW SORCERER UNLOCKED', `${c.name} — ${c.title}`, c.color, 3.2);
+      this.toast(`${c.name} (${c.title}) can now join any save: Status → Sorcerers, in Jujutsu High. Or start a new game with them.`, 'good', 5);
+    }, 1200 + i * 3600));
+  }
+
+  /** Swap the active sorcerer inside this save (only in town, out of combat). */
+  async switchSorcerer(cls: ClassId) {
+    const ps = this.ps;
+    if (!ps || this.state !== 'play' || cls === ps.d.cls) return;
+    const c = CLASSES[cls];
+    if (!isUnlocked(cls)) { audio.play('error'); this.toast(`Locked. ${c.unlock ?? ''}`, 'warn', 3.5); return; }
+    if (!this.world.mapDef.town) { audio.play('error'); this.toast('Change sorcerer in Jujutsu High.', 'warn', 2.5); return; }
+    if (this.world.inCombat()) { audio.play('error'); this.toast('Not in the middle of a fight!', 'warn'); return; }
+    this.state = 'loading';
+    this.input.enabled = false;
+    this.input.releaseAll();
+    await this.ui.fadeOut(300);
+    let res: ReturnType<PlayerState['switchClass']> = null;
+    try {
+      res = ps.switchClass(cls);
+      const w = this.world, p = w.player;
+      const x = p.x, z = p.z, f = p.facing;
+      p.dispose();
+      (w as any).player = undefined;
+      w.loadMap(ps.d.map, x, z, f);
+      this.ui.hud?.buildMinimap();
+      warmIcons(classSkills(cls).map(s => s.id), [...ps.d.inventory, ...Object.values(ps.d.equip)].filter(Boolean).map(it => ITEMS[it!.base].icon), true);
+      ps.save();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      // whatever happens, never leave the game stuck behind the fade
+      this.state = 'play';
+      this.input.enabled = true;
+    }
+    await this.ui.fadeIn(400);
+    audio.play('levelup');
+    this.ui.banner(c.title.toUpperCase(), c.name, c.color, 2.4);
+    if (res === 'joined') this.toast(`${c.name} joins at Lv ${ps.d.level}. Their points were spent for you; new ones arrive as you level.`, 'good', 4.5);
   }
 
   save(manual: boolean) {

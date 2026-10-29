@@ -59,6 +59,48 @@ reg(
   W('crownNail', 'Hairpin Crown', 'nobara', 34, 90, 13000, 'hammer', '#ff4a6a', '#f0e0c0', { unique: [{ k: 'projPow', v: 0.3 }, { k: 'skillPow', v: 0.2 }, { k: 'bfChance', v: 0.04 }, { k: 'dex', v: 14 }], desc: 'Every nail sings in resonance.' }),
 );
 
+// ---- Unlockable sorcerers: one line of gauntlets each, a step above the first-years' weapons ----
+reg(
+  W('vesselWrapsS', 'Vessel\'s Wraps', 'sukunaYuji', 1, 8, 60, 'fist', '#f0e8e0', '#c83a4a'),
+  W('kingKnuckleS', 'Cursed King Knuckles', 'sukunaYuji', 15, 36, 1400, 'fist', '#2a1a1e', '#ff3a4a'),
+  W('fingerFistS', 'Finger-Bone Gauntlets', 'sukunaYuji', 30, 84, 7400, 'fist', '#e8d8c0', '#8a0d18'),
+  W('shrineFistS', 'Shrine Gauntlets', 'sukunaYuji', 55, 148, 24000, 'fist', '#3a0a10', '#ff5a3a'),
+  W('kingFistS', 'Gauntlets of the King', 'sukunaYuji', 80, 236, 52000, 'fist', '#111111', '#ff2a3a'),
+  W('shibuyaClaws', 'Claws of Shibuya', 'sukunaYuji', 40, 120, 20000, 'fist', '#1a0a0e', '#ff2a3a', { unique: [{ k: 'critDmg', v: 0.35 }, { k: 'skillPow', v: 0.15 }, { k: 'str', v: 14 }, { k: 'ce', v: 10 }], desc: 'October 31st. Twenty fingers\' worth of malice, and a city that never got its name back.' }),
+
+  W('shadowWrapsS', 'Shadow-Bound Wraps', 'sukunaMegumi', 1, 8, 60, 'fist', '#2a2a3a', '#c83a7a'),
+  W('tenShadowKnuckle', 'Ten Shadows Knuckles', 'sukunaMegumi', 15, 36, 1400, 'fist', '#1a1a2a', '#8a7aff'),
+  W('chimeraFist', 'Chimera Gauntlets', 'sukunaMegumi', 30, 84, 7400, 'fist', '#2a2236', '#c83a7a'),
+  W('agitoFist', 'Agito Claws', 'sukunaMegumi', 55, 148, 24000, 'fist', '#1a1a22', '#e8e8f0'),
+  W('mahoragaFist', 'Gauntlets of the Divine General', 'sukunaMegumi', 80, 236, 52000, 'fist', '#e8e0d0', '#ffd04a'),
+  W('kamutoke', 'Kamutoke', 'sukunaMegumi', 45, 126, 22000, 'fist', '#3a3a5a', '#9ae6ff', { unique: [{ k: 'summonPow', v: 0.3 }, { k: 'skillPow', v: 0.15 }, { k: 'crit', v: 0.06 }, { k: 'ce', v: 14 }], desc: 'A cursed tool that calls down lightning. Sukuna aimed it at the strongest, and the sky answered.' }),
+
+  W('heianWraps', 'Heian Silk Wraps', 'heianSukuna', 1, 9, 70, 'fist', '#f2eee4', '#ff6a2a'),
+  W('fourArmBands', 'Four-Armed Bracers', 'heianSukuna', 15, 38, 1500, 'fist', '#2a1a14', '#ff8a3a'),
+  W('calamityFist', 'Calamity Gauntlets', 'heianSukuna', 30, 88, 7800, 'fist', '#1a1010', '#ff5a2a'),
+  W('flameFist', 'Divine Flame Gauntlets', 'heianSukuna', 55, 156, 25000, 'fist', '#2a0a06', '#ffb03a'),
+  W('heianKingFist', 'Gauntlets of the Heian King', 'heianSukuna', 80, 248, 56000, 'fist', '#0a0a0a', '#ff6a2a'),
+  W('burningWraps', 'Ryomen\'s Burning Wraps', 'heianSukuna', 50, 140, 26000, 'fist', '#3a0a06', '#ffd04a', { unique: [{ k: 'atkPct', v: 0.15 }, { k: 'bfChance', v: 0.04 }, { k: 'str', v: 16 }, { k: 'ce', v: 12 }], desc: 'Cloth from a shrine that burned a thousand years ago. It has not stopped smouldering.' }),
+
+  W('moduloWraps', 'Worn Wraps', 'moduloYuji', 1, 8, 60, 'fist', '#d8d0c0', '#ff8aa0'),
+  W('oldKnuckle', 'Veteran Knuckles', 'moduloYuji', 15, 36, 1400, 'fist', '#3a3a44', '#ff8aa0'),
+  W('bloodFist', 'Blood-Forged Gauntlets', 'moduloYuji', 30, 84, 7400, 'fist', '#2a0a10', '#ff2a4a'),
+  W('soulFist', 'Soul-Strike Gauntlets', 'moduloYuji', 55, 148, 24000, 'fist', '#1a1a2a', '#9ad0ff'),
+  W('moduloFist', 'Gauntlets of Sixty-Eight Winters', 'moduloYuji', 80, 236, 52000, 'fist', '#141418', '#ff8aa0'),
+  W('promiseWraps', 'Promise Wraps', 'moduloYuji', 40, 120, 20000, 'fist', '#f0e8d8', '#ff4a6a', { unique: [{ k: 'bfChance', v: 0.06 }, { k: 'lifesteal', v: 0.03 }, { k: 'str', v: 14 }, { k: 'vit', v: 12 }], desc: '"Help people. Not just some of them — as many as you can reach." He still does.' }),
+);
+
+/** The class's own weapon for a quest reward meant for another sorcerer: the best of its line at that level. */
+export function classRewardItem(map: Partial<Record<ClassId, string>> | undefined, cls: ClassId): string | null {
+  if (!map) return null;
+  if (map[cls]) return map[cls]!;
+  const ref = Object.values(map)[0];
+  if (!ref) return null;
+  const req = ITEMS[ref].req;
+  const line = Object.values(ITEMS).filter(b => b.kind === 'weapon' && b.cls === cls && !b.unique && b.req <= req).sort((a, b) => b.req - a.req);
+  return line[0]?.id ?? null;
+}
+
 // ---- Armour / accessories ----
 reg(
   A('uniform', 'Student Uniform', 'outfit', 1, { def: 4, maxHp: 20 }, 50, 'uniform', '#1d2236', '#e0b84e'),
@@ -111,6 +153,18 @@ reg(
   A('kingRing', 'Ring of the King of Curses', 'ring', 82, { atk: 110, crit: 0.06, critDmg: 0.2 }, 90000, 'ring', '#111111', '#ff2a3a', { unique: [{ k: 'bfChance', v: 0.06 }, { k: 'critDmg', v: 0.45 }, { k: 'atkPct', v: 0.15 }, { k: 'str', v: 24 }], desc: 'Taken from the ashes in Shinjuku. It is very quiet now.' }),
 );
 
+// ---- Rewards from the open world, Sakurajima and the memories in Tengen's barrier ----
+reg(
+  A('graveBell', 'Grave Bell Bracelet', 'ring', 26, { atk: 22, lifesteal: 0.02 }, 9000, 'bracelet', '#6a6a5a', '#d8ff6a', { unique: [{ k: 'lifesteal', v: 0.02 }, { k: 'vit', v: 10 }, { k: 'hpRegen', v: 2 }], desc: 'The Smallpox Deity rang it before every burial. Now it rings for you.' }),
+  A('dragonPearl', 'Rainbow Dragon Pearl', 'charm', 42, { maxCe: 130, skillPow: 0.08 }, 16000, 'bead', '#ff8aff', '#6adfff', { unique: [{ k: 'skillPow', v: 0.12 }, { k: 'cePct', v: 0.12 }, { k: 'ce', v: 12 }], desc: 'Geto kept this curse for years. It hid its heart in a pearl, and the pearl outlived them both.' }),
+  A('redScissors', 'Red Scissors Charm', 'ring', 60, { atk: 60, crit: 0.04 }, 26000, 'ring', '#c83a3a', '#e8e8f0', { unique: [{ k: 'critDmg', v: 0.35 }, { k: 'crit', v: 0.05 }, { k: 'dex', v: 14 }], desc: '"Am I pretty?" There is no right answer. Answer with this.' }),
+  A('heirEarrings', 'Zen\'in Heir\'s Earrings', 'head', 70, { def: 42, maxHp: 520, evasion: 0.03 }, 34000, 'circlet', '#e8d48a', '#2a2a34', { unique: [{ k: 'atkSpd', v: 0.1 }, { k: 'moveSpd', v: 0.06 }, { k: 'dex', v: 16 }], desc: 'Naoya would not take them off, even after he stopped being human. Maki took them off for him.' }),
+  A('starTalisman', 'Star Corridor Talisman', 'charm', 82, { maxCe: 300, ceRegen: 3 }, 40000, 'charm', '#e8e0c8', '#b07aff', { unique: [{ k: 'cdr', v: 0.12 }, { k: 'skillPow', v: 0.12 }, { k: 'ce', v: 18 }], desc: 'Tengen folded a corner of the barrier into paper. It is heavier than it looks.' }),
+  A('heavenBand', 'Heavenly Restriction Band', 'ring', 86, { atk: 130, crit: 0.05 }, 60000, 'bracelet', '#1a1a1e', '#8a6aa0', { unique: [{ k: 'atkPct', v: 0.18 }, { k: 'critDmg', v: 0.4 }, { k: 'moveSpd', v: 0.06 }, { k: 'str', v: 24 }], desc: 'No cursed energy at all, and every drop of it paid back in body. Toji never needed a technique.' }),
+  A('getoKesa', 'Geto\'s Kesa', 'outfit', 92, { def: 140, maxHp: 1600, evasion: 0.03 }, 70000, 'uniform', '#1a1a1e', '#9a7a3a', { unique: [{ k: 'summonPow', v: 0.3 }, { k: 'skillPow', v: 0.15 }, { k: 'cePct', v: 0.2 }, { k: 'ce', v: 20 }], desc: 'He wore it to the end of the Night Parade. His best friend was the last one to see it.' }),
+  A('infinityEcho', 'Echo of Infinity', 'charm', 98, { maxCe: 420, skillPow: 0.16 }, 99000, 'eye', '#7fdcff', '#ffffff', { unique: [{ k: 'cdr', v: 0.18 }, { k: 'dmgReduce', v: 0.08 }, { k: 'evasion', v: 0.06 }, { k: 'ce', v: 24 }], desc: '"Throughout heaven and earth..." It is quiet now, but it still keeps a little distance between you and everything else.' }),
+);
+
 // ---- Post-story tiers (Lv 55 and Lv 80) ----
 // Built from the best regular item in each slot so levels 51-100 keep dropping upgrades.
 // Flat stats scale fully; percentage stats grow more gently so speed and crit stay sane.
@@ -151,6 +205,11 @@ reg(
   { id: 'filmTicket', name: 'Cinema Ticket Stub', kind: 'quest', req: 1, price: 0, icon: { shape: 'ticket', c1: '#ffd04a', c2: '#8a2a2a' }, questItem: true, stack: 99, desc: 'Found near the scene of the incident.' },
   { id: 'cursedMark', name: 'Cursed Mark Residue', kind: 'quest', req: 1, price: 0, icon: { shape: 'crystal', c1: '#2a1a2a', c2: '#ff3a6a' }, questItem: true, stack: 99, desc: 'The mark the Yasohachi curse left on its victims, scraped from one of its spawn.' },
   { id: 'pointToken', name: 'Culling Point Tag', kind: 'quest', req: 1, price: 0, icon: { shape: 'nametag', c1: '#ffd04a', c2: '#2a2a3a' }, questItem: true, stack: 99, desc: 'Kogane tallies a point every time a player falls. This tag is one of them.' },
+  { id: 'shrineCharm', name: 'Weathered Shrine Charm', kind: 'quest', req: 1, price: 0, icon: { shape: 'charm', c1: '#e8dcb8', c2: '#c83a3a' }, questItem: true, stack: 99, desc: 'A paper charm from the roadside shrines in the hills. Curses chew on them.' },
+  { id: 'dragonScale', name: 'Rainbow Scale', kind: 'quest', req: 1, price: 0, icon: { shape: 'crystal', c1: '#6adfff', c2: '#ff8aff' }, questItem: true, stack: 99, desc: 'It changes colour as you turn it. The curses on the mountain carry them like trophies.' },
+  { id: 'patientTag', name: 'Patient Wristband', kind: 'quest', req: 1, price: 0, icon: { shape: 'nametag', c1: '#f0f0f0', c2: '#3a8ad8' }, questItem: true, stack: 99, desc: 'From the old Tamagawa Hospital. The names have faded; the curses that wear them have not.' },
+  { id: 'volcanicGlass', name: 'Volcanic Glass', kind: 'quest', req: 1, price: 0, icon: { shape: 'crystal', c1: '#1a1a22', c2: '#ff6a2a' }, questItem: true, stack: 99, desc: 'Black glass from Sakurajima\'s slopes, still warm. Cursed energy pools in the cracks.' },
+  { id: 'memoryShard', name: 'Barrier Memory Shard', kind: 'quest', req: 1, price: 0, icon: { shape: 'crystal', c1: '#e8e0c8', c2: '#b07aff' }, questItem: true, stack: 99, desc: 'A sliver of Tengen\'s barrier. Hold it up to the light and you can see someone else\'s past.' },
   { id: 'heiCrest', name: 'Hei Corps Crest', kind: 'material', req: 1, price: 220, icon: { shape: 'charm', c1: '#1e1e26', c2: '#8a2a2a' }, stack: 999, desc: 'Worn by the Zen\'in clan\'s Hei. Sells well to collectors who never met one.' },
   { id: 'shinjukuAsh', name: 'Cursed Ash', kind: 'material', req: 1, price: 520, icon: { shape: 'crystal', c1: '#3a2a4a', c2: '#ff8aa8' }, stack: 999, desc: 'What is left of Kenjaku\'s curses. Mei Mei pays well for it. Do not ask why.' },
 );

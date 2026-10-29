@@ -33,12 +33,20 @@ export interface BossDef {
   cond?: (ps: PlayerState) => boolean;
   repeatable?: boolean;
   level?: number;
+  /** open-world boss: no quest, comes back this many seconds of play after it falls, and scales to the player */
+  world?: number;
 }
 
 export interface LightSrc { x: number; y: number; z: number; color: number; intensity: number; range: number; flicker?: boolean }
 
 /** A one-shot story beat that plays when the player first walks into its circle. */
 export interface SceneDef { x: number; z: number; r: number; flag: string; lines: Line[]; cond?: (ps: PlayerState) => boolean }
+
+/** A named place in an open area: walking in for the first time records it and pays some EXP. */
+export interface LandmarkDef { x: number; z: number; r: number; name: string; flag: string; lines?: Line[] }
+
+/** A sealed cache placed by hand in an open area. Opened once per save. */
+export interface CacheDef { x: number; z: number; flag: string }
 
 export type Weather = 'rain' | 'sakura' | 'fireflies' | 'embers' | 'leaves' | 'ash' | 'none' | 'confetti' | 'drips' | 'snow';
 
@@ -62,6 +70,8 @@ export interface MapDef {
   interior?: boolean;
   /** called with a fresh seed before the map is painted and built */
   prepare?: (seed: number) => void;
+  /** a large open region: scenery is culled in chunks, far spawners empty out and far curses sleep */
+  open?: boolean;
 }
 
 export interface MapRuntime {
@@ -76,6 +86,8 @@ export interface MapRuntime {
   splat: SplatPainter;
   water: { x: number; z: number; w: number; d: number }[];
   scenes: SceneDef[];
+  landmarks: LandmarkDef[];
+  caches: CacheDef[];
 }
 
 export class MapBuilder {
@@ -88,7 +100,7 @@ export class MapBuilder {
 
   constructor(public def: MapDef, public col: CollisionWorld, public quality: Quality, splat: SplatPainter) {
     this.rng = new Rng(def.id.length * 7919 + def.size[0]);
-    this.rt = { def, npcs: [], portals: [], spawners: [], bosses: [], pickups: [], lights: [], dummies: [], splat, water: [], scenes: [] };
+    this.rt = { def, npcs: [], portals: [], spawners: [], bosses: [], pickups: [], lights: [], dummies: [], splat, water: [], scenes: [], landmarks: [], caches: [] };
   }
 
   get night() { return this.def.night; }
@@ -247,6 +259,8 @@ export class MapBuilder {
   pickup(item: string, x: number, z: number, quest: string) { this.rt.pickups.push({ item, x, z, quest }); return this; }
   dummy(x: number, z: number) { this.rt.dummies.push({ x, z }); return this; }
   scene(s: SceneDef) { this.rt.scenes.push(s); return this; }
+  landmark(l: Omit<LandmarkDef, 'flag'>) { this.rt.landmarks.push({ ...l, flag: `lm_${this.def.id}_${this.rt.landmarks.length}` }); this.keepClear(l.x, l.z, 3, 3); return this; }
+  cache(x: number, z: number) { this.rt.caches.push({ x, z, flag: `cache_${this.def.id}_${this.rt.caches.length}` }); this.occupied.push({ x, z, r: 1 }); return this; }
 
   /** Tree/wall border around the map edge. */
   border(names: string[], inset = 1.5, spacing = 2.4, jitter = 0.8, skip: { x: number; z: number; r: number }[] = []) {
@@ -266,21 +280,34 @@ export class MapBuilder {
     return this;
   }
 
-  /** Finalise instanced meshes. */
+  /** Finalise instanced meshes. Big maps split each prop type into spatial chunks, so scenery off screen is culled. */
   finish() {
-    for (const [name, mats] of this.inst) {
+    const [W, D] = this.def.size;
+    const chunk = Math.max(W, D) > 120 ? 48 : 0;
+    for (const [name, all] of this.inst) {
       const d = getProp(name);
-      const im = new THREE.InstancedMesh(d.geo, toonMaterial(), mats.length);
-      mats.forEach((m, i) => im.setMatrixAt(i, m));
-      im.castShadow = d.shadow !== false && this.quality !== 'low';
-      im.receiveShadow = true;
-      im.computeBoundingSphere();
-      this.group.add(im);
-      if (d.outline !== false && this.quality !== 'low') {
-        const om = new THREE.InstancedMesh(d.geo, outlineMaterial(d.outline ?? 0.02), mats.length);
-        mats.forEach((m, i) => om.setMatrixAt(i, m));
-        om.computeBoundingSphere();
-        this.group.add(om);
+      const groups = new Map<string, THREE.Matrix4[]>();
+      if (chunk) {
+        for (const m of all) {
+          const k = Math.floor(m.elements[12] / chunk) + ',' + Math.floor(m.elements[14] / chunk);
+          let g = groups.get(k);
+          if (!g) groups.set(k, g = []);
+          g.push(m);
+        }
+      } else groups.set('', all);
+      for (const mats of groups.values()) {
+        const im = new THREE.InstancedMesh(d.geo, toonMaterial(), mats.length);
+        mats.forEach((m, i) => im.setMatrixAt(i, m));
+        im.castShadow = d.shadow !== false && this.quality !== 'low';
+        im.receiveShadow = true;
+        im.computeBoundingSphere();
+        this.group.add(im);
+        if (d.outline !== false && this.quality !== 'low') {
+          const om = new THREE.InstancedMesh(d.geo, outlineMaterial(d.outline ?? 0.02), mats.length);
+          mats.forEach((m, i) => om.setMatrixAt(i, m));
+          om.computeBoundingSphere();
+          this.group.add(om);
+        }
       }
     }
     return this.rt;

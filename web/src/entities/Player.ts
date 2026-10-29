@@ -151,7 +151,7 @@ export class Player extends Actor implements Caster {
     if (this.dashS) {
       this.move(this.dashS.vx, this.dashS.vz, dt);
       this.dashS.t -= dt;
-      if (Math.random() < 0.6) this.world.fx.burst(this.x, 0.9, this.z, this.ps.cls.id === 'megumi' ? 0x2a2a4a : 0x9ad0ff, 2, 1, 0.3, 0.3, this.ps.cls.id !== 'megumi');
+      if (Math.random() < 0.6) this.world.fx.burst(this.x, 0.9, this.z, this.ps.cls.trail, 2, 1, 0.3, 0.3, this.ps.cls.id !== 'megumi');
       if (this.dashS.t <= 0) this.dashS = null;
       this.vx = this.vz = 0;
     } else {

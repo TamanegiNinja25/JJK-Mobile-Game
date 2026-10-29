@@ -5,7 +5,8 @@ import { Menus } from './Menus';
 import { copyText, el, escapeHtml, formatNum } from '../core/util';
 import { itemIconIfReady } from './Icons';
 import { IconSpec } from '../rpg/items';
-import { CLASSES } from '../rpg/classes';
+import { CLASSES, ClassDef } from '../rpg/classes';
+import { unlockedClasses } from '../rpg/Unlocks';
 import { ClassId } from '../rpg/types';
 import { PlayerState, STAT_POINTS_PER_LEVEL } from '../rpg/PlayerState';
 import { MAPS } from '../world/maps';
@@ -130,7 +131,7 @@ export class UI {
     const latest = slots.map((s, i) => ({ s, i })).filter(x => x.s).sort((a, b) => (b.s!.savedAt ?? 0) - (a.s!.savedAt ?? 0))[0];
     t.innerHTML = `${this.logo()}
       <div class="title-menu">
-        ${latest ? `<button class="tbtn primary" data-a="continue">Continue <small>${CLASSES[latest.s!.cls].name} · Lv ${latest.s!.level}</small></button>` : ''}
+        ${latest ? `<button class="tbtn primary" data-a="continue">Continue <small>${CLASSES[latest.s!.cls]?.short ?? ''} · Lv ${latest.s!.level}</small></button>` : ''}
         <button class="tbtn ${latest ? '' : 'primary'}" data-a="new">New Game</button>
         ${latest ? '<button class="tbtn" data-a="load">Load Game</button>' : ''}
         <button class="tbtn" data-a="transfer">Transfer Save</button>
@@ -155,7 +156,7 @@ export class UI {
     const t = this.titleEl!;
     const rows = [0, 1, 2].map(i => {
       const s = PlayerState.peek(i);
-      return `<div class="slot xfer"><div class="slot-info"><div class="slot-n">Slot ${i + 1}${s ? ' · ' + CLASSES[s.cls].name : ''}</div><small>${s ? `Lv ${s.level} · ${MAPS[s.map]?.name ?? s.map}` : '— Empty —'}</small></div>
+      return `<div class="slot xfer"><div class="slot-info"><div class="slot-n">Slot ${i + 1}${s ? ' · ' + (CLASSES[s.cls]?.short ?? '') : ''}</div><small>${s ? `Lv ${s.level} · ${MAPS[s.map]?.name ?? s.map}` : '— Empty —'}</small></div>
         ${s ? `<button class="btn small" data-copy="${i}">Copy code</button>` : ''}<button class="btn small primary" data-imp="${i}">Paste here</button></div>`;
     }).join('');
     t.innerHTML = `${this.logo()}<div class="slots-panel"><div class="panel-title">Transfer save</div>
@@ -202,8 +203,8 @@ export class UI {
       const s = PlayerState.peek(i);
       if (!s) return `<div class="slot ${mode === 'load' ? 'disabled' : ''}" data-s="${i}"><div class="slot-n">Slot ${i + 1}</div><div class="slot-empty">— Empty —</div></div>`;
       const mins = Math.floor((s.playTime ?? 0) / 60);
-      return `<div class="slot" data-s="${i}"><div class="slot-portrait" style="background-image:url(${this.game.portraits.get(CLASSES[s.cls].model)})"></div>
-        <div class="slot-info"><div class="slot-n">Slot ${i + 1} · ${CLASSES[s.cls].name}</div><div>Lv ${s.level} · ${MAPS[s.map]?.name ?? s.map}</div><small>¥${formatNum(s.gold)} · ${Math.floor(mins / 60)}h ${mins % 60}m · Fingers ${s.fingers}/20</small></div>
+      return `<div class="slot" data-s="${i}"><div class="slot-portrait" style="background-image:url(${this.game.portraits.get(CLASSES[s.cls]?.model ?? 'yuji')})"></div>
+        <div class="slot-info"><div class="slot-n">Slot ${i + 1} · ${CLASSES[s.cls]?.short ?? ''}</div><div>Lv ${s.level} · ${MAPS[s.map]?.name ?? s.map}</div><small>¥${formatNum(s.gold)} · ${Math.floor(mins / 60)}h ${mins % 60}m · Fingers ${s.fingers}/20</small></div>
         <button class="btn small danger" data-del="${i}">Delete</button></div>`;
     }).join('');
     t.innerHTML = `${this.logo()}<div class="slots-panel"><div class="panel-title">${mode === 'new' ? 'Choose a save slot' : 'Load game'}</div>${rows}<button class="tbtn back" data-back="1">Back</button></div>`;
@@ -228,27 +229,35 @@ export class UI {
 
   private classSelect(slot: number) {
     const t = this.titleEl!;
+    const open = unlockedClasses();
+    const ids = Object.keys(CLASSES) as ClassId[];
     let pick: ClassId = 'yuji';
+    // bars compare everyone at level 50, so the unlockable sorcerers' extra growth shows
+    const at50 = (c: ClassDef) => ({ hp: c.base.hp + c.base.hpLv * 49, ce: c.base.ce + c.base.ceLv * 49, atk: c.base.atk + c.base.atkLv * 49, def: c.base.def + c.base.defLv * 49 });
+    const top = { hp: 0, ce: 0, atk: 0, def: 0 };
+    for (const id of ids) { const v = at50(CLASSES[id]); for (const k of Object.keys(top) as (keyof typeof top)[]) top[k] = Math.max(top[k], v[k]); }
     const render = () => {
-      const cards = (Object.keys(CLASSES) as ClassId[]).map(id => {
-        const c = CLASSES[id];
-        const bars = (['hp', 'ce', 'atk', 'def'] as const).map(k => {
-          const v = k === 'hp' ? c.base.hp / 160 : k === 'ce' ? c.base.ce / 100 : k === 'atk' ? c.base.atk / 15 : c.base.def / 7;
-          return `<div class="cbar"><span>${k.toUpperCase()}</span><div><i style="width:${Math.round(v * 100)}%;background:${c.color}"></i></div></div>`;
-        }).join('');
-        return `<div class="ccard ${pick === id ? 'sel' : ''}" data-c="${id}" style="--c:${c.color}">
-          <div class="cportrait" style="background-image:url(${this.game.portraits.get(c.model)})"></div>
-          <div class="cname">${c.name}</div><div class="ctitle">${c.title}</div>
-          <div class="cdesc">${escapeHtml(c.desc)}</div>${bars}</div>`;
+      const chips = ids.map(id => {
+        const c = CLASSES[id], locked = !open.has(id);
+        return `<div class="cschip ${pick === id ? 'sel' : ''} ${locked ? 'locked' : ''}" data-c="${id}" style="--c:${c.color}">
+          <div class="cp" style="background-image:url(${this.game.portraits.get(c.model)})"></div><div class="cn">${escapeHtml(c.short)}</div></div>`;
       }).join('');
-      t.innerHTML = `<div class="class-select"><div class="panel-title big">Choose your sorcerer</div><div class="cards">${cards}</div>
-        <div class="cs-btns"><button class="tbtn back" data-back="1">Back</button><button class="tbtn primary" data-go="1">Begin — ${CLASSES[pick].name}</button></div></div>`;
+      const c = CLASSES[pick], locked = !open.has(pick), v = at50(c);
+      const bars = (['hp', 'ce', 'atk', 'def'] as const).map(k => `<div class="cbar"><span>${k.toUpperCase()}</span><div><i style="width:${Math.round(v[k] / top[k] * 100)}%;background:${c.color}"></i></div></div>`).join('');
+      t.innerHTML = `<div class="class-select"><div class="panel-title big">Choose your sorcerer</div><div class="cs-row">${chips}</div>
+        <div class="cs-detail ${locked ? 'locked' : ''}" style="--c:${c.color}">
+          <div class="cportrait" style="background-image:url(${this.game.portraits.get(c.model)})"></div>
+          <div class="cs-info"><div class="cname">${escapeHtml(c.name)}</div><div class="ctitle">${escapeHtml(c.title)}</div>
+            ${locked ? `<div class="cs-lock">🔒 ${escapeHtml(c.unlock ?? '')}</div>` : c.unlock ? '<div class="cs-lock open">Unlocked</div>' : ''}
+            <div class="cdesc">${escapeHtml(c.desc)}</div>${bars}</div>
+        </div>
+        <div class="cs-btns"><button class="tbtn back" data-back="1">Back</button><button class="tbtn primary" data-go="1" ${locked ? 'disabled' : ''}>${locked ? 'Locked' : `Begin — ${escapeHtml(c.short)}`}</button></div></div>`;
     };
     render();
     t.onclick = (e) => {
       const tgt = e.target as HTMLElement;
       if (tgt.closest('[data-back]')) { audio.play('click'); this.slotSelect('new'); return; }
-      if (tgt.closest('[data-go]')) { audio.play('questAccept'); this.game.newGame(pick, slot); return; }
+      if (tgt.closest('[data-go]')) { if (!open.has(pick)) { audio.play('error'); return; } audio.play('questAccept'); this.game.newGame(pick, slot); return; }
       const c = tgt.closest('[data-c]') as HTMLElement | null;
       if (c) { pick = c.dataset.c as ClassId; audio.play('tab'); render(); }
     };

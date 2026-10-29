@@ -18,14 +18,14 @@ import { NPC } from '../entities/NPC';
 import { Projectile } from '../entities/Projectile';
 import { Loot, Pickup, Portal } from '../entities/Loot';
 import { ENEMIES, GRADE_NAME } from '../rpg/enemies';
-import { LEVEL_CAP } from '../rpg/classes';
+import { LEVEL_CAP, expToNext } from '../rpg/classes';
 import { getAtlas, AtlasEntry } from './atlas';
 import { npcName } from '../rpg/PlayerState';
 import { ITEMS, makeItem, randomGear, rollRarity, uniquesForLevel } from '../rpg/items';
 import { warmIcons } from '../ui/Icons';
 import { QUEST_BY_ID } from '../data/story';
 import { triggerReactions } from '../rpg/skills';
-import { Caster, DamageOpts, DamageSource, ProjectileSpec, Target, WorldAPI } from './api';
+import { Caster, DamageOpts, DamageSource, DomainKind, ProjectileSpec, Target, WorldAPI } from './api';
 import { audio, Surface } from '../audio/Audio';
 import { music } from '../audio/Music';
 import { Weather } from '../render/Weather';
@@ -38,7 +38,7 @@ interface SpawnerState { def: SpawnerDef; alive: Set<Enemy>; timers: number[] }
 
 
 /** Bosses that get the final-boss theme instead of the regular one. */
-const FINAL_BOSSES = new Set(['sukuna', 'mahoraga', 'kenjaku', 'sukunaTrue']);
+const FINAL_BOSSES = new Set(['sukuna', 'mahoraga', 'kenjaku', 'sukunaTrue', 'geto', 'gojoMemory']);
 const _projScreen = new THREE.Matrix4();
 const _sphere = new THREE.Sphere();
 export class World implements WorldAPI {
@@ -100,7 +100,8 @@ export class World implements WorldAPI {
     const [W, D] = def.size;
     this.col.bounds = { x0: -W / 2, z0: -D / 2, x1: W / 2, z1: D / 2 };
     def.prepare?.((Math.random() * 2 ** 31) | 0);
-    const splat = new SplatPainter(W, D, 4);
+    // big open areas paint the ground at 3 texels a metre instead of 4: a quarter less work at load
+    const splat = new SplatPainter(W, D, Math.max(W, D) > 120 ? 3 : 4);
     def.terrain.paint(splat);
     const b = new MapBuilder(def, this.col, this.r.quality, splat);
     def.build(b);
@@ -143,6 +144,11 @@ export class World implements WorldAPI {
       if (!s.cond || s.cond(ps)) for (let i = 0; i < s.count; i++) this.spawnFrom(st);
     }
     for (const dm of this.map.dummies) this.spawnDummy(dm.x, dm.z);
+    for (const c of this.map.caches) {
+      if (ps.d.flags[c.flag]) continue;
+      const e = this.spawnEnemy('treasure', c.x, c.z, Math.max(1, ps.d.level), true);
+      e.cacheFlag = c.flag;
+    }
     ps.questProgress('reach', id, 1);
     this.r.snap(sx, sz);
     this.fx.warmup();
@@ -214,7 +220,12 @@ export class World implements WorldAPI {
     }
     const p = this.player;
     p.update(dt);
-    for (const e of this.enemies) e.update(dt);
+    const open = !!this.mapDef.open;
+    for (const e of this.enemies) {
+      // in the open areas a curse far from the player and not chasing anyone sleeps (no AI, not drawn)
+      if (open && !e.aggro && !e.isBoss && e.alive && (Math.abs(e.x - p.x) > 46 || Math.abs(e.z - p.z) > 40)) { if (e.model) e.model.root.visible = false; continue; }
+      e.update(dt);
+    }
     this.enemies = this.enemies.filter(e => !e.removed);
     this.separate();
     for (const s of this.summons) s.update(dt);
@@ -233,6 +244,7 @@ export class World implements WorldAPI {
     this.tickDomain(dt);
     this.checkPortals(dt);
     this.checkScenes();
+    this.checkLandmarks();
     this.fx.update(dt);
     this.weather.update(dt, this.player.x, this.player.z);
     tickWater(this.time);
@@ -359,7 +371,16 @@ export class World implements WorldAPI {
 
   private tickSpawners(dt: number) {
     const ps = this.game.ps!;
+    const p = this.player, open = !!this.mapDef.open;
     for (const st of this.spawners) {
+      const sd = st.def;
+      // open areas only keep curses around the player: a spawner far away empties out and refills on approach
+      const near = !open || (Math.abs(p.x - sd.x) < sd.w / 2 + 52 && Math.abs(p.z - sd.z) < sd.d / 2 + 46);
+      if (!near) {
+        for (const e of st.alive) if (e.alive && !e.aggro) { e.alive = false; e.dispose(); st.alive.delete(e); }
+        st.timers = [];
+        continue;
+      }
       const ok = !st.def.cond || st.def.cond(ps);
       if (!ok) {
         for (const e of st.alive) { if (e.alive) { e.alive = false; e.dispose(); } }
@@ -433,6 +454,7 @@ export class World implements WorldAPI {
         if (!ok) continue;
       }
       if (b.cond && !b.cond(ps)) continue;
+      if (b.world && ps.d.playTime < ((ps.d.flags['wb_' + b.id] as number) ?? 0)) continue;
       this.startBoss(b);
       return;
     }
@@ -457,7 +479,9 @@ export class World implements WorldAPI {
       this.fx.smoke(b.x, b.z, 0x1a0a1a, 30);
       this.sfx('roar', b.x, b.z);
       this.fx.shake(0.5, 0.6);
-      const e = this.spawnEnemy(b.id, b.x, b.z, b.level ?? def.level, false);
+      // open-world bosses rise to meet the player
+      const lvl = b.world ? clamp(Math.max(b.level ?? def.level, this.game.ps!.d.level), 1, LEVEL_CAP) : b.level ?? def.level;
+      const e = this.spawnEnemy(b.id, b.x, b.z, lvl, false);
       e.aggro = true;
       e.target = this.player;
       e.atkCd = 1.5;
@@ -467,7 +491,10 @@ export class World implements WorldAPI {
       this.game.ui.banner(GRADE_NAME[def.grade].toUpperCase(), def.name, '#ff3a4a');
     };
     const q = b.quest ? QUEST_BY_ID[b.quest] : null;
-    if (b.intro?.length) this.game.dialogue.play(b.intro, { choices: q?.choices, onEnd: go });
+    // an open-world boss introduces itself once; after that it just rises
+    const ps = this.game.ps!, seen = b.world && ps.d.flags['wbseen_' + b.id];
+    if (b.world) ps.d.flags['wbseen_' + b.id] = true;
+    if (b.intro?.length && !seen) this.game.dialogue.play(b.intro, { choices: q?.choices, onEnd: go });
     else go();
   }
 
@@ -689,6 +716,23 @@ export class World implements WorldAPI {
     }
   }
 
+  /** Open areas: the first visit to a named place is recorded and rewarded. */
+  private checkLandmarks() {
+    if (this.game.state !== 'play' || this.bossActive || this.bossStarting || !this.map.landmarks.length) return;
+    const p = this.player, ps = this.game.ps!;
+    for (const lm of this.map.landmarks) {
+      if (ps.d.flags[lm.flag] || Math.abs(p.x - lm.x) > lm.r || Math.abs(p.z - lm.z) > lm.r || Math.hypot(p.x - lm.x, p.z - lm.z) > lm.r) continue;
+      ps.d.flags[lm.flag] = true;
+      const total = this.map.landmarks.length, found = this.map.landmarks.filter(l => ps.d.flags[l.flag]).length;
+      audio.play('rare');
+      this.game.ui.mapBanner(lm.name, `Landmark ${found}/${total}`);
+      ps.gainExp(Math.round(expToNext(ps.d.level) * 0.04));
+      this.fx.pillar(lm.x, lm.z, 1.2, 4, 0xffe08a, 1.0);
+      if (lm.lines?.length) this.game.dialogue.play(lm.lines);
+      return;
+    }
+  }
+
   surfaceAt(x: number, z: number): Surface {
     for (const w of this.map.water) if (Math.abs(x - w.x) < w.w / 2 && Math.abs(z - w.z) < w.d / 2) return 'water';
     const sp = this.map.splat;
@@ -826,7 +870,7 @@ export class World implements WorldAPI {
       const def = target.def;
       dmg *= 1 - def / (def + 60 + 8 * src.level);
     }
-    if (target instanceof Enemy && target.boss?.incomingMult) dmg *= target.boss.incomingMult(opts);
+    if (target instanceof Enemy && target.boss?.incomingMult) dmg *= target.boss.incomingMult(opts, bf);
     if (target === this.player) dmg *= 1 - ps.stats.dmgReduce;
     dmg = Math.max(1, Math.round(dmg));
     if (src.team === 'player' && target.team === 'enemy' && ps.d.cheats?.oneHit) dmg = Math.max(dmg, Math.ceil(target.hp));
@@ -908,6 +952,8 @@ export class World implements WorldAPI {
     if (e.isBoss) {
       ps.questProgress('boss', d.id, 1);
       if (this.bossActive?.enemy === e) {
+        const wb = this.bossActive.def.world;
+        if (wb) { ps.d.flags['wb_' + d.id] = ps.d.playTime + wb; this.game.toast(`${d.name} will rise again in about ${Math.round(wb / 60)} minutes.`, 'info', 3.5); }
         this.bossActive = null;
         this.bossDom = null;
         this.game.ui.hud?.setBoss(null);
@@ -923,6 +969,16 @@ export class World implements WorldAPI {
   /** Sealed caches in interiors: always yen and a consumable, usually a piece of gear. */
   private dropCache(e: Enemy) {
     const ps = this.game.ps!, L = e.level;
+    if (e.cacheFlag) {
+      // hand-placed caches in the open areas are worth the walk: better gear, materials, and they stay opened
+      ps.d.flags[e.cacheFlag] = true;
+      const total = this.map.caches.length, found = this.map.caches.filter(c => ps.d.flags[c.flag]).length;
+      this.game.toast(`Sealed cache opened — ${found}/${total} in ${this.mapDef.name}`, 'good', 3);
+      const gid = randomGear(L, ps.d.cls);
+      if (gid) this.loot.push(new Loot(this, e.x + rand(-0.6, 0.6), e.z + rand(-0.6, 0.6), 0, makeItem(gid, chance(0.4) ? 2 : 1, 1)));
+      this.loot.push(new Loot(this, e.x + rand(-0.6, 0.6), e.z + rand(-0.6, 0.6), 0, makeItem('fragment', 0, randInt(2, 5))));
+      if (chance(0.45)) this.loot.push(new Loot(this, e.x + rand(-0.6, 0.6), e.z + rand(-0.6, 0.6), 0, makeItem('core', 0, 1)));
+    }
     this.fx.burst(e.x, 0.8, e.z, 0xffd84a, 24, 4, 0.3, 0.8);
     this.loot.push(new Loot(this, e.x, e.z, Math.round((40 + L * 22) * rand(0.8, 1.3)), null));
     const drops: [string, number, 0 | 1 | 2 | 3][] = [[L >= 22 ? pick(['hpL', 'ceL']) : L >= 10 ? pick(['hpM', 'ceM']) : pick(['hpS', 'ceS']), randInt(1, 2), 0]];
@@ -1049,7 +1105,7 @@ export class World implements WorldAPI {
     return best;
   }
 
-  domain(kind: 'shrine' | 'shadow' | 'nails' | 'void' | 'coffin' | 'womb', x: number, z: number, r: number, dur: number) {
+  domain(kind: DomainKind, x: number, z: number, r: number, dur: number) {
     this.fx.domain(kind, x, z, r, dur);
     this.domainOwner = 'player';
     this.domainUntil = this.time + dur;
