@@ -294,7 +294,20 @@ export class Hud {
       const [mx, my] = toM(po.d.x, po.d.z);
       if (po.d.style === 'door') { x.fillStyle = '#ffd890'; x.fillRect(mx - 6, my - 6, 12, 12); x.strokeStyle = '#000'; x.lineWidth = 1.5; x.strokeRect(mx - 6, my - 6, 12, 12); label('▣ ' + po.d.label, mx, my + 20, '#ffd890'); }
       else if (po.d.style === 'travel') { x.strokeStyle = '#6adfff'; x.lineWidth = 3; x.beginPath(); x.arc(mx, my, 8, 0, Math.PI * 2); x.stroke(); label('⛩ Travel', mx, my + 22, '#6adfff'); }
+      else if (po.d.style === 'road') { x.fillStyle = '#ffe08a'; x.beginPath(); x.arc(mx, my, 7, 0, Math.PI * 2); x.fill(); x.strokeStyle = '#000'; x.lineWidth = 1.5; x.stroke(); label('➜ ' + po.d.label, mx, my + 20, '#ffe08a'); }
       else { x.fillStyle = '#b08aff'; x.beginPath(); x.arc(mx, my, 7, 0, Math.PI * 2); x.fill(); label(po.d.label, mx, my + 20, '#c8b0ff'); }
+    }
+    // landmarks: found ones by name, the rest as question marks to go and look for
+    const flags = this.game.ps!.d.flags;
+    for (const lm of w.map.landmarks) {
+      const [mx, my] = toM(lm.x, lm.z);
+      if (flags[lm.flag]) { label('★ ' + lm.name, mx, my + 4, '#ffe08a'); }
+      else { label('?', mx, my + 4, 'rgba(255,224,138,0.55)'); }
+    }
+    if (w.map.caches.length || w.map.landmarks.length) {
+      const fc = w.map.caches.filter(c => flags[c.flag]).length, fl = w.map.landmarks.filter(l => flags[l.flag]).length;
+      x.font = 'bold 12px sans-serif'; x.textAlign = 'left'; x.fillStyle = '#ffe08a';
+      x.fillText(`Landmarks ${fl}/${w.map.landmarks.length}   Sealed caches ${fc}/${w.map.caches.length}`, ox + 6, oy + 16);
     }
     if (w.guide) {
       const [mx, my] = toM(w.guide.x, w.guide.z);
@@ -341,6 +354,7 @@ export class Hud {
       const [mx, my] = toM(po.d.x, po.d.z);
       if (po.d.style === 'door') { x.fillStyle = '#ffd890'; x.fillRect(mx - 5, my - 5, 10, 10); x.strokeStyle = '#000'; x.lineWidth = 1.5; x.strokeRect(mx - 5, my - 5, 10, 10); }
       else if (po.d.style === 'travel') { x.strokeStyle = '#6adfff'; x.lineWidth = 3; x.beginPath(); x.arc(mx, my, 6, 0, Math.PI * 2); x.stroke(); }
+      else if (po.d.style === 'road') { x.fillStyle = '#ffe08a'; x.beginPath(); x.arc(mx, my, 6, 0, Math.PI * 2); x.fill(); }
       else { x.fillStyle = '#b08aff'; x.beginPath(); x.arc(mx, my, 6, 0, Math.PI * 2); x.fill(); }
     }
     if (w.guide) {

@@ -38,11 +38,11 @@ export const SKILL_TYPES: { id: SkillDef['type']; label: string; desc: string }[
   { id: 'ultimate', label: 'Ultimate', desc: 'Needs a full domain gauge. Lives in quick slot 6.' },
 ];
 
-const m = (base: number, lv: number) => base * (1 + 0.16 * (lv - 1));
-const pct = (v: number) => Math.round(v * 100) + '%';
+export const m = (base: number, lv: number) => base * (1 + 0.16 * (lv - 1));
+export const pct = (v: number) => Math.round(v * 100) + '%';
 
 /** Direction toward a target or the caster's facing. */
-function aim(c: Caster, t: Target | null, dx: number, dz: number) {
+export function aim(c: Caster, t: Target | null, dx: number, dz: number) {
   if (t) {
     const ax = t.x - c.x, az = t.z - c.z;
     const d = Math.hypot(ax, az) || 1;
@@ -54,7 +54,7 @@ function aim(c: Caster, t: Target | null, dx: number, dz: number) {
 }
 
 export const SKILLS: Record<string, SkillDef> = {};
-function reg(s: SkillDef) { SKILLS[s.id] = s; }
+export function reg(s: SkillDef) { SKILLS[s.id] = s; }
 
 // ===========================================================================
 // Yuji Itadori

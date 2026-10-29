@@ -1,6 +1,9 @@
 // Shared RPG types.
 
-export type ClassId = 'yuji' | 'megumi' | 'nobara';
+/** The three first-years, whose eyes the story is told through. */
+export type BaseClassId = 'yuji' | 'megumi' | 'nobara';
+/** Every playable sorcerer, including the ones unlocked by finishing a character or a quest line. */
+export type ClassId = BaseClassId | 'sukunaYuji' | 'sukunaMegumi' | 'heianSukuna' | 'moduloYuji';
 export type Attr = 'str' | 'dex' | 'vit' | 'ce';
 export type Slot = 'weapon' | 'head' | 'outfit' | 'charm' | 'ring' | 'shoes';
 export type ItemKind = Slot | 'consumable' | 'material' | 'quest';
@@ -92,4 +95,18 @@ export interface SaveData {
   uidCounter: number;
   savedAt: number;
   cheats?: CheatFlags;
+  /** progress of the other sorcerers played in this save (the active one lives in the fields above) */
+  roster?: Partial<Record<ClassId, RosterEntry>>;
+}
+
+/** One sorcerer's own progress inside a save. Armour, items, yen and quests are shared; weapons are not. */
+export interface RosterEntry {
+  level: number;
+  exp: number;
+  statPoints: number;
+  skillPoints: number;
+  attrs: Record<Attr, number>;
+  skills: Record<string, number>;
+  quick: (string | null)[];
+  weapon: ItemInstance | null;
 }

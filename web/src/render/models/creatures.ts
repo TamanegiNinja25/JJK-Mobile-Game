@@ -1126,12 +1126,139 @@ function buildManipCurse(): ModelHandle {
   return finishHumanoid(r, 0.024);
 }
 
+/** Rainbow Dragon: one of the oldest curses Geto ever swallowed. A long flying serpent with shifting scales. */
+function rainbowDragon(): ModelHandle {
+  const r = new RigBuilder();
+  const N = 10;
+  r.bone('body', 'root', [0, 2.4, 0]);
+  r.bone('head', 'body', [0, 0.1, 0.7]);
+  r.bone('jaw', 'head', [0, -0.12, 0.25]);
+  let parent = 'body';
+  for (let i = 0; i < N; i++) { r.bone('s' + i, parent, [0, 0, i === 0 ? -0.35 : -0.55]); parent = 's' + i; }
+  const col = (i: number) => new THREE.Color().setHSL((i / N) * 0.82, 0.62, 0.55).getHex();
+  r.part('body', G.ellipsoid(0.5, 0.45, 0.6, 14, 10), col(0), { topColor: lighten(col(0), 1.2) });
+  for (let i = 0; i < N; i++) {
+    const rad = 0.46 - i * 0.03;
+    r.part('s' + i, G.ellipsoid(rad, rad * 0.9, 0.42, 12, 8), col(i), { topColor: lighten(col(i), 1.25) });
+    r.part('s' + i, G.cone(0.07, 0.3, 4), 0xf0e8d8, { pos: [0, rad * 0.9, 0], rot: [-0.5, 0, 0] });
+    r.part('s' + i, G.ellipsoid(rad * 0.7, rad * 0.4, 0.36), 0xf0e0c0, { pos: [0, -rad * 0.55, 0] });
+  }
+  r.part('s' + (N - 1), G.cone(0.2, 0.6, 5), col(N - 1), { pos: [0, 0, -0.45], rot: [-Math.PI / 2, 0, 0] });
+  r.part('head', G.ellipsoid(0.42, 0.34, 0.55, 14, 10), col(0), { topColor: lighten(col(0), 1.2) });
+  r.part('head', G.ellipsoid(0.3, 0.2, 0.4), lighten(col(0), 1.1), { pos: [0, -0.04, 0.4] });
+  for (const sx of [1, -1]) {
+    r.part('head', G.cone(0.07, 0.6, 5), 0xf4ecd8, { pos: [sx * 0.22, 0.38, -0.12], rot: [-1.1, 0, -sx * 0.35] });
+    r.part('head', G.cyl(0.012, 0.012, 0.7, 4), 0xf4e8a0, { pos: [sx * 0.3, -0.06, 0.62], rot: [Math.PI / 2 - 0.3, 0, sx * 0.8] });
+  }
+  eyes(r, 'head', [[0.2, 0.12, 0.42], [-0.2, 0.12, 0.42]], 0.07, 0xfff07a, 1.6);
+  r.part('jaw', G.ellipsoid(0.28, 0.1, 0.38), 0xe8d8c0, { pos: [0, 0, 0.18] });
+  teeth(r, 'jaw', 0, 0.08, 0.42, 0.36, 6, 0.04, false);
+  const rig = r.build({ outline: 0.02 });
+  return new Creature(rig, (c) => {
+    const b = c.b;
+    b.body.position.y += Math.sin(c.t * 1.6) * 0.25;
+    for (let i = 0; i < N; i++) {
+      b['s' + i].rotation.y = Math.sin(c.t * 2.4 - i * 0.6) * 0.22;
+      b['s' + i].rotation.x = Math.sin(c.t * 1.8 - i * 0.5) * 0.08;
+    }
+    const a = Math.max(0, c.atk);
+    b.head.rotation.x = -a * 0.4 + Math.sin(c.t * 1.3) * 0.08;
+    b.jaw.rotation.x = 0.1 + a * 0.7;
+  });
+}
+
+/** Smallpox Deity: a disease curse that wears a gravestone for a head and buries what it catches. */
+function smallpox(): ModelHandle {
+  const r = new RigBuilder();
+  r.bone('body', 'root', [0, 1.15, 0]);
+  r.bone('head', 'body', [0, 0.75, 0.1]);
+  for (const s of ['L', 'R'] as const) {
+    const sx = s === 'L' ? 1 : -1;
+    r.bone('arm' + s, 'body', [sx * 0.58, 0.45, 0.05]);
+    r.bone('hand' + s, 'arm' + s, [0, -0.62, 0.1]);
+  }
+  const skin = 0x8a8a6a, pox = 0xc8a85a, stone = 0x8a8a8e;
+  r.part('body', G.ellipsoid(0.62, 0.7, 0.5, 14, 10), skin, { topColor: lighten(skin, 1.15), rot: [0.25, 0, 0] });
+  for (let i = 0; i < 16; i++) {
+    const a = i * 2.4, y = -0.45 + (i % 5) * 0.2;
+    r.part('body', G.sphere(0.06 + (i % 3) * 0.02, 6, 5), pox, { pos: [Math.sin(a) * 0.56, y, Math.cos(a) * 0.43], glow: 0.15 });
+  }
+  r.part('head', G.box(0.58, 0.9, 0.22), stone, { pos: [0, 0.38, 0], topColor: lighten(stone, 1.2) });
+  r.part('head', G.box(0.13, 0.62, 0.02), 0x2a2a2e, { pos: [0, 0.36, 0.12] });
+  r.part('head', G.ellipsoid(0.3, 0.06, 0.12), stone, { pos: [0, 0.86, 0] });
+  eyes(r, 'head', [[0.17, 0.56, 0.13], [-0.17, 0.56, 0.13]], 0.05, 0xd8ff6a, 1.4);
+  for (const s of ['L', 'R']) {
+    r.part('arm' + s, G.limb(0.12, 0.09, 0.62), skin);
+    r.part('hand' + s, G.ellipsoid(0.12, 0.14, 0.1), skin, { pos: [0, -0.08, 0] });
+    for (let k = 0; k < 3; k++) r.part('hand' + s, G.cone(0.025, 0.18, 4), 0x2a2a22, { pos: [(k - 1) * 0.06, -0.2, 0.04], rot: [Math.PI, 0, 0] });
+  }
+  for (const sx of [1, -1]) r.part('body', G.limb(0.16, 0.12, 0.5), skin, { pos: [sx * 0.3, -0.75, 0] });
+  const rig = r.build({ outline: 0.02 });
+  return new Creature(rig, (c) => {
+    const b = c.b;
+    b.body.rotation.z = Math.sin(c.t * 1.4) * 0.06;
+    b.head.rotation.z = Math.sin(c.t * 1.1) * 0.08;
+    b.body.position.y += Math.abs(Math.sin(c.phase)) * 0.05;
+    const a = Math.max(0, c.atk);
+    for (const s of ['L', 'R']) {
+      const sx = s === 'L' ? 1 : -1;
+      b['arm' + s].rotation.x = -0.3 - a * 1.6 + Math.sin(c.t * 2 + sx) * 0.1;
+      b['arm' + s].rotation.z = sx * 0.25;
+    }
+  });
+}
+
+/** Naoya Zen'in, reborn as a cursed spirit: a swollen, newborn-like body under that same bleached hair. */
+function naoyaCurse(): ModelHandle {
+  const r = new RigBuilder();
+  r.bone('body', 'root', [0, 1.35, 0]);
+  r.bone('head', 'body', [0, 0.72, 0.12]);
+  for (const s of ['L', 'R'] as const) {
+    const sx = s === 'L' ? 1 : -1;
+    r.bone('arm' + s, 'body', [sx * 0.46, 0.42, 0]);
+    r.bone('hand' + s, 'arm' + s, [0, -0.72, 0.06]);
+    r.bone('leg' + s, 'body', [sx * 0.24, -0.38, 0]);
+    r.bone('foot' + s, 'leg' + s, [0, -0.6, 0.04]);
+  }
+  const skin = 0xe8dcd0, crease = 0xc8b0a8, hair = 0xe8d48a;
+  r.part('body', G.ellipsoid(0.46, 0.56, 0.4, 14, 10), skin, { topColor: lighten(skin, 1.08), colorFn: (_x, y, _z, c) => { if (Math.sin(y * 18) > 0.9) c.setHex(crease); } });
+  r.part('head', G.ellipsoid(0.52, 0.5, 0.48, 16, 12), skin, { pos: [0, 0.22, 0], topColor: lighten(skin, 1.1) });
+  r.part('head', G.ellipsoid(0.3, 0.06, 0.1), 0x3a0a10, { pos: [0, 0.02, 0.44] });
+  teeth(r, 'head', 0, 0.05, 0.47, 0.5, 8, 0.03);
+  eyes(r, 'head', [[0.18, 0.32, 0.42], [-0.18, 0.32, 0.42], [0.1, 0.46, 0.4], [-0.1, 0.46, 0.4]], 0.045, 0xfff07a, 1.4);
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * TAU;
+    r.part('head', G.cone(0.07, 0.32, 5), hair, { pos: [Math.sin(a) * 0.32, 0.62, Math.cos(a) * 0.28 - 0.04], rot: [Math.cos(a) * -0.5 - 0.3, 0, Math.sin(a) * 0.5], topColor: lighten(hair, 1.2) });
+  }
+  for (const s of ['L', 'R']) {
+    r.part('arm' + s, G.limb(0.1, 0.07, 0.72), skin);
+    r.part('hand' + s, G.ellipsoid(0.1, 0.12, 0.08), skin);
+    for (let k = 0; k < 3; k++) r.part('hand' + s, G.cone(0.02, 0.22, 4), 0x2a1a1a, { pos: [(k - 1) * 0.05, -0.16, 0.03], rot: [Math.PI, 0, 0] });
+    r.part('leg' + s, G.limb(0.13, 0.09, 0.6), skin);
+    r.part('foot' + s, G.ellipsoid(0.1, 0.06, 0.16), skin, { pos: [0, -0.02, 0.05] });
+  }
+  // a torn membrane behind it, the shape of the kimono it died in
+  r.part('body', G.ellipsoid(0.62, 0.7, 0.05, 12, 6), 0x2a2a34, { pos: [0, 0.1, -0.38], rot: [0.15, 0, 0] });
+  const rig = r.build({ outline: 0.02 });
+  return new Creature(rig, (c) => {
+    const b = c.b;
+    const w = Math.sin(c.phase);
+    b.legL.rotation.x = w * 0.7; b.legR.rotation.x = -w * 0.7;
+    b.armL.rotation.x = -w * 0.5 - Math.max(0, c.atk) * 1.4; b.armR.rotation.x = w * 0.5 - Math.max(0, c.atk) * 1.2;
+    b.armL.rotation.z = 0.25; b.armR.rotation.z = -0.25;
+    // the head twitches a frame at a time, like Projection Sorcery stuck on
+    b.head.rotation.y = Math.round(Math.sin(c.t * 3) * 4) / 4 * 0.35;
+    b.head.rotation.z = Math.sin(c.t * 1.7) * 0.1;
+  });
+}
+
 export type CreatureKind =
   | 'flyhead' | 'crawler' | 'lanky' | 'glutton' | 'womb' | 'wretch' | 'hound' | 'fingerBearer'
   | 'transfigured' | 'bloated' | 'leech' | 'rootCurse' | 'bud' | 'hanami' | 'hand' | 'fish'
   | 'pumpkin' | 'dagon' | 'jogo' | 'mahoraga' | 'dummy'
   | 'dogWhite' | 'dogBlack' | 'nue' | 'toad' | 'elephant' | 'rabbit' | 'serpent' | 'ox' | 'totality'
-  | 'kechizu' | 'eso' | 'riverCurse' | 'bloodFetus' | 'barrierCurse' | 'roach' | 'manipCurse';
+  | 'kechizu' | 'eso' | 'riverCurse' | 'bloodFetus' | 'barrierCurse' | 'roach' | 'manipCurse'
+  | 'rainbowDragon' | 'smallpox' | 'naoyaCurse';
 
 let seedCounter = 1;
 
@@ -1164,6 +1291,9 @@ export function buildCreature(kind: CreatureKind): ModelHandle {
     case 'barrierCurse': return barrierCurse();
     case 'roach': return roach();
     case 'manipCurse': return buildManipCurse();
+    case 'rainbowDragon': return rainbowDragon();
+    case 'smallpox': return smallpox();
+    case 'naoyaCurse': return naoyaCurse();
     case 'hound': return quadruped({ bodyLen: 0.8, bodyR: 0.24, legLen: 0.42, legR: 0.05, neck: 0.18, headR: 0.17, snout: 0.16, ears: 'pointy', tail: 'long', color: 0x2c2430, belly: 0x3a3040, dark: 0x16121a, eye: 0xff3a2a, eyeGlow: 1.5, spikes: true });
     case 'dogWhite': return quadruped({ bodyLen: 0.9, bodyR: 0.25, legLen: 0.45, legR: 0.055, neck: 0.2, headR: 0.18, snout: 0.17, ears: 'pointy', tail: 'long', color: 0xf3f3f6, belly: 0xffffff, dark: 0xc8c8d0, eye: 0x3a2a2a, eyeGlow: 0.2, mask: 0x2a2a3a });
     case 'dogBlack': return quadruped({ bodyLen: 0.9, bodyR: 0.25, legLen: 0.45, legR: 0.055, neck: 0.2, headR: 0.18, snout: 0.17, ears: 'pointy', tail: 'long', color: 0x1e1e26, belly: 0x2a2a34, dark: 0x101016, eye: 0xd8d8f0, eyeGlow: 0.6, mask: 0xd8d8e0 });

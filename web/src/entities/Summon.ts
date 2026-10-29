@@ -69,15 +69,16 @@ export class Summon extends Actor {
       if (kind === 'toad') scale = 1.2;
       if (kind === 'serpent') scale = 1.15;
       if (kind === 'totality') scale = 1.6;
+      if (kind === 'mahoraga') scale = 1.3;
     }
     this.setModel(m, scale);
-    if (kind === 'dogWhite' || kind === 'dogBlack' || kind === 'totality' || kind === 'ox') {
+    if (kind === 'dogWhite' || kind === 'dogBlack' || kind === 'totality' || kind === 'ox' || kind === 'mahoraga') {
       const heavy = kind !== 'dogWhite' && kind !== 'dogBlack';
       m.onStep = () => world.sfx(heavy ? 'stomp' : 'pad', this.x, this.z, heavy ? 0.45 : 0.25, heavy ? 1.15 : 1.3);
     }
-    this.targetable = kind === 'dogWhite' || kind === 'dogBlack' || kind === 'rabbit' || kind === 'totality';
-    this.radius = kind === 'elephant' ? 1.6 : kind === 'rabbit' ? 0.25 : kind === 'totality' ? 1.3 : kind === 'ox' ? 0.8 : 0.45;
-    this.maxHp = this.hp = Math.max(50, (world.player.maxHp ?? 100) * (kind === 'rabbit' ? 0.08 : kind === 'totality' ? 0.9 : 0.45));
+    this.targetable = kind === 'dogWhite' || kind === 'dogBlack' || kind === 'rabbit' || kind === 'totality' || kind === 'mahoraga';
+    this.radius = kind === 'elephant' ? 1.6 : kind === 'rabbit' ? 0.25 : kind === 'totality' ? 1.3 : kind === 'mahoraga' ? 1.1 : kind === 'ox' ? 0.8 : 0.45;
+    this.maxHp = this.hp = Math.max(50, (world.player.maxHp ?? 100) * (kind === 'rabbit' ? 0.08 : kind === 'totality' ? 0.9 : kind === 'mahoraga' ? 1.5 : 0.45));
     if (kind === 'elephant') this.hover = 7;
     if (kind === 'nue') this.hover = 0.6;
     if (kind === 'serpent') this.hover = -3.2;
@@ -109,7 +110,7 @@ export class Summon extends Actor {
         if (this.stateT < 0.4) this.model?.play('bite', 0.4);
         break;
       case 'ox': this.oxAI(dt); break;
-      case 'totality': this.totalityAI(dt); break;
+      case 'totality': case 'mahoraga': this.totalityAI(dt); break;
       default: break;
     }
     this.syncModel(dt);

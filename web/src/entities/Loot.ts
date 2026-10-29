@@ -176,8 +176,8 @@ export interface PortalDef {
   rot?: number;
   /** facing on arrival */
   toFacing?: number;
-  /** 'door' draws a lit doorway, 'travel' a gate that opens the travel menu (to: '@travel') */
-  style?: 'ring' | 'door' | 'travel';
+  /** 'door' draws a lit doorway, 'travel' a gate that opens the travel menu (to: '@travel'), 'road' a path into the next area */
+  style?: 'ring' | 'door' | 'travel' | 'road';
 }
 
 export class Portal {
@@ -189,6 +189,13 @@ export class Portal {
     this.obj = new THREE.Group();
     if (d.style === 'travel') {
       this.ring = travelGate(this.obj);
+      this.obj.position.set(d.x, 0, d.z);
+      this.obj.rotation.y = d.rot ?? 0;
+      world.root.add(this.obj);
+      return;
+    }
+    if (d.style === 'road') {
+      this.ring = roadExit(this.obj);
       this.obj.position.set(d.x, 0, d.z);
       this.obj.rotation.y = d.rot ?? 0;
       world.root.add(this.obj);
@@ -229,6 +236,12 @@ export class Portal {
       ((this.obj.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.55 + Math.sin(t * 2.2) * 0.12;
       return;
     }
+    if (this.d.style === 'road') {
+      // chevrons run out along the road toward the next area
+      const t = this.world.time;
+      this.ring.children.forEach((c, i) => { const k = (t * 0.5 + i / 4) % 1; c.position.z = 1.6 - k * 3.2; ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.55 * Math.sin(k * Math.PI); });
+      return;
+    }
     this.ring.rotation.z += dt * 1.5;
     if (Math.random() < 0.3) this.world.fx.burst(this.d.x + (Math.random() - 0.5) * 2, 0.2, this.d.z + (Math.random() - 0.5) * 2, 0x9a7aff, 1, 0.6, 0.15, 1.0);
   }
@@ -266,6 +279,26 @@ function doorway(obj: THREE.Group) {
     m.position.y = 0.04;
     chev.add(m);
   }
+  obj.add(chev);
+  return chev as unknown as THREE.Mesh;
+}
+
+/** A road into the next area: waymarker posts and chevrons running toward the exit (-Z). Returns the chevrons. */
+function roadExit(obj: THREE.Group) {
+  const mat = (c: number, o: number) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  for (const sx of [-1.9, 1.9]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.5, 0.16), new THREE.MeshLambertMaterial({ color: 0x5a4a3a }));
+    post.position.set(sx, 0.75, 0);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.2, 0.26), mat(0xffe08a, 0.9));
+    cap.position.set(sx, 1.6, 0);
+    obj.add(post, cap);
+  }
+  const chev = new THREE.Group();
+  const shape = new THREE.Shape();
+  shape.moveTo(-0.8, 0.2); shape.lineTo(0, -0.38); shape.lineTo(0.8, 0.2); shape.lineTo(0.8, 0.52); shape.lineTo(0, -0.05); shape.lineTo(-0.8, 0.52); shape.closePath();
+  const geo = new THREE.ShapeGeometry(shape);
+  geo.rotateX(Math.PI / 2);
+  for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(geo, mat(0xffe08a, 0.5)); m.position.y = 0.05; chev.add(m); }
   obj.add(chev);
   return chev as unknown as THREE.Mesh;
 }

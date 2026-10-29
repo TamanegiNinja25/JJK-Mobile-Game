@@ -348,6 +348,26 @@ const KANJI: Record<string, string> = {
   steadyAim: '狙', thornDoll: '棘', dollCraft: '縫', ironGirl: '誇', finalNail: '終', nailLance: '槍', heavyHitter: '重', chainResonance: '鎖', bloodResonance: '血',
 };
 
+Object.assign(KANJI, {
+  sy_dismantle: '解', sy_cleave: '捌', sy_flame: '炎', sy_web: '網', sy_blackflash: '黒', sy_blast: '波', sy_rct: '反', sy_amplify: '拡', sy_swat: '払', sy_regrow: '再',
+  sy_king: '王', sy_fingers: '指', sy_vessel: '器', sy_cruelty: '虐', sy_shrine: '魔',
+  sm_dismantle: '解', sm_totality: '渾', sm_nue: '鵺', sm_kamutoke: '雷', sm_cleave: '捌', sm_agito: '顎', sm_fuga: '竈', sm_shroud: '隠', sm_rct: '反', sm_swap: '沈',
+  sm_vessel: '式', sm_king: '王', sm_adapt: '適', sm_talent: '才', sm_worldCut: '界',
+  hs_barrage: '腕', hs_dismantle: '解', hs_cleave: '捌', hs_fuga: '竈', hs_stomp: '災', hs_worldCut: '界', hs_blackflash: '黒', hs_incant: '詠', hs_rct: '反', hs_simple: '籠',
+  hs_calamity: '災', hs_arms: '四', hs_faces: '面', hs_millennium: '千', hs_shrine: '魔',
+  my_divergent: '逕', my_piercing: '穿', my_supernova: '星', my_dismantle: '解', my_soul: '魂', my_zone: '閃', my_redScale: '赤', my_winters: '冬', my_counter: '返', my_secondWind: '息',
+  my_body: '体', my_mastery: '黒', my_blood: '血', my_unbreakable: '忍', my_domain: '域',
+});
+
+/** The unlockable sorcerers reuse the art of the technique they share with a first-year. */
+const ART_ALIAS: Record<string, string> = {
+  sy_dismantle: 'dismantleY', sy_blackflash: 'blackflash', sy_swat: 'counterStrike', sy_regrow: 'secondWind', sy_vessel: 'vesselBody', sy_shrine: 'shrine',
+  sm_dismantle: 'dismantleY', sm_nue: 'nue', sm_shroud: 'shadowCloak', sm_swap: 'shadowGuard', sm_vessel: 'tenShadows', sm_agito: 'roundDeer',
+  hs_barrage: 'rush', hs_dismantle: 'dismantleY', hs_stomp: 'slam', hs_blackflash: 'blackflash', hs_shrine: 'shrine',
+  my_divergent: 'divergent', my_piercing: 'piercingBlood', my_supernova: 'supernova', my_dismantle: 'dismantleY', my_zone: 'blackflash', my_counter: 'counterStrike',
+  my_secondWind: 'secondWind', my_body: 'physique', my_mastery: 'bfInstinct', my_unbreakable: 'unyielding', my_redScale: 'cursedSurge', my_winters: 'ironWill',
+};
+
 const SKILL_ART: Record<string, (x: Ctx, c: string) => void> = {
   // ---- Yuji ----
   divergent: (x, c) => { x.save(); x.globalAlpha = 0.45; at(x, 58, 46, -0.15, 0.95, () => cel(x, G.fist(), c, 0)); x.restore(); at(x, 46, 54, -0.15, 0.95, () => { cel(x, G.fist(), '#f2c7a2'); G.knuckleLines(x); }); glowRing(x, 58, 46, 30, c, 2); },
@@ -441,7 +461,7 @@ function paintSkill(id: string) {
   const { c, x } = makeCanvas(size);
   const frame: Frame = s?.type ?? 'active';
   tile(x, color, frame, KANJI[id]);
-  const art = SKILL_ART[id];
+  const art = SKILL_ART[id] ?? SKILL_ART[ART_ALIAS[id]];
   x.save();
   if (art) art(x, color);
   else { x.fillStyle = '#fff'; x.font = '900 56px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(KANJI[id] ?? '呪', 50, 53); }

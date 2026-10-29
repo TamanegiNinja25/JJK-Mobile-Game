@@ -7,7 +7,7 @@ import { TAU, clamp, lerp } from '../../core/util';
 export type HairStyle =
   | 'yuji' | 'megumi' | 'nobara' | 'gojo' | 'nanami' | 'maki' | 'inumaki' | 'shoko' | 'todo'
   | 'yaga' | 'ijichi' | 'junpei' | 'meimei' | 'mahito' | 'geto' | 'miwa' | 'bald' | 'short' | 'bun' | 'long'
-  | 'bob' | 'choso' | 'yuta' | 'naoya' | 'pompadour' | 'kashimo' | 'uro' | 'mai';
+  | 'bob' | 'choso' | 'yuta' | 'naoya' | 'pompadour' | 'kashimo' | 'uro' | 'mai' | 'sukunaBack' | 'toji' | 'kamo';
 
 export type Outfit = 'uniform' | 'uniformHood' | 'uniformSkirt' | 'suit' | 'labcoat' | 'casual' | 'robe' | 'tank' | 'patchwork' | 'kimono' | 'uniformHigh';
 
@@ -28,7 +28,8 @@ export interface HumanoidSpec {
   glasses?: 'round' | 'goggles' | 'shades' | 'blindfold' | 'none';
   extras?: ('scars' | 'stitches' | 'collar' | 'tie' | 'braid' | 'eyepatch' | 'mask' | 'facescar' | 'sukunaMarks' | 'cursedEyes' | 'gloves' | 'bloodStripe' | 'browStitch' | 'bandage'
     | 'goatee' | 'leopardTie' | 'eyeBags' | 'mole' | 'backPolearm' | 'hairpin' | 'zipper'
-    | 'katana' | 'gavel' | 'staff' | 'stubble' | 'piercings' | 'secondFace' | 'bellyMouth' | 'ring' | 'scarf')[];
+    | 'katana' | 'gavel' | 'staff' | 'stubble' | 'piercings' | 'secondFace' | 'bellyMouth' | 'ring' | 'scarf' | 'wristMarks'
+    | 'lipScar' | 'wormCurse' | 'kesa' | 'scissors' | 'longCoat' | 'fourEyes' | 'surgicalMask')[];
   outline?: number;
 }
 
@@ -148,6 +149,8 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
     if (!bareArms) r.part('armLow' + s, G.cyl(0.066 * B, 0.07 * B, 0.05, 10), spec.outfit.startsWith('uniform') ? top : accent, { pos: [0, -0.2 * H, 0] });
     const gloves = spec.extras?.includes('gloves');
     r.part('hand' + s, G.ellipsoid(0.058, 0.07, 0.045, 10, 8), gloves ? 0x1c1c22 : skin, { pos: [0, -0.04, 0] });
+    // Sukuna's black bands around each wrist
+    if (spec.extras?.includes('wristMarks')) for (let i = 0; i < 2; i++) r.part('hand' + s, G.cyl(0.056, 0.056, 0.014, 10, false), 0x141014, { pos: [0, 0.03 - i * 0.03, 0] });
     r.part('hand' + s, G.ellipsoid(0.022, 0.04, 0.022, 6, 5), gloves ? 0x1c1c22 : skin, { pos: [s === 'L' ? -0.04 : 0.04, -0.02, 0.025], rot: [0, 0, s === 'L' ? 0.6 : -0.6] });
   }
 
@@ -196,7 +199,11 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
   }
   // nose + mouth
   r.part('head', G.ellipsoid(0.014, 0.02, 0.016, 6, 5), darken(skin, 0.9), { pos: [0, eyeY - 0.07, eyeZ + 0.03], smooth: true });
-  if (!spec.extras?.includes('collar') && !spec.extras?.includes('mask')) {
+  if (spec.extras?.includes('surgicalMask')) {
+    r.part('head', G.ellipsoid(headR * 0.66, headR * 0.4, headR * 0.34, 12, 8), 0xf2f2ee, { pos: [0, eyeY - 0.13, headR * 0.6], smooth: true });
+    for (const sx of [1, -1]) r.part('head', G.box(0.008, 0.008, headR * 0.9), 0xd8d8d0, { pos: [sx * headR * 0.62, eyeY - 0.08, headR * 0.2], rot: [0, sx * 0.3, 0] });
+  }
+  if (!spec.extras?.includes('collar') && !spec.extras?.includes('mask') && !spec.extras?.includes('surgicalMask')) {
     r.part('head', G.box(0.055, 0.009, 0.012), 0x6a2a2a, { pos: [0, eyeY - 0.13, headR * 0.84] });
   }
 
@@ -299,6 +306,36 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
     for (const z of [-0.62, 0.82]) r.part('handR', G.cyl(0.03, 0.03, 0.08, 6), 0x6adfff, { pos: [0, -0.06, z], rot: [Math.PI / 2, 0, 0], glow: 0.9 });
   }
 
+  if (spec.extras?.includes('fourEyes')) {
+    // Tengen: a second, smaller pair of eyes above the first
+    for (const sx of [1, -1]) {
+      r.part('head', G.ellipsoid(0.03, 0.036, 0.014, 10, 6), 0xf9f7f2, { pos: [sx * eyeX * 0.8, eyeY + 0.12, eyeZ - 0.02], rot: [0, sx * 0.3, 0], smooth: true });
+      r.part('head', G.ellipsoid(0.016, 0.022, 0.01, 8, 6), 0x2a2a3a, { pos: [sx * eyeX * 0.8, eyeY + 0.12, eyeZ - 0.005], rot: [0, sx * 0.3, 0], glow: 0.2 });
+    }
+  }
+  if (spec.extras?.includes('lipScar')) {
+    r.part('head', G.box(0.008, 0.06, 0.01), darken(skin, 0.55), { pos: [0.02, eyeY - 0.13, headR * 0.86], rot: [0, 0, -0.2] });
+  }
+  if (spec.extras?.includes('wormCurse')) {
+    // Toji's inventory curse, coiled around his shoulders
+    for (let i = 0; i < 9; i++) {
+      const a = -1.2 + i * 0.32;
+      r.part('chest', G.sphere(0.075 - i * 0.003, 8, 6), i % 2 ? 0x8a6aa0 : 0x7a5a90, { pos: [Math.sin(a) * 0.24, torsoLen * 0.72 + Math.cos(a * 1.4) * 0.03, Math.cos(a) * 0.14 - 0.02], smooth: true });
+    }
+    r.part('chest', G.sphere(0.035, 6, 4), 0xffd23a, { pos: [Math.sin(1.4) * 0.24, torsoLen * 0.76, Math.cos(1.4) * 0.14 + 0.03], glow: 1.2 });
+  }
+  if (spec.extras?.includes('kesa')) {
+    // a monk's stole draped over one shoulder (Geto)
+    r.part('chest', G.box(0.09, torsoLen * 1.15, 0.03), spec.accent, { pos: [0.05, torsoLen * 0.28, torsoW * 0.8], rot: [0.05, 0, -0.5] });
+    r.part('chest', G.box(0.09, torsoLen * 1.0, 0.03), spec.accent, { pos: [-0.02, torsoLen * 0.28, -torsoW * 0.8], rot: [-0.05, 0, -0.5] });
+  }
+  if (spec.extras?.includes('scissors')) {
+    for (const sx of [-1, 1]) r.part('handR', G.box(0.02, 0.008, 0.7), 0xc8ccd4, { pos: [sx * 0.02, -0.06, 0.38], rot: [0, sx * 0.12, 0], glow: 0.1 });
+    r.part('handR', G.torus(0.04, 0.012, 5, 10), 0x3a1a1a, { pos: [0, -0.06, 0.0], rot: [Math.PI / 2, 0, 0] });
+  }
+  if (spec.extras?.includes('longCoat')) {
+    r.part('spine', G.cyl(torsoW * 1.0, torsoW * 1.25, 0.62 * H, 14, false), spec.top, { pos: [0, -0.3 * H, 0] });
+  }
   buildHair(r, spec, headR, hc);
 
   const model = r.build({ outline: spec.outline ?? 0.018 });
@@ -367,6 +404,33 @@ function buildHair(r: RigBuilder, spec: HumanoidSpec, headR: number, hc: V3) {
       for (let i = 0; i < 12; i++) spike(0.35 + (i % 3) * 0.22, (i / 12) * TAUh, 0.13 + (i % 2) * 0.03, 0.05, [0, 0.9, 0]);
       for (let i = 0; i < 4; i++) spike(0.08, (i / 4) * TAUh, 0.12, 0.05, [0, 1.2, 0]);
       for (let i = -2; i <= 2; i++) spike(0.75, i * 0.3, 0.1, 0.04, [0, -0.2, 0.6]);
+      break;
+    }
+    case 'sukunaBack': {
+      // Sukuna wearing Yuji: the same pink hair, pushed flat and straight back off the forehead
+      shell(0, 1.05, TAUh, c, 1.0);
+      shell(1.0, 1.75, Math.PI * 1.25, 0x3a2626, 0.985);
+      for (let i = 0; i < 9; i++) {
+        const az = Math.PI + (i - 4) * 0.3;
+        spike(1.05 + (i % 2) * 0.15, az, 0.2 + (i % 3) * 0.03, 0.055, [0, -0.4, -0.9], c, 0.85);
+      }
+      for (let i = -2; i <= 2; i++) spike(0.75, Math.PI + i * 0.5, 0.16, 0.05, [0, 0.1, -1.4], c, 0.9);
+      break;
+    }
+    case 'toji': {
+      // short, messy black hair
+      shell(0, 1.3, TAUh, c, 1.02);
+      shell(1.2, 1.8, Math.PI * 1.3, c, 1.0);
+      for (let i = 0; i < 14; i++) spike(0.3 + (i % 3) * 0.28, (i / 14) * TAUh, 0.09 + (i % 2) * 0.03, 0.05, [0, 0.3, -0.2]);
+      for (let i = -3; i <= 3; i++) lock(i * 0.22, 0.1, 0.035, 0.55, c, 0.9);
+      break;
+    }
+    case 'kamo': {
+      // tied-back hair with a long tail
+      shell(0, 1.25, TAUh, c, 1.02);
+      shell(1.1, 1.85, Math.PI * 1.3, c, 1.0);
+      r.part('head', G.ellipsoid(0.07, 0.22, 0.07), c, { pos: [hc[0], hc[1] - R * 0.25, hc[2] - R * 1.05], rot: [-0.2, 0, 0], topColor: hi });
+      for (let i = -2; i <= 2; i++) lock(i * 0.25, 0.1, 0.03, 0.55, c, 0.88);
       break;
     }
     case 'megumi': {

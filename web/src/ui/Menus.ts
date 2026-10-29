@@ -3,10 +3,11 @@
 import type { Game } from '../Game';
 import { copyText, el, escapeHtml, formatNum } from '../core/util';
 import { itemIcon, skillIcon } from './Icons';
-import { ITEMS, RARITY_COLOR, RARITY_NAME, itemName, itemStats, formatStat, isGear, sellPrice, enhanceCost, makeItem, ItemBase, uniquesForLevel, SLOT_ORDER, SLOT_NAMES, KIND_NAME, CATEGORIES, sortItems, REFORGE_MAX, reforgeCost, reforgeStep, STAT_DESC } from '../rpg/items';
-import { Attr, ItemInstance, ItemKind, Slot, StatKey, PCT_KEYS, STAT_LABEL } from '../rpg/types';
+import { ITEMS, RARITY_COLOR, RARITY_NAME, itemName, itemStats, formatStat, isGear, sellPrice, enhanceCost, makeItem, ItemBase, uniquesForLevel, SLOT_ORDER, SLOT_NAMES, KIND_NAME, CATEGORIES, sortItems, REFORGE_MAX, reforgeCost, reforgeStep, STAT_DESC, classRewardItem } from '../rpg/items';
+import { Attr, ClassId, ItemInstance, ItemKind, Slot, StatKey, PCT_KEYS, STAT_LABEL } from '../rpg/types';
 import { SKILLS, classSkills, SKILL_TYPES, SkillDef } from '../rpg/skills';
 import { CLASSES, LEVEL_CAP, expToNext } from '../rpg/classes';
+import { unlockedClasses } from '../rpg/Unlocks';
 import { QUESTS, QUEST_BY_ID, NPC_SHORT } from '../data/story';
 import { MAPS, TRAVEL_LIST, travelUnlocked } from '../world/maps';
 import { getAtlas } from '../world/atlas';
@@ -156,6 +157,7 @@ export class Menus {
         <div class="xp"><div class="xp-fill" style="width:${d.level >= LEVEL_CAP ? 100 : (d.exp / need * 100).toFixed(1)}%"></div><span>${d.level >= LEVEL_CAP ? 'MAX LEVEL' : `${formatNum(d.exp)} / ${formatNum(need)} EXP`}</span></div>
         <div class="fingers">Sukuna's Fingers <b>${d.fingers} / 20</b><small>+${d.fingers * 2}% ATK and Max HP</small></div>
         <div class="misc">Curses exorcised: <b>${formatNum(d.kills)}</b> · Play time: <b>${Math.floor(mins / 60)}h ${mins % 60}m</b></div>
+        ${this.renderRoster()}
       </div>
       <div class="status-right">
         <div class="panel-title">Attributes ${d.statPoints > 0 ? `<span class="pts">${d.statPoints} points</span>` : ''}</div>
@@ -169,6 +171,20 @@ export class Menus {
         </div>
       </div>
     </div>`;
+  }
+
+  /** Every sorcerer, for switching inside this save. */
+  private renderRoster() {
+    const ps = this.game.ps!, d = ps.d;
+    const open = unlockedClasses();
+    const chips = (Object.keys(CLASSES) as ClassId[]).map(id => {
+      const c = CLASSES[id], lv = id === d.cls ? d.level : d.roster?.[id]?.level;
+      const tip = open.has(id) ? `${c.short}${lv ? ` · Lv ${lv}` : ' · joins at your level'}` : `${c.short} · locked: ${c.unlock ?? ''}`;
+      return `<button class="rchip ${id === d.cls ? 'on' : ''} ${open.has(id) ? '' : 'locked'}" data-act="switch" data-c="${id}" title="${escapeHtml(tip)}" style="--c:${c.color};background-image:url(${this.game.portraits.get(c.model)})"></button>`;
+    }).join('');
+    const town = this.game.world.mapDef?.town;
+    return `<div class="roster"><div class="panel-title">Sorcerers</div><div class="roster-row">${chips}</div>
+      <div class="roster-hint">${town ? 'Tap a sorcerer to switch. Each keeps their own level, techniques and weapon; armour, items and quests are shared.' : 'Switch sorcerers while in Jujutsu High.'}</div></div>`;
   }
 
   // ------------------------------------------------------------------
@@ -362,7 +378,7 @@ export class Menus {
         return `<div class="obj ${ok ? 'ok' : ''}">${ok ? '✔' : '◇'} ${escapeHtml(o.label)}${n > 1 ? ` (${pr}/${n})` : ''}</div>`;
       }).join('');
       const r = q.rewards;
-      const items = [...(r.items ?? []).map(i => `${ITEMS[i.id].name}${(i.qty ?? 1) > 1 ? ' ×' + i.qty : ''}`), ...(r.classItems?.[ps.d.cls] ? [ITEMS[r.classItems[ps.d.cls]!].name] : []), ...(r.fingers ? ["Sukuna's Finger"] : [])];
+      const items = [...(r.items ?? []).map(i => `${ITEMS[i.id].name}${(i.qty ?? 1) > 1 ? ' ×' + i.qty : ''}`), ...(classRewardItem(r.classItems, ps.d.cls) ? [ITEMS[classRewardItem(r.classItems, ps.d.cls)!].name] : []), ...(r.fingers ? ["Sukuna's Finger"] : [])];
       detail = `<div class="quest-detail">
         <div class="id-name">${escapeHtml(q.name)}</div>
         <div class="id-sub">${q.type === 'main' ? `Main story · Chapter ${q.chapter}` : 'Side request'} · ${escapeHtml((q.turnIn ?? q.giver) === q.giver ? 'From ' + this.npcName(q.giver) : this.npcName(q.giver) + ' → ' + this.npcName(q.turnIn!))}</div>
@@ -392,11 +408,13 @@ export class Menus {
   private static NODES: Record<string, [number, number]> = {
     sugisawa: [560, 110], sendai: [600, 162], hub: [430, 292], eishu: [502, 236], yasohachi: [418, 236], colony1: [506, 292],
     kawasaki: [390, 340], shibuya: [462, 326], shinjuku: [440, 372], kyoto: [240, 350], zenin: [186, 318],
+    outskirts: [466, 266], sakurajima: [120, 402], starCorridor: [398, 284],
   };
   /** Short names for the world map, where full area names would run into each other. */
   private static NODE_LABEL: Record<string, string> = {
     sugisawa: 'Sugisawa', sendai: 'Sendai Colony', hub: 'Jujutsu High', eishu: 'Eishu', yasohachi: 'Yasohachi Bridge', colony1: 'Colony No. 1',
     kawasaki: 'Kawasaki', shibuya: 'Shibuya', shinjuku: 'Shinjuku', kyoto: 'Kyoto', zenin: 'Zen\'in Estate',
+    outskirts: 'Tokyo Outskirts', sakurajima: 'Sakurajima', starCorridor: 'Tombs of the Star',
   };
 
   /** The area a map belongs to on the world map (interiors and the sewer sit inside their area). */
@@ -456,6 +474,7 @@ export class Menus {
     const labelOff: Record<string, [number, number, CanvasTextAlign]> = {
       sugisawa: [0, -22, 'center'], sendai: [-20, 5, 'right'], hub: [-20, -8, 'right'], eishu: [20, 5, 'left'], yasohachi: [-20, -6, 'right'], colony1: [20, 5, 'left'],
       kawasaki: [-20, 16, 'right'], shibuya: [20, 14, 'left'], shinjuku: [20, 10, 'left'], kyoto: [0, -22, 'center'], zenin: [-18, 5, 'right'],
+      outskirts: [20, -6, 'left'], sakurajima: [18, 18, 'left'], starCorridor: [-18, -14, 'right'],
     };
     x.strokeStyle = 'rgba(106,223,255,0.35)'; x.setLineDash([6, 6]); x.lineWidth = 2;
     for (const id of Object.keys(nodes)) { if (id === 'hub') continue; x.beginPath(); x.moveTo(...nodes.hub); x.lineTo(...nodes[id]); x.stroke(); }
@@ -726,6 +745,18 @@ export class Menus {
     const uid = t.dataset.uid ? +t.dataset.uid : null;
     switch (a) {
       case 'stat': ps.spendStat(t.dataset.a as Attr, +(t.dataset.n ?? 1)); audio.play('click'); break;
+      case 'switch': {
+        const id = t.dataset.c as ClassId;
+        if (id === ps.d.cls) break;
+        const c = CLASSES[id];
+        if (!unlockedClasses().has(id)) { audio.play('error'); this.game.toast(`${c.short} is locked. ${c.unlock ?? ''}`, 'warn', 4); break; }
+        if (!this.game.world.mapDef.town) { audio.play('error'); this.game.toast('Switch sorcerers while in Jujutsu High.', 'warn', 2.5); break; }
+        const lv = ps.d.roster?.[id]?.level;
+        if (!confirm(lv ? `Switch to ${c.short} (Lv ${lv})?` : `${c.short} joins this save at Lv ${ps.d.level}. Their attribute and skill points are spent for you. Switch now?`)) break;
+        this.close();
+        this.game.switchSorcerer(id);
+        return;
+      }
       case 'selitem': this.selItem = uid; this.selSlot = null; audio.play('click', { vol: 0.5 }); break;
       case 'selslot': this.selSlot = t.dataset.slot as Slot; this.selItem = null; this.bagFilter = this.selSlot; audio.play('click', { vol: 0.5 }); break;
       case 'filter': this.bagFilter = t.dataset.f as any; break;

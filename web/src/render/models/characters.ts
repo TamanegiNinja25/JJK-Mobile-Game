@@ -164,6 +164,48 @@ export const SPECS: Record<string, HumanoidSpec> = {
     top: 0xf2eee4, bottom: 0x1a1a1e, accent: 0x111111, shoes: 0x1a1a1a, inner: 0x111111, height: 1.48, bulk: 1.55,
     extras: ['sukunaMarks', 'cursedEyes', 'secondFace', 'bellyMouth'],
   },
+  // ---- Unlockable sorcerers ----
+  sukunaYuji: {
+    skin: 0xf3c9a6, hair: 0xf28da0, hairStyle: 'sukunaBack', eyes: 0xff2a3a, outfit: 'uniformHood',
+    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0xd23a3a, inner: 0xc3262f, bulk: 1.08, extras: ['sukunaMarks', 'cursedEyes', 'wristMarks'],
+  },
+  sukunaMegumi: {
+    skin: 0xf1d3b8, hair: 0x29324e, hairStyle: 'megumi', eyes: 0xff2a3a, outfit: 'kimono',
+    top: 0xf2eee4, bottom: 0x1a1a1e, accent: 0x111111, shoes: 0x16161a, inner: 0x111111, extras: ['sukunaMarks', 'cursedEyes', 'wristMarks'],
+  },
+  moduloYuji: {
+    skin: 0xefc29e, hair: 0xf28da0, hairStyle: 'yuji', eyes: 0x7a4128, outfit: 'robe',
+    top: 0x1c1e26, bottom: 0x1a1a20, accent: 0xc3262f, shoes: 0x2a2226, inner: 0xc3262f, height: 1.06, bulk: 1.15, extras: ['facescar', 'eyeBags', 'wristMarks'],
+  },
+  // ---- Memories and the open world ----
+  toji: {
+    skin: 0xe8c4a2, hair: 0x141418, hairStyle: 'toji', eyes: 0x3a4a3a, outfit: 'casual',
+    top: 0x1a1a1e, bottom: 0xd8d4cc, accent: 0x1a1a1e, shoes: 0x1a1a1a, height: 1.14, bulk: 1.32, extras: ['lipScar', 'wormCurse'],
+  },
+  geto: {
+    skin: 0xf0d4bc, hair: 0x1a1a20, hairStyle: 'geto', eyes: 0x4a3a2a, outfit: 'robe',
+    top: 0x1a1a1e, bottom: 0x1a1a1e, accent: 0x9a7a3a, shoes: 0x111111, inner: 0xd8d0c0, height: 1.14, bulk: 1.08, extras: ['kesa'],
+  },
+  kuchisake: {
+    skin: 0xf4ece4, hair: 0x101014, hairStyle: 'long', eyes: 0x8a0d18, outfit: 'robe',
+    top: 0xc8b89a, bottom: 0x2a2a2a, accent: 0xc8b89a, shoes: 0x2a1a1a, inner: 0x8a1a1a, height: 1.25, bulk: 0.9, extras: ['surgicalMask', 'scissors', 'cursedEyes'],
+  },
+  kamo: {
+    skin: 0xf2dcc8, hair: 0x1a1a1e, hairStyle: 'kamo', eyes: 0x3a2a2a, outfit: 'robe',
+    top: 0x2a2a34, bottom: 0x2a2a34, accent: 0xd8c8a0, shoes: 0x111111, inner: 0xe8e0d0, height: 1.06,
+  },
+  monk: {
+    skin: 0xe0c0a0, hair: 0xd8d0c4, hairStyle: 'bald', eyes: 0x2a2420, outfit: 'robe',
+    top: 0x22222a, bottom: 0x22222a, accent: 0xc8a050, shoes: 0x3a2a22, inner: 0xe8e0d0, height: 0.98, bulk: 1.05, extras: ['kesa', 'eyeBags'],
+  },
+  farmer: {
+    skin: 0xd8b090, hair: 0x8a8278, hairStyle: 'short', eyes: 0x2a2420, outfit: 'casual',
+    top: 0x6a7a4a, bottom: 0x3a3a2e, accent: 0x6a7a4a, shoes: 0x4a3a2a, height: 0.97, extras: ['stubble'],
+  },
+  tengen: {
+    skin: 0xece8f2, hair: 0xece8f2, hairStyle: 'bald', eyes: 0x2a2a3a, outfit: 'robe',
+    top: 0xf0ece4, bottom: 0xe0dcd4, accent: 0xc8b070, shoes: 0x8a7a6a, inner: 0xc8b070, head: 1.15, extras: ['fourEyes'],
+  },
   civilianA: { skin: 0xf0d0b0, hair: 0x2a2420, hairStyle: 'short', eyes: 0x333333, outfit: 'casual', top: 0x5a6a8a, bottom: 0x2a2e3a, accent: 0x5a6a8a, shoes: 0x333333 },
   civilianB: { skin: 0xe8c8a8, hair: 0x6a4a30, hairStyle: 'long', eyes: 0x4a3020, outfit: 'casual', top: 0xb05a6a, bottom: 0x302a2a, accent: 0xb05a6a, shoes: 0x3a2a2a, bulk: 0.9 },
   civilianC: { skin: 0xd8b090, hair: 0x111111, hairStyle: 'bun', eyes: 0x222222, outfit: 'suit', top: 0x3a3a40, bottom: 0x3a3a40, accent: 0x3a3a40, shoes: 0x111111, inner: 0x7a2a2a, extras: ['tie'] },
@@ -172,9 +214,9 @@ export const SPECS: Record<string, HumanoidSpec> = {
 
 export function buildCharacter(id: string): Humanoid {
   if (id === 'panda') return buildPanda();
-  const spec = SPECS[id] ?? SPECS.civilianA;
+  const spec = SPECS[id === 'heianSukuna' ? 'sukunaHeian' : id] ?? SPECS.civilianA;
   const h = buildHumanoid(spec);
-  if (id === 'sukuna' || id === 'sukunaHeian') addSukunaArms(h);
+  if (id === 'sukuna' || id === 'sukunaHeian' || id === 'heianSukuna') addSukunaArms(h);
   return h;
 }
 

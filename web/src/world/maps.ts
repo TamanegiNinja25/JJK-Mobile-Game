@@ -3,6 +3,7 @@ import { MapDef } from './MapBuilder';
 import { PlayerState } from '../rpg/PlayerState';
 import { QUEST_BY_ID } from '../data/story';
 import { INTERIORS } from './interiors';
+import { OPEN_MAPS } from './mapsOpen';
 
 const done = (id: string) => (ps: PlayerState) => ps.questState(id)?.state === 'done';
 const active = (id: string) => (ps: PlayerState) => !!ps.questState(id) && ps.questState(id)!.state !== 'done';
@@ -98,6 +99,7 @@ const hub: MapDef = {
       p.rect(1, -10, 4, 18, 3.5, 0.3);        // west path
       p.rect(1, -19, -1.2, 3, 10.5, 0.3);      // path to the dorm door
       p.rect(1, 10, 4, 18, 3.5, 0.3);         // east path
+      p.rect(1, 29, 4, 20, 3.5, 0.3);         // ...and on out to the east gate
       p.rect(3, 19, 14, 14, 12, 0.6);         // training ground
       p.rect(2, -18, -8, 8, 22, 0.5);
       p.rect(2, 19, -8, 8, 22, 0.5);
@@ -107,7 +109,7 @@ const hub: MapDef = {
   surfaces: ['grass', 'stone', 'dirt', 'dirt'],
   spawn: { x: 0, z: 24, facing: Math.PI },
   build: (b) => {
-    b.keepClear(0, 8, 6, 54).keepClear(0, -16, 24, 8).keepClear(0, 2, 18, 18).keepClear(19, 14, 15, 13).keepClear(-10, 4, 18, 4).keepClear(10, 4, 18, 4);
+    b.keepClear(0, 8, 6, 54).keepClear(0, -16, 24, 8).keepClear(0, 2, 18, 18).keepClear(19, 14, 15, 13).keepClear(-10, 4, 18, 4).keepClear(10, 4, 18, 4).keepClear(30, 4, 18, 6).keepClear(-26, -21, 4, 4);
     b.building('templeHall', 0, -27, 0);
     b.building('dorm', -24, -6, 1);
     b.portal({ x: -20.1, z: -6, r: 1.0, to: 'dormIn', label: 'First-year dorm', style: 'door', rot: Math.PI / 2 });
@@ -134,7 +136,10 @@ const hub: MapDef = {
     b.decor(['grass', 'fern'], 0, 0, 72, 76, 160);
     b.decor('lilyPad', -20, 27, 7, 5, 8);
     b.decor('koi', -20, 27, 6, 4, 6);
-    b.border(['cedar', 'pine', 'roundTree', 'bamboo'], 1.5, 3, 1, [{ x: 0, z: 38, r: 4 }]);
+    b.border(['cedar', 'pine', 'roundTree', 'bamboo'], 1.5, 3, 1, [{ x: 0, z: 38, r: 4 }, { x: 38, z: 4, r: 5 }]);
+    b.portal({ x: 36.4, z: 4, r: 2.6, to: 'outskirts', toX: -100, toZ: 24, toFacing: Math.PI / 2, label: 'Tokyo Outskirts', style: 'road', rot: -Math.PI / 2, cond: 'm2', condText: 'Yaga: "Finish moving in before you go wandering the hills."' });
+    b.prop('signboard', 33, 7.5, -Math.PI / 2);
+    b.portal({ x: -26, z: -23.1, r: 1.0, to: 'starCorridor', label: 'Lift to the Tombs of the Star', style: 'door', cond: 'm26', condText: 'The lift needs a key. Yaga: "Tengen\'s barrier is not for students. Not yet."' });
     b.scatter('rock2', -30, 20, 8, 16, 3);
     // people
     b.npc({ id: 'gojo', x: 3, z: 3, facing: Math.PI * 0.9, cond: (ps) => (ps.questState('m3')?.state === 'done' || active('m3')(ps)) && gojoAround(ps) });
@@ -148,9 +153,9 @@ const hub: MapDef = {
     b.npc({ id: 'ijichi', x: 6, z: 27.5, facing: Math.PI, shop: 'travel' });
     b.portal({ x: 11.5, z: 26, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
     b.npc({ id: 'meimei', x: 20, z: -21, facing: Math.PI, shop: 'exchange', cond: done('m6') });
-    b.npc({ id: 'yuji', x: -5, z: 6, facing: Math.PI / 3, cond: (ps) => ps.d.cls !== 'yuji' });
-    b.npc({ id: 'megumi', x: -7, z: 3.5, facing: Math.PI / 2, cond: (ps) => ps.d.cls !== 'megumi' && !megumiTaken(ps) });
-    b.npc({ id: 'nobara', x: -3.5, z: 2.5, facing: -Math.PI / 4, cond: (ps) => ps.d.cls !== 'nobara' });
+    b.npc({ id: 'yuji', x: -5, z: 6, facing: Math.PI / 3, cond: (ps) => ps.cls.persona !== 'yuji' });
+    b.npc({ id: 'megumi', x: -7, z: 3.5, facing: Math.PI / 2, cond: (ps) => ps.cls.persona !== 'megumi' && !megumiTaken(ps) });
+    b.npc({ id: 'nobara', x: -3.5, z: 2.5, facing: -Math.PI / 4, cond: (ps) => ps.cls.persona !== 'nobara' });
     b.dummy(15.5, 14).dummy(19, 13).dummy(22.5, 14.5);
   },
 };
@@ -267,6 +272,7 @@ const kawasaki: MapDef = {
     b.spawner({ enemies: [{ id: 'leech' }, { id: 'transfigured' }], x: -20, z: 22, w: 22, d: 14, count: 5, respawn: 11, level: [13, 15] });
     b.spawner({ enemies: [{ id: 'bloated' }, { id: 'transfigured', w: 2 }, { id: 'leech' }], x: 0, z: -24, w: 10, d: 28, count: 6, respawn: 12, level: [15, 18] });
     b.portal({ x: -9, z: 25, r: 2, to: 'sewer', toX: 0, toZ: 18, label: 'Sewer entrance', cond: 'm7', condText: 'A rusted grate. You have no reason to go down there yet.' });
+    b.portal({ x: -34.4, z: 4, r: 2.6, to: 'outskirts', toX: 40, toZ: 100, toFacing: Math.PI, label: 'Tokyo Outskirts', style: 'road', rot: Math.PI / 2 });
   },
 };
 
@@ -516,7 +522,7 @@ const shibuya: MapDef = {
   surfaces: ['concrete', 'concrete', 'stone', 'stone'],
   spawn: { x: 0, z: 36, facing: Math.PI },
   build: (b) => {
-    b.keepClear(0, 0, 36, 36).keepClear(0, -24, 28, 12).keepClear(-24, 22, 24, 20).keepClear(24, 22, 22, 20).keepClear(0, 36, 10, 10);
+    b.keepClear(0, 0, 36, 36).keepClear(0, -24, 28, 12).keepClear(-24, 22, 24, 20).keepClear(24, 22, 22, 20).keepClear(0, 36, 10, 10).keepClear(-36, 0, 12, 10);
     b.building('station', 0, -36, 0);
     b.portal({ x: 0, z: -30.4, r: 1.0, to: 'stationIn', label: 'Shibuya Station', style: 'door', cond: 'm11', condText: 'A second, smaller veil seals the station entrance. Break the outer veil first.' });
     for (const [x, s] of [[-30, 1], [-15, 2], [15, 3], [30, 4]] as const) b.building('skyscraper', x, -33, 0, { seed: s });
@@ -536,7 +542,8 @@ const shibuya: MapDef = {
     b.scatter(['vendingRed', 'vendingBlue', 'vendingWhite'], 0, 0, 70, 30, 6);
     b.scatter(['roundTree'], -24, 26, 16, 10, 4, { minDist: 4 });
     b.scatter(['roundTree'], 24, 26, 16, 10, 4, { minDist: 4 });
-    b.wall('wallConcrete', -42, 42, 42, 42).wall('wallConcrete', -42, -42, -42, 42).wall('wallConcrete', 42, -42, 42, 42);
+    b.wall('wallConcrete', -42, 42, 42, 42).wall('wallConcrete', -42, -42, -42, -5).wall('wallConcrete', -42, 5, -42, 42).wall('wallConcrete', 42, -42, 42, 42);
+    b.portal({ x: -39.6, z: 0, r: 2.6, to: 'outskirts', toX: 100, toZ: -20, toFacing: -Math.PI / 2, label: 'Tokyo Outskirts', style: 'road', rot: Math.PI / 2 });
     b.npc({ id: 'ijichi', x: 5, z: 36, facing: Math.PI, shop: 'travel' });
     b.portal({ x: 9.5, z: 36, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
     b.npc({ id: 'civilian', model: 'civilianA', x: -6, z: 32, facing: 0.5 });
@@ -772,7 +779,7 @@ const shinjuku: MapDef = {
   },
 };
 
-export const MAPS: Record<string, MapDef> = { sugisawa, hub, eishu, kawasaki, sewer, kyoto, yasohachi, shibuya, zenin, colony1, sendai, shinjuku, ...INTERIORS };
+export const MAPS: Record<string, MapDef> = { sugisawa, hub, eishu, kawasaki, sewer, kyoto, yasohachi, shibuya, zenin, colony1, sendai, shinjuku, ...OPEN_MAPS, ...INTERIORS };
 /** Destinations Ijichi can drive to; `need` is the quest that must be accepted first. */
 export const TRAVEL_LIST: { id: string; need?: string; level: string }[] = [
   { id: 'hub', need: 'm2', level: 'Town' },
@@ -786,6 +793,9 @@ export const TRAVEL_LIST: { id: string; need?: string; level: string }[] = [
   { id: 'colony1', need: 'm18', level: 'Lv 46–60' },
   { id: 'sendai', need: 'm20', level: 'Lv 56–68' },
   { id: 'shinjuku', need: 'm23', level: 'Lv 68–82' },
+  { id: 'outskirts', need: 'm3', level: 'Open world · Lv 6–90' },
+  { id: 'sakurajima', need: 's_saku1', level: 'Open world · Lv 60–72' },
+  { id: 'starCorridor', need: 'm27', level: 'Lv 82–100' },
 ];
 export function travelUnlocked(ps: PlayerState, id: string) {
   const t = TRAVEL_LIST.find(x => x.id === id);

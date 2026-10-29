@@ -380,6 +380,26 @@ button { font-family: inherit; color: inherit; }
 .cbar div { flex: 1; height: 6px; background: #000a; border-radius: 3px; overflow: hidden; }
 .cbar i { display: block; height: 100%; }
 .cs-btns { display: flex; justify-content: center; gap: 12px; margin-top: 14px; }
+.tbtn[disabled] { opacity: .45; pointer-events: none; }
+.cs-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+.cschip { width: 96px; background: var(--panel); border: 2px solid #2e2648; border-radius: 12px; padding: 6px 4px; cursor: pointer; text-align: center; position: relative; transition: transform .15s; }
+.cschip.sel { border-color: var(--c); box-shadow: 0 0 18px color-mix(in srgb, var(--c) 50%, transparent); transform: translateY(-3px); }
+.cschip .cp { width: 66px; height: 66px; margin: 0 auto 4px; border-radius: 10px; background: center/cover; border: 2px solid var(--c); }
+.cschip .cn { font-size: 11px; font-weight: 800; color: var(--c); line-height: 1.15; }
+.cschip.locked .cp { filter: grayscale(1) brightness(.35); }
+.cschip.locked::after { content: '🔒'; position: absolute; top: 26px; left: 0; right: 0; font-size: 20px; }
+.cs-detail { display: flex; gap: 14px; background: var(--panel); border: 2px solid var(--c); border-radius: 14px; padding: 12px; align-items: flex-start; max-width: 780px; margin: 0 auto; box-shadow: 0 0 24px color-mix(in srgb, var(--c) 30%, transparent); }
+.cs-detail .cportrait { flex: none; }
+.cs-detail.locked .cportrait { filter: grayscale(1) brightness(.4); }
+.cs-info { flex: 1; text-align: left; min-width: 0; }
+.cs-info .cdesc { min-height: 0; }
+.cs-lock { color: #ffd04a; font-size: 12px; font-weight: 700; margin: 6px 0; }
+.cs-lock.open { color: #7affb0; }
+.roster-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px; }
+.rchip { width: 44px; height: 44px; border-radius: 10px; background: center/cover #111; border: 2px solid var(--c); cursor: pointer; position: relative; padding: 0; }
+.rchip.on { box-shadow: 0 0 14px var(--c); transform: translateY(-2px); }
+.rchip.locked { filter: grayscale(1) brightness(.35); }
+.roster-hint { font-size: 11px; color: var(--dim); margin-top: 4px; }
 
 /* ------------------------------------------------------------ death */
 .death { position: absolute; inset: 0; z-index: 35; background: radial-gradient(circle, rgba(60, 0, 10, .55), rgba(0, 0, 0, .9)); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; animation: fadein 1s; }
@@ -405,6 +425,11 @@ button { font-family: inherit; color: inherit; }
   .cards { gap: 8px; }
   .cdesc { font-size: 11px; min-height: 0; }
   .cportrait { width: 80px; height: 80px; }
+  .cschip { width: 78px; padding: 4px 2px; }
+  .cschip .cp { width: 48px; height: 48px; }
+  .cschip.locked::after { top: 16px; }
+  .cs-detail { padding: 8px; gap: 10px; }
+  .cs-detail .cportrait { width: 70px; height: 70px; }
 }
 @media (max-width: 700px) {
   .status, .bag, .skills, .quests, .mapview, .system, .ws-body { grid-template-columns: 1fr; }

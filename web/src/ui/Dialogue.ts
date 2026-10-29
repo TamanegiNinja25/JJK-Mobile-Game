@@ -50,7 +50,8 @@ export class Dialogue {
   }
 
   play(lines: Line[], opts: { choices?: Choice[]; onEnd?: () => void } = {}) {
-    const cls = this.game.ps?.d.cls;
+    // the unlockable sorcerers speak a first-year's lines
+    const cls = this.game.ps ? CLASSES[this.game.ps.d.cls].persona : undefined;
     this.lines = lines.filter(l => (!l.only || (cls && l.only.includes(cls))) && (!l.not || !cls || !l.not.includes(cls)));
     this.idx = 0;
     this.onEnd = opts.onEnd ?? null;

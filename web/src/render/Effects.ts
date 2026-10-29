@@ -184,6 +184,15 @@ void main(){
     float v = fbm(uv * 3.0 + vec2(uTime * 0.05, uTime * 0.03));
     float vein = smoothstep(0.03, 0.0, abs(v - 0.5));
     c = mix(vec3(0.3, 0.06, 0.12), vec3(0.62, 0.22, 0.32), v) + vec3(0.9, 0.2, 0.4) * vein;
+  } else if (uKind == 9) { // Yuji's domain: dusk over a country station
+    c = mix(vec3(1.0, 0.62, 0.36), vec3(0.32, 0.18, 0.42), smoothstep(-0.05, 0.55, el));
+    float roofs = step(el, 0.06 + 0.07 * step(0.5, fract(az * 3.0)) * step(0.3, n2(vec2(floor(az * 12.0), 1.0))));
+    c = mix(c, vec3(0.1, 0.06, 0.1), roofs);
+    c += vec3(1.0, 0.85, 0.6) * smoothstep(0.08, 0.0, length(vec2(az - 0.4, el - 0.12))) * 1.5;
+  } else if (uKind == 10) { // Time Cell Moon Palace: a cold night and one enormous moon
+    float st = step(0.995, h(floor(uv * 80.0)));
+    c = mix(vec3(0.02, 0.04, 0.1), vec3(0.08, 0.14, 0.26), smoothstep(-0.1, 0.6, el)) + vec3(0.8) * st;
+    c += vec3(0.95, 0.92, 0.75) * smoothstep(0.24, 0.2, length(vec2(az, el - 0.35)));
   } else { // Self-Embodiment of Perfection
     float cell = n2(uv * 6.0 + uTime * 0.2);
     c = mix(vec3(0.15, 0.17, 0.22), vec3(0.75, 0.78, 0.82), smoothstep(0.55, 0.75, cell));
@@ -204,12 +213,14 @@ void main(){
   else if (uKind == 5) c = vec3(0.85, 0.78, 0.55) + vec3(0.1, 0.3, 0.5) * rip * 0.3;
   else if (uKind == 7) c = vec3(0.16, 0.1, 0.05) + vec3(0.4, 0.3, 0.1) * step(0.5, fract(vP.x * 0.5)) * 0.4;
   else if (uKind == 8) c = vec3(0.35, 0.08, 0.14) + vec3(0.5, 0.1, 0.2) * rip * 0.4;
+  else if (uKind == 9) c = vec3(0.32, 0.24, 0.22) + vec3(0.6, 0.35, 0.2) * step(0.97, fract(vP.x * 0.6)) * 0.6 + vec3(0.3, 0.15, 0.1) * rip * 0.2;
+  else if (uKind == 10) c = vec3(0.04, 0.06, 0.12) + vec3(0.3, 0.35, 0.5) * rip * 0.3;
   else c = vec3(0.3, 0.32, 0.36) + vec3(0.3) * rip * 0.3;
   float edge = smoothstep(1.0, 0.95, r);
   gl_FragColor = vec4(c, uFade * edge * 0.92);
 }`;
 
-export const DOMAIN_KIND: Record<string, number> = { shrine: 0, shadow: 1, nails: 2, void: 3, coffin: 4, sea: 5, hands: 6, court: 7, womb: 8 };
+export const DOMAIN_KIND: Record<string, number> = { shrine: 0, shadow: 1, nails: 2, void: 3, coffin: 4, sea: 5, hands: 6, court: 7, womb: 8, home: 9, moon: 10 };
 
 export class Effects implements FxAPI {
   r: Renderer;
@@ -577,8 +588,8 @@ export class Effects implements FxAPI {
     if (kind === 'nails') group.add(nailRing(r));
     if (kind === 'court') group.add(courtModel(r));
     const intro = 1.1;
-    this.sigil(x, z, 2.5, kind === 'shadow' ? 0x111122 : kind === 'void' ? 0x7fdcff : 0xff2a3a, intro + 0.3);
-    this.flash(kind === 'void' ? '#bfefff' : kind === 'shadow' ? '#000000' : '#30000a', 0.65, 0.9);
+    this.sigil(x, z, 2.5, kind === 'shadow' ? 0x111122 : kind === 'void' || kind === 'moon' ? 0x7fdcff : kind === 'home' ? 0xffa06a : 0xff2a3a, intro + 0.3);
+    this.flash(kind === 'void' ? '#bfefff' : kind === 'shadow' ? '#000000' : kind === 'home' ? '#ffd0a0' : kind === 'moon' ? '#0a1430' : '#30000a', 0.65, 0.9);
     this.r.pulseBloom(1.5);
     const total = dur;
     this.domainActive = { kind, x, z, r, until: this.time + total, obj: group };
@@ -593,7 +604,7 @@ export class Effects implements FxAPI {
       group.children.forEach(c => { if (c.userData.spin) c.rotation.y += dt * c.userData.spin; });
       if (t > intro && Math.random() < 0.3) {
         const a = Math.random() * TAU, rr = Math.random() * r * 0.9;
-        const col = kind === 'shrine' ? 0xff2a2a : kind === 'shadow' ? 0x6a5aff : kind === 'void' ? 0x9ad8ff : 0xff4a6a;
+        const col = kind === 'shrine' ? 0xff2a2a : kind === 'shadow' ? 0x6a5aff : kind === 'void' ? 0x9ad8ff : kind === 'home' ? 0xffc08a : kind === 'moon' ? 0xe8f0ff : 0xff4a6a;
         this.add.spawn(x + Math.cos(a) * rr, 0.1, z + Math.sin(a) * rr, 0, rand(1, 3), 0, this.tmpC.setHex(col), rand(0.1, 0.25), 0, 1.2, -0.3, 0.5);
       }
     }, () => {

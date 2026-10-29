@@ -75,6 +75,8 @@ export class Enemy extends Actor {
   adapt: Record<string, number> = {};
   noLoot = false;
   questTag?: string;
+  /** hand-placed sealed cache: the save flag set once it is opened */
+  cacheFlag: string | null = null;
 
   constructor(world: World, def: EnemyDef, x: number, z: number, level?: number) {
     super(world);

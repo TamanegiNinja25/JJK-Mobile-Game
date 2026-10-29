@@ -94,6 +94,8 @@ export interface FxAPI {
   light(x: number, y: number, z: number, color: number, intensity: number, dur: number, range?: number): void;
 }
 
+export type DomainKind = 'shrine' | 'shadow' | 'nails' | 'void' | 'coffin' | 'womb' | 'home' | 'moon';
+
 export interface WorldAPI {
   time: number;
   fx: FxAPI;
@@ -107,6 +109,6 @@ export interface WorldAPI {
   schedule(delay: number, fn: () => void): void;
   targetsNear(team: 'player' | 'enemy', x: number, z: number, r: number): Target[];
   nearestTarget(team: 'player' | 'enemy', x: number, z: number, r: number): Target | null;
-  domain(kind: 'shrine' | 'shadow' | 'nails' | 'void' | 'coffin' | 'womb', x: number, z: number, r: number, dur: number): void;
+  domain(kind: DomainKind, x: number, z: number, r: number, dur: number): void;
   blocked(x: number, z: number, r: number): boolean;
 }
