@@ -3,7 +3,7 @@ import { Attr, ClassId, ItemInstance, RosterEntry, SaveData, Slot, Stats, StatKe
 import { CLASSES, LEVEL_CAP, expToNext } from './classes';
 import { REFORGE_MAX, reforgeCost, ITEMS, makeItem, itemStats, isGear, enhanceCost, getUidCounter, setUidCounter, classRewardItem } from './items';
 import { SKILLS, classSkills } from './skills';
-import { QUESTS, QUEST_BY_ID, QuestDef, Objective } from '../data/story';
+import { QUESTS, QUEST_BY_ID, QuestDef, Objective, Line, NPC_AWAY } from '../data/story';
 
 export const INV_SIZE = 48;
 const SAVE_KEY = 'cursedChronicles.save.';
@@ -298,18 +298,27 @@ export class PlayerState {
     return n;
   }
 
+  /** Bag slots in use. Quest items are carried separately and never fill the bag. */
+  bagUsed() { return this.d.inventory.filter(i => !ITEMS[i.base].questItem).length; }
+
   addItem(it: ItemInstance): boolean {
     const b = ITEMS[it.base];
     if (b.stack && b.stack > 1) {
-      const ex = this.d.inventory.find(i => i.base === it.base && i.qty < b.stack!);
-      if (ex) {
-        ex.qty = Math.min(b.stack, ex.qty + it.qty);
+      // top up existing stacks first; whatever is left starts a new stack
+      for (const ex of this.d.inventory) {
+        if (it.qty <= 0) break;
+        if (ex.base !== it.base || ex.qty >= b.stack) continue;
+        const take = Math.min(b.stack - ex.qty, it.qty);
+        ex.qty += take;
+        it.qty -= take;
+      }
+      if (it.qty <= 0) {
         this.emit('inventory');
         this.questCheckCollect();
         return true;
       }
     }
-    if (this.d.inventory.length >= INV_SIZE) { this.emit('invFull'); return false; }
+    if (!b.questItem && this.bagUsed() >= INV_SIZE) { this.emit('invFull'); return false; }
     this.d.inventory.push(it);
     this.emit('inventory');
     this.questCheckCollect();
@@ -361,7 +370,7 @@ export class PlayerState {
 
   unequip(slot: Slot) {
     const it = this.d.equip[slot];
-    if (!it || this.d.inventory.length >= INV_SIZE) return false;
+    if (!it || this.bagUsed() >= INV_SIZE) return false;
     delete this.d.equip[slot];
     this.d.inventory.push(it);
     this.recalc();
@@ -430,9 +439,28 @@ export class PlayerState {
     return true;
   }
 
+  /** Who hands this quest out right now: a stand-in covers for a giver who is away from the story. */
+  giverOf(q: QuestDef) { return q.stand && NPC_AWAY[q.giver]?.(this) ? q.stand.npc : q.giver; }
+  /** Who takes the report, with the same stand-in rule. */
+  turnInOf(q: QuestDef) { const t = q.turnIn ?? q.giver; return q.stand && NPC_AWAY[t]?.(this) ? q.stand.npc : t; }
+  offerLines(q: QuestDef) { return this.giverOf(q) === q.giver ? q.offer : q.stand!.offer; }
+  progressLines(q: QuestDef) { return this.turnInOf(q) === (q.turnIn ?? q.giver) ? q.progress : q.stand!.progress; }
+  completeLines(q: QuestDef) { return this.turnInOf(q) === (q.turnIn ?? q.giver) ? q.complete : q.stand!.complete; }
+  /**
+   * A boss quest's ending is split where it happens: the lines before the turn-in NPC first speaks
+   * play the moment the boss falls, the rest when the player reports in.
+   */
+  endingSplit(q: QuestDef): { outro: Line[]; report: Line[] } {
+    const lines = this.completeLines(q), ti = this.turnInOf(q);
+    const last = q.objectives[q.objectives.length - 1];
+    if (last.type !== 'boss') return { outro: [], report: lines };
+    const k = lines.findIndex(l => l.who === ti);
+    return k < 0 ? { outro: lines, report: [] } : { outro: lines.slice(0, k), report: lines.slice(k) };
+  }
+
   /** Quests this NPC can offer right now, main story first so side requests never hold the plot up. */
   offersFor(npc: string) {
-    const list = QUESTS.filter(q => q.giver === npc && this.isAvailable(q));
+    const list = QUESTS.filter(q => this.giverOf(q) === npc && this.isAvailable(q));
     return [...list.filter(q => q.type === 'main'), ...list.filter(q => q.type !== 'main')];
   }
 
@@ -441,7 +469,7 @@ export class PlayerState {
     return QUESTS.filter(q => {
       const st = this.d.quests[q.id];
       if (!st || st.state === 'done') return false;
-      return (q.turnIn ?? q.giver) === npc;
+      return this.turnInOf(q) === npc;
     });
   }
 
@@ -527,10 +555,14 @@ export class PlayerState {
       if (o.type === 'pay') this.addGold(-o.gold);
     }
     const r = q.rewards;
-    if (r.fingers) { this.d.fingers += r.fingers; this.addItem(makeItem('finger', 0, r.fingers)); }
-    for (const it of r.items ?? []) this.addItem(makeItem(it.id, it.rarity ?? 0, it.qty ?? 1));
+    const spill: ItemInstance[] = [];
+    const give = (it: ItemInstance) => { if (!this.addItem(it)) spill.push(it); };
+    if (r.fingers) { this.d.fingers += r.fingers; give(makeItem('finger', 0, r.fingers)); }
+    for (const it of r.items ?? []) give(makeItem(it.id, it.rarity ?? 0, it.qty ?? 1));
     const ci = classRewardItem(r.classItems, this.d.cls);
-    if (ci) this.addItem(makeItem(ci, 1));
+    if (ci) give(makeItem(ci, 1));
+    if (spill.length) this.emit('rewardSpill', spill);
+    delete this.d.flags['outro_' + id];
     this.addGold(r.gold);
     if (q.unlock) for (const u of q.unlock) this.d.flags['unlock_' + u] = true;
     // finishing the story is remembered per sorcerer (Modulo Yuji asks for a Yuji clear)
@@ -570,10 +602,10 @@ export class PlayerState {
     const q = this.trackedQuest();
     if (!q) {
       const next = QUESTS.find(x => x.type === 'main' && !this.d.quests[x.id]);
-      return next && !(next.level && this.d.level < next.level) ? { kind: 'talk', npc: next.giver } : null;
+      return next && !(next.level && this.d.level < next.level) ? { kind: 'talk', npc: this.giverOf(next) } : null;
     }
     const st = this.d.quests[q.id];
-    if (st.state === 'ready') return { kind: 'talk', npc: q.turnIn ?? q.giver };
+    if (st.state === 'ready') return { kind: 'talk', npc: this.turnInOf(q) };
     for (let i = 0; i < q.objectives.length; i++) {
       if (this.objectiveDone(q, i)) continue;
       const o = q.objectives[i];
@@ -584,7 +616,7 @@ export class PlayerState {
         case 'kill': return { kind: 'kill', targets: o.target, map: o.map };
         case 'collect': return { kind: 'collect', item: o.item, quest: q.id };
         case 'enhance': return { kind: 'talk', npc: 'yaga' };
-        case 'pay': return { kind: 'talk', npc: q.turnIn ?? q.giver };
+        case 'pay': return { kind: 'talk', npc: this.turnInOf(q) };
       }
     }
     return null;
@@ -597,12 +629,12 @@ export class PlayerState {
       const next = QUESTS.find(x => x.type === 'main' && !this.d.quests[x.id]);
       if (next) {
         const lvlGate = next.level && this.d.level < next.level;
-        return { name: next.name, text: lvlGate ? `Reach Lv ${next.level} — train and do side quests` : `Talk to ${npcName(next.giver)}`, ready: false };
+        return { name: next.name, text: lvlGate ? `Reach Lv ${next.level} — train and do side quests` : `Talk to ${npcName(this.giverOf(next))}`, ready: false };
       }
       return null;
     }
     const st = this.d.quests[q.id];
-    if (st.state === 'ready') return { name: q.name, text: `Report to ${npcName(q.turnIn ?? q.giver)}`, ready: true };
+    if (st.state === 'ready') return { name: q.name, text: `Report to ${npcName(this.turnInOf(q))}`, ready: true };
     for (let i = 0; i < q.objectives.length; i++) {
       const o = q.objectives[i];
       if (!this.objectiveDone(q, i)) {

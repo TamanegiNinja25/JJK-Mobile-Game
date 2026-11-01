@@ -18,6 +18,8 @@ export interface ClassDef {
   id: ClassId;
   /** whose lines this sorcerer speaks in the story (the unlockable sorcerers borrow a first-year's) */
   persona: BaseClassId;
+  /** 'sukuna': borrowed story lines are swapped for his own (data/sukunaVoice.ts) */
+  voice?: 'sukuna';
   /** unlockable sorcerers: what unlocks them, as shown on the select screen */
   unlock?: string;
   /** colour of the dash trail and aura */
@@ -89,7 +91,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
 
   // ---- Unlockable sorcerers: far stronger stats and growth than the first-years ----
   sukunaYuji: {
-    id: 'sukunaYuji', short: "Sukuna · Yuji's Body", persona: 'yuji', trail: 0xff3a4a, name: 'Ryomen Sukuna', title: 'King of Curses (Yuji\'s Body)', model: 'sukunaYuji', stance: 'fist', color: '#ff3a4a',
+    id: 'sukunaYuji', short: "Sukuna · Yuji's Body", persona: 'yuji', voice: 'sukuna', trail: 0xff3a4a, name: 'Ryomen Sukuna', title: 'King of Curses (Yuji\'s Body)', model: 'sukunaYuji', stance: 'fist', color: '#ff3a4a',
     unlock: 'Clear the Shibuya Incident (main quest "King of Curses").',
     desc: 'Sukuna wearing Yuji\'s body, as he was in Shibuya. Dismantle and Cleave at close range, Flame Arrow at a distance, and reverse cursed technique to shrug off wounds. Ultimate: Malevolent Shrine, closed with Open: Fuga.',
     base: { hp: 210, hpLv: 33, ce: 140, ceLv: 9, atk: 20, atkLv: 4.6, def: 9, defLv: 1.8 },
@@ -105,7 +107,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     weaponModel: 'fist',
   },
   sukunaMegumi: {
-    id: 'sukunaMegumi', short: "Sukuna · Megumi's Body", persona: 'megumi', trail: 0x6a1a3a, name: 'Ryomen Sukuna', title: 'King of Curses (Megumi\'s Body)', model: 'sukunaMegumi', stance: 'fist', color: '#c83a7a',
+    id: 'sukunaMegumi', short: "Sukuna · Megumi's Body", persona: 'megumi', voice: 'sukuna', trail: 0x6a1a3a, name: 'Ryomen Sukuna', title: 'King of Curses (Megumi\'s Body)', model: 'sukunaMegumi', stance: 'fist', color: '#c83a7a',
     unlock: 'Clear the Shinjuku Showdown (main quest "Shinjuku Showdown").',
     desc: 'Sukuna in Megumi\'s body, as he faced Gojo in Shinjuku. Commands the Ten Shadows, calls down Kamutoke\'s lightning and cuts with Dismantle. Ultimate: Mahoraga adapts, then the World-Cutting Slash.',
     base: { hp: 200, hpLv: 31, ce: 170, ceLv: 11, atk: 20, atkLv: 4.5, def: 8, defLv: 1.7 },
@@ -121,7 +123,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     weaponModel: 'fist',
   },
   heianSukuna: {
-    id: 'heianSukuna', short: "Heian Sukuna", persona: 'yuji', trail: 0xff6a2a, name: 'Ryomen Sukuna', title: 'Calamity of the Heian Era', model: 'heianSukuna', stance: 'fist', color: '#ff6a2a',
+    id: 'heianSukuna', short: "Heian Sukuna", persona: 'yuji', voice: 'sukuna', trail: 0xff6a2a, name: 'Ryomen Sukuna', title: 'Calamity of the Heian Era', model: 'heianSukuna', stance: 'fist', color: '#ff6a2a',
     unlock: 'Defeat Ryomen Sukuna\'s true form and finish the story (main quest "The King of Curses").',
     desc: 'The King of Curses in his own body: four arms, two faces, a mouth in his belly. The highest stats of anyone. Four-armed combos, Dismantle, Cleave and Divine Flame. Ultimate: the full Malevolent Shrine, ending in a Divine Flame blast.',
     base: { hp: 260, hpLv: 40, ce: 200, ceLv: 12, atk: 24, atkLv: 5.4, def: 11, defLv: 2.2 },

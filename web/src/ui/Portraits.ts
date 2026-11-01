@@ -5,8 +5,10 @@ import { buildCharacter } from '../render/models/characters';
 import { buildCreature, CreatureKind } from '../render/models/creatures';
 import { wrapHumanoid, ModelHandle } from '../render/models/model';
 import { occlusion } from '../render/toon';
+import { media } from '../core/CustomMedia';
 
-const BG: Record<string, [string, string]> = {
+/** Each character's colours: the glow behind their art, and the dark it fades into. */
+export const BG: Record<string, [string, string]> = {
   yuji: ['#ff7a9a', '#2a0c18'], megumi: ['#5a6aff', '#0c0c24'], nobara: ['#ff9a4a', '#2a1208'], gojo: ['#7fdcff', '#08182a'],
   nanami: ['#e8d07a', '#201a08'], sukuna: ['#ff2a3a', '#200004'], mahito: ['#7ac0dc', '#0c1a20'], hanami: ['#8aff6a', '#0c200c'],
   jogo: ['#ff7a2a', '#2a0c04'], dagon: ['#ff6a4a', '#04142a'], todo: ['#ffb05a', '#201008'], panda: ['#ffffff', '#1a1a1a'],
@@ -17,9 +19,10 @@ const BG: Record<string, [string, string]> = {
   sukunaYuji: ['#ff2a3a', '#200004'], sukunaMegumi: ['#c83a7a', '#14040e'], heianSukuna: ['#ff6a2a', '#200800'], moduloYuji: ['#ff8aa0', '#1a0a10'],
   toji: ['#8a6aa0', '#0e0a14'], geto: ['#c8a050', '#140e04'], gojoMemory: ['#7fdcff', '#08182a'], kuchisake: ['#c83a3a', '#140404'],
   kamo: ['#c84a4a', '#140808'], tengen: ['#e8e0c8', '#141210'], naoyaCurse: ['#e8d48a', '#100c06'],
+  nitta: ['#9ab4e0', '#0c1018'], fingerBearer: ['#ff6a5a', '#1a0806'],
 };
 
-const CREATURE_IDS = new Set(['hanami', 'jogo', 'dagon', 'mahoraga', 'kechizu', 'eso', 'smallpox', 'rainbowDragon', 'naoyaCurse']);
+export const CREATURE_IDS = new Set(['hanami', 'jogo', 'dagon', 'mahoraga', 'kechizu', 'eso', 'smallpox', 'rainbowDragon', 'naoyaCurse', 'fingerBearer']);
 
 export class Portraits {
   private cache = new Map<string, string>();
@@ -37,6 +40,8 @@ export class Portraits {
   }
 
   get(id: string): string {
+    const own = media.images.get(id);
+    if (own) return own;
     const hit = this.cache.get(id);
     if (hit) return hit;
     let model: ModelHandle;

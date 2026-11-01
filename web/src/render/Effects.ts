@@ -233,7 +233,14 @@ export class Effects implements FxAPI {
   onText: ((x: number, y: number, z: number, txt: string, color: string, size: number) => void) | null = null;
   onHitstop: ((t: number) => void) | null = null;
   dynLights: { x: number; y: number; z: number; color: number; intensity: number; range: number; t: number; dur: number }[] = [];
-  domainActive: { kind: string; x: number; z: number; r: number; until: number; obj: THREE.Object3D } | null = null;
+  domainActive: { kind: string; x: number; z: number; r: number; start: number; until: number; obj: THREE.Object3D } | null = null;
+  /** pooled slash arcs for the domains that never stop cutting (see domainAmbient) */
+  private ambSlashes: { mesh: THREE.Mesh; mat: THREE.ShaderMaterial; t: number; dur: number }[] = [];
+  private ambSlashGeo: THREE.BufferGeometry | null = null;
+  private ambNext = 0;
+  private ambT = 0;
+  /** asks the world for a sound at a spot (the effects layer has no audio of its own) */
+  onSound: ((name: string, x: number, z: number, vol: number) => void) | null = null;
   time = 0;
   private flashEl = document.getElementById('fx-flash') as HTMLDivElement | null;
   quality = 1;
@@ -285,6 +292,135 @@ export class Effects implements FxAPI {
       if (l.t >= l.dur) this.dynLights.splice(i, 1);
     }
     if (this.domainActive && this.time > this.domainActive.until) this.domainActive = null;
+    this.domainAmbient(dt);
+  }
+
+  /** One pooled slash: a unit arc scaled into place, faded by its own clock. No allocation per cut. */
+  private ambSlash(x: number, y: number, z: number, dir: number, size: number, color: number, tilt: number, dur = 0.26) {
+    if (!this.ambSlashGeo) this.ambSlashGeo = arcGeometry(1, 0.45, 2.4, 16);
+    if (this.ambSlashes.length < 32) {
+      const mat = this.slashMat.clone();
+      const mesh = new THREE.Mesh(this.ambSlashGeo, mat);
+      mesh.frustumCulled = false;
+      this.root.add(mesh);
+      this.ambSlashes.push({ mesh, mat, t: 1, dur: 1 });
+    }
+    const sl = this.ambSlashes[this.ambNext++ % this.ambSlashes.length];
+    sl.mesh.visible = true;
+    sl.mesh.position.set(x, y, z);
+    sl.mesh.rotation.set(0, dir, tilt * 0.6, 'YXZ');
+    sl.mesh.scale.setScalar(size);
+    (sl.mat.uniforms.uColor.value as THREE.Color).setHex(color);
+    sl.t = 0; sl.dur = dur;
+  }
+
+  /** What keeps happening inside an open domain, so it never looks like a still backdrop. */
+  private domainAmbient(dt: number) {
+    for (const sl of this.ambSlashes) {
+      if (!sl.mesh.visible) continue;
+      sl.t += dt;
+      sl.mat.uniforms.uT.value = Math.min(1, sl.t / sl.dur);
+      if (sl.t >= sl.dur) sl.mesh.visible = false;
+    }
+    const d = this.domainActive;
+    if (!d || this.time < d.start + 1.1 || this.time > d.until - 0.4) return;
+    this.ambT -= dt;
+    if (this.ambT > 0) return;
+    const q = Math.max(0.5, this.quality);
+    const spot = (f = 0.92): [number, number] => { const a = Math.random() * TAU, rr = Math.sqrt(Math.random()) * d.r * f; return [d.x + Math.cos(a) * rr, d.z + Math.sin(a) * rr]; };
+    const c = this.tmpC;
+    switch (d.kind) {
+      case 'shrine': {
+        // Dismantle and Cleave never stop: cuts across the floor and through the air everywhere in range
+        this.ambT = 0.045 / q;
+        const [x, z] = spot();
+        const air = Math.random() < 0.55;
+        this.ambSlash(x, air ? rand(0.4, 2.8) : 0.06, z, Math.random() * TAU, rand(1.2, 3.2), Math.random() < 0.72 ? 0xffffff : 0xff2a3a, air ? rand(-1.3, 1.3) : 0, air ? rand(0.2, 0.34) : rand(0.45, 0.7));
+        if (Math.random() < 0.1) {
+          // a Cleave: two big crossing cuts
+          const [cx, cz] = spot(0.7), a = Math.random() * TAU;
+          this.ambSlash(cx, 1.2, cz, a, 3.2, 0xff3a4a, 0.9, 0.3);
+          this.ambSlash(cx, 1.2, cz, a + Math.PI / 2, 3.2, 0xffffff, -0.9, 0.3);
+          this.burst(cx, 1, cz, 0xff2a3a, 8, 5, 0.14, 0.35);
+          this.onSound?.('dismantle', cx, cz, 0.35);
+        } else if (Math.random() < 0.3) this.onSound?.('slash', x, z, 0.18);
+        if (Math.random() < 0.3) this.burst(x, 0.2, z, 0xff4a5a, 3, 2.5, 0.1, 0.3);
+        break;
+      }
+      case 'shadow': {
+        this.ambT = 0.16 / q;
+        const [x, z] = spot();
+        this.spikes(x, z, 0.7, 0x161230, 5);
+        this.smoke(x, z, 0x07060f, 3);
+        if (Math.random() < 0.25) this.pillar(x, z, 0.35, 2.4, 0x3a2a8a, 0.8);
+        break;
+      }
+      case 'nails': {
+        this.ambT = 0.09 / q;
+        const [x, z] = spot();
+        this.add.spawn(x, 7, z, 0, -16, 0, c.setHex(0xd8d0c0), 0.16, 0.1, 0.42, 0, 0);
+        if (Math.random() < 0.3) this.ring(x, z, 0xffb07a, 1.1, 0.45, 0.18);
+        break;
+      }
+      case 'void': {
+        // information without end: streaks racing out of the centre, rings of starlight
+        this.ambT = 0.035 / q;
+        const a = Math.random() * TAU, sp = rand(6, 13), y = rand(0.3, 4);
+        this.add.spawn(d.x + Math.cos(a), y, d.z + Math.sin(a), Math.cos(a) * sp, rand(-1, 1), Math.sin(a) * sp, c.setHex(Math.random() < 0.5 ? 0xbfefff : 0xffffff), 0.12, 0.02, 1.1, 0, 0);
+        if (Math.random() < 0.04) this.ring(d.x, d.z, 0x9ad8ff, d.r * rand(0.3, 0.8), 0.9, 0.12);
+        break;
+      }
+      case 'home': {
+        this.ambT = 0.08 / q;
+        const [x, z] = spot();
+        this.norm.spawn(x, rand(3, 5), z, rand(-0.6, 0.6), -0.8, rand(-0.6, 0.6), c.setHex(Math.random() < 0.6 ? 0xffb8c8 : 0xffd08a), 0.14, 0.12, 3, 0, 0.3);
+        if (Math.random() < 0.05) this.ring(d.x, d.z, 0xffc08a, d.r * 0.6, 1.2, 0.15);
+        break;
+      }
+      case 'coffin': {
+        this.ambT = 0.14 / q;
+        const [x, z] = spot();
+        this.embers(x, z, 0.6, 0xff6a1a, 4);
+        if (Math.random() < 0.3) { this.pillar(x, z, 0.45, 3.2, 0xff5a1a, 0.55); this.burst(x, 0.5, z, 0xffa04a, 10, 6, 0.2, 0.6); this.onSound?.('fire', x, z, 0.25); }
+        break;
+      }
+      case 'sea': {
+        this.ambT = 0.1 / q;
+        const [x, z] = spot();
+        this.burst(x, 0.2, z, 0x6ac8ff, 6, 4, 0.16, 0.5);
+        if (Math.random() < 0.35) { const a = Math.random() * TAU; this.norm.spawn(x, 0.6, z, Math.cos(a) * 4, 5, Math.sin(a) * 4, c.setHex(0xff8a5a), 0.22, 0.2, 0.8, 9, 0); }
+        break;
+      }
+      case 'hands': {
+        this.ambT = 0.15 / q;
+        const [x, z] = spot();
+        this.spikes(x, z, 0.55, 0xf2e8e0, 4);
+        if (Math.random() < 0.2) this.ring(x, z, 0x9ad0e8, 0.9, 0.5, 0.15);
+        break;
+      }
+      case 'court': {
+        this.ambT = 0.5 / q;
+        this.ring(d.x, d.z, 0xffd23a, d.r * rand(0.4, 0.95), 0.8, 0.1);
+        const [x, z] = spot(0.8);
+        this.burst(x, 1.5, z, 0xffe08a, 6, 2, 0.12, 0.8);
+        break;
+      }
+      case 'womb': {
+        this.ambT = 0.13 / q;
+        const [x, z] = spot();
+        this.ring(x, z, 0x9a2a6a, rand(0.5, 1.2), 0.6, 0.2);
+        this.smoke(x, z, 0x3a0a2a, 3);
+        break;
+      }
+      case 'moon': {
+        // time stands still in cells of light
+        this.ambT = 0.08 / q;
+        const [x, z] = spot();
+        this.add.spawn(x, rand(0.3, 3.5), z, 0, 0, 0, c.setHex(0xe8f0ff), 0.2, 0.2, 1.6, 0, 0);
+        if (Math.random() < 0.06) this.pillar(x, z, 0.5, 6, 0xbfd8ff, 1.2);
+        break;
+      }
+    }
   }
 
   // ------------------------------------------------------------------
@@ -592,7 +728,7 @@ export class Effects implements FxAPI {
     this.flash(kind === 'void' ? '#bfefff' : kind === 'shadow' ? '#000000' : kind === 'home' ? '#ffd0a0' : kind === 'moon' ? '#0a1430' : '#30000a', 0.65, 0.9);
     this.r.pulseBloom(1.5);
     const total = dur;
-    this.domainActive = { kind, x, z, r, until: this.time + total, obj: group };
+    this.domainActive = { kind, x, z, r, start: this.time, until: this.time + total, obj: group };
     let lit = false;
     this.push(group, total, (kk, dt) => {
       const t = kk * total;

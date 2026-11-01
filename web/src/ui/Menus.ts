@@ -3,6 +3,8 @@
 import type { Game } from '../Game';
 import { copyText, el, escapeHtml, formatNum } from '../core/util';
 import { itemIcon, skillIcon } from './Icons';
+import { ENEMIES } from '../rpg/enemies';
+import { BG } from './Portraits';
 import { ITEMS, RARITY_COLOR, RARITY_NAME, itemName, itemStats, formatStat, isGear, sellPrice, enhanceCost, makeItem, ItemBase, uniquesForLevel, SLOT_ORDER, SLOT_NAMES, KIND_NAME, CATEGORIES, sortItems, REFORGE_MAX, reforgeCost, reforgeStep, STAT_DESC, classRewardItem } from '../rpg/items';
 import { Attr, ClassId, ItemInstance, ItemKind, Slot, StatKey, PCT_KEYS, STAT_LABEL } from '../rpg/types';
 import { SKILLS, classSkills, SKILL_TYPES, SkillDef } from '../rpg/skills';
@@ -14,6 +16,9 @@ import { getAtlas } from '../world/atlas';
 import { audio } from '../audio/Audio';
 import { music } from '../audio/Music';
 import { INV_SIZE, objCount, PlayerState } from '../rpg/PlayerState';
+import { voice, voiceFor } from '../audio/Voice';
+import { media, ART_SLOTS, SOUND_SLOTS, MUSIC_SLOTS } from '../core/CustomMedia';
+import { DAILY_BOSSES, SIG_CHANCE, SIG_SEALS, dailyCleared, dailyLevel, dailyRoster, msToReset, setDailyPick } from '../rpg/Daily';
 import { CHEAT_TOGGLES, CHEAT_ACTIONS, cheatOn, toggleCheat, runCheat } from '../rpg/Cheats';
 
 const TABS: [string, string, string][] = [['status', '状', 'Status'], ['bag', '袋', 'Bag'], ['skills', '術', 'Skills'], ['quests', '任', 'Quests'], ['map', '図', 'Map'], ['cheats', '秘', 'Cheats'], ['system', '設', 'System']];
@@ -123,6 +128,8 @@ export class Menus {
       if (this.shop.kind === 'workshop') this.body.innerHTML = this.renderWorkshop();
       else if (this.shop.kind === 'reforge') this.body.innerHTML = this.renderReforge();
       else if (this.shop.kind === 'travel') this.body.innerHTML = this.renderTravel();
+      else if (this.shop.kind === 'daily') this.body.innerHTML = this.renderDaily();
+      else if (this.shop.kind === 'media') { this.body.innerHTML = this.renderMedia(); this.bindMedia(); }
       else this.body.innerHTML = this.renderShop();
       return;
     }
@@ -151,7 +158,7 @@ export class Menus {
     const mins = Math.floor(d.playTime / 60);
     return `<div class="status">
       <div class="status-left">
-        <div class="big-portrait" style="background-image:url(${this.game.portraits.get(c.model)})"></div>
+        <div class="big-portrait art" style="background-image:url(${this.game.busts.url(c.model)}), radial-gradient(circle at 50% 45%, ${BG[c.model]?.[0] ?? '#8a6aff'}aa, ${BG[c.model]?.[1] ?? '#120c20'} 75%)"></div>
         <div class="st-name" style="color:${c.color}">${c.name}</div>
         <div class="st-title">${c.title} · Lv ${d.level}</div>
         <div class="xp"><div class="xp-fill" style="width:${d.level >= LEVEL_CAP ? 100 : (d.exp / need * 100).toFixed(1)}%"></div><span>${d.level >= LEVEL_CAP ? 'MAX LEVEL' : `${formatNum(d.exp)} / ${formatNum(need)} EXP`}</span></div>
@@ -215,7 +222,7 @@ export class Menus {
       }
       cells.push(cell(it));
     }
-    const free = INV_SIZE - d.inventory.length;
+    const free = Math.max(0, INV_SIZE - this.game.ps!.bagUsed());
     for (let i = 0; i < (this.bagFilter === 'all' ? free : Math.max(0, 18 - items.length)); i++) cells.push('<div class="cell empty"></div>');
     if (!items.length && this.bagFilter !== 'all') cells.unshift(`<div class="cat-empty">No ${CATEGORIES.find(c => c.id === this.bagFilter)!.label.toLowerCase()} yet</div>`);
     let detail = '<div class="detail-empty">Select an item</div>';
@@ -229,7 +236,7 @@ export class Menus {
         <div class="detail">${detail}</div>
       </div>
       <div class="bag-right">
-        <div class="bag-head"><div class="filters">${fb('all', 'All', d.inventory.length)}${CATEGORIES.map(c => fb(c.id, c.label, counts.get(c.id) ?? 0)).join('')}</div><div class="cap">${d.inventory.length}/${INV_SIZE} · ¥${formatNum(d.gold)}</div></div>
+        <div class="bag-head"><div class="filters">${fb('all', 'All', d.inventory.length)}${CATEGORIES.map(c => fb(c.id, c.label, counts.get(c.id) ?? 0)).join('')}</div><div class="cap">${this.game.ps!.bagUsed()}/${INV_SIZE} · ¥${formatNum(d.gold)}</div></div>
         <div class="grid">${cells.join('')}</div>
       </div>
     </div>`;
@@ -381,11 +388,11 @@ export class Menus {
       const items = [...(r.items ?? []).map(i => `${ITEMS[i.id].name}${(i.qty ?? 1) > 1 ? ' ×' + i.qty : ''}`), ...(classRewardItem(r.classItems, ps.d.cls) ? [ITEMS[classRewardItem(r.classItems, ps.d.cls)!].name] : []), ...(r.fingers ? ["Sukuna's Finger"] : [])];
       detail = `<div class="quest-detail">
         <div class="id-name">${escapeHtml(q.name)}</div>
-        <div class="id-sub">${q.type === 'main' ? `Main story · Chapter ${q.chapter}` : 'Side request'} · ${escapeHtml((q.turnIn ?? q.giver) === q.giver ? 'From ' + this.npcName(q.giver) : this.npcName(q.giver) + ' → ' + this.npcName(q.turnIn!))}</div>
+        <div class="id-sub">${q.type === 'main' ? `Main story · Chapter ${q.chapter}` : 'Side request'} · ${escapeHtml(ps.turnInOf(q) === ps.giverOf(q) ? 'From ' + this.npcName(ps.giverOf(q)) : this.npcName(ps.giverOf(q)) + ' → ' + this.npcName(ps.turnInOf(q)))}</div>
         <div class="q-sum">${escapeHtml(q.summary)}</div>
         <div class="objs">${objs}</div>
         <div class="rewards"><b>Rewards</b> ${formatNum(r.exp)} EXP · ¥${formatNum(r.gold)}${items.length ? ' · ' + items.map(escapeHtml).join(', ') : ''}</div>
-        ${!st ? `<div class="id-err">Talk to ${escapeHtml(this.npcName(q.giver))} to accept${q.level ? ` (Lv ${q.level})` : ''}.</div>` : ''}
+        ${!st ? `<div class="id-err">Talk to ${escapeHtml(this.npcName(ps.giverOf(q)))} to accept${q.level ? ` (Lv ${q.level})` : ''}.</div>` : ''}
         ${st && st.state !== 'done' ? `<div class="slots"><small>${tracked?.id === q.id ? '◎ This quest is on your HUD. Follow the gold arrow and the ◆ on the minimap.' : 'Selecting an active quest puts it on your HUD.'}</small></div>` : ''}
       </div>`;
     }
@@ -533,12 +540,14 @@ export class Menus {
     const q = (v: string, l: string) => `<button class="chip ${s.quality === v ? 'on' : ''}" data-act="quality" data-q="${v}">${l}</button>`;
     const z = (v: number, l: string) => `<button class="chip ${s.zoom === v ? 'on' : ''}" data-act="zoom" data-z="${v}">${l}</button>`;
     const sh = (v: number, l: string) => `<button class="chip ${s.shake === v ? 'on' : ''}" data-act="shake" data-v="${v}">${l}</button>`;
+    const ch = (key: 'voice' | 'textSpeed' | 'cutscenes', v: string | number, l: string) => `<button class="chip ${(s as any)[key] === v ? 'on' : ''}" data-act="setchip" data-k="${key}" data-v="${v}">${l}</button>`;
     return `<div class="system">
       <div class="sys-col">
         <div class="panel-title">Game</div>
         <button class="btn primary wide" data-act="save">Save Game</button>
         <button class="btn wide" data-act="title">Save &amp; Return to Title</button>
         <button class="btn wide" data-act="exportsave">Copy Save Code</button>
+        <button class="btn wide" data-act="openmedia">Your Pictures &amp; Sounds</button>
         <div class="help">The save code keeps your progress if you reinstall or change phones. Paste it under <b>Transfer Save</b> on the title screen.</div>
         <div class="panel-title">Controls</div>
         <div class="help">Touch: drag the left half of the screen to move. Tap or hold <b>攻</b> to attack (it becomes <b>話</b> to talk). Skills sit around it, <b>回避</b> dodges, the gold-rimmed button is your Ultimate.<br>Keyboard: WASD move · J/Space attack · 1–5 skills · R ultimate · Shift dodge · Q/E potions · F talk · I/K/L/M menus · Esc close.</div>
@@ -552,6 +561,15 @@ export class Menus {
         <div class="chips">${z(0.8, 'Near')}${z(1, 'Normal')}${z(1.25, 'Far')}</div>
         <div class="panel-title">Screen shake</div>
         <div class="chips">${sh(0, 'Off')}${sh(0.5, 'Light')}${sh(1, 'Full')}</div>
+        <div class="panel-title">Dialogue</div>
+        <div class="set-label">Voices</div>
+        <div class="chips">${ch('voice', 'gen', 'Character voices')}${ch('voice', 'tts', 'Spoken (phone TTS)')}${ch('voice', 'off', 'Blips')}</div>
+        ${sl('voiceVol', 'Voice volume', s.voiceVol)}
+        <div class="set-label">Text speed</div>
+        <div class="chips">${ch('textSpeed', 0.6, 'Slow')}${ch('textSpeed', 1, 'Normal')}${ch('textSpeed', 1.7, 'Fast')}</div>
+        <div class="set-label">Cutscenes</div>
+        <div class="chips">${ch('cutscenes', 'full', 'Full')}${ch('cutscenes', 'short', 'Short')}${ch('cutscenes', 'off', 'Off')}</div>
+        <div class="help">Spoken voices use your phone's text-to-speech engine; if it isn't available the character voices are used. Tap AUTO in a conversation to let lines advance by themselves, or SKIP to fast-forward.</div>
         <div class="credits">Cursed Chronicles is an unofficial, non-commercial fan game inspired by Jujutsu Kaisen and Zenonia. All models, sounds and music are procedurally generated. Jujutsu Kaisen © Gege Akutami / Shueisha.</div>
       </div>
     </div>`;
@@ -734,6 +752,90 @@ export class Menus {
     return `<div class="shop travel"><div class="shop-head"><div class="shop-portrait" style="background-image:url(${this.game.portraits.get('ijichi')})"></div><div><div class="id-name">Ijichi's Car</div><div class="id-sub">"P-please fasten your seatbelt."</div></div></div><div class="shop-list">${rows}</div></div>`;
   }
 
+  private mediaArt = 'yuji';
+
+  /** The player's own pictures and sounds, picked from the phone and kept on it. */
+  private renderMedia() {
+    const opt = ART_SLOTS.map(a => `<option value="${a.id}" ${a.id === this.mediaArt ? 'selected' : ''}>${escapeHtml(a.label)}${media.has('art:' + a.id) ? ' ★' : ''}</option>`).join('');
+    const pic = this.game.portraits.get(this.mediaArt);
+    const has = media.has('art:' + this.mediaArt);
+    const row = (key: string, label: string, test: boolean) => `<div class="shop-row"><div class="sr-info"><b>${escapeHtml(label)}</b><small>${media.has(key) ? 'Your file' : 'Built-in'}</small></div>
+      ${test && media.has(key) ? `<button class="btn small" data-act="mediatest" data-key="${key}">Play</button>` : ''}
+      <button class="btn small primary" data-pick="${key}" data-accept="audio/*">Choose…</button>
+      ${media.has(key) ? `<button class="btn small" data-act="mediaclear" data-key="${key}">Reset</button>` : ''}</div>`;
+    const off = !media.available ? '<div class="cheat-note">Storage for your own files isn\'t available on this device.</div>' : '';
+    return `<div class="shop media"><div class="shop-head"><div><div class="id-name">Your Pictures &amp; Sounds</div>
+      <div class="id-sub">Pick pictures and audio from your phone to use in your copy of the game. They stay on this phone and are never shared. Only use files you have the right to use.</div></div></div>${off}
+      <div class="shop-list">
+        <div class="panel-title">Character pictures</div>
+        <div class="media-art"><div class="media-pic" style="background-image:url(${pic})"></div>
+          <div class="media-art-ctrl"><select class="media-sel">${opt}</select>
+          <div class="hint">Replaces this character's portrait and dialogue art.</div>
+          <div><button class="btn small primary" data-pick="art:${this.mediaArt}" data-accept="image/*">Choose picture…</button>${has ? `<button class="btn small" data-act="mediaclear" data-key="art:${this.mediaArt}">Reset</button>` : ''}</div></div></div>
+        <div class="panel-title">Sound effects</div>${SOUND_SLOTS.map(sl => row('sfx:' + sl.id, sl.label, true)).join('')}
+        <div class="panel-title">Music</div>${MUSIC_SLOTS.map(sl => row('music:' + sl.id, sl.label, false)).join('')}
+      </div></div>`;
+  }
+
+  private bindMedia() {
+    const sel = this.body.querySelector('.media-sel') as HTMLSelectElement | null;
+    sel?.addEventListener('change', () => { this.mediaArt = sel.value; this.render(); });
+    for (const b of Array.from(this.body.querySelectorAll('[data-pick]')) as HTMLElement[]) {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = b.dataset.pick!;
+        const inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = b.dataset.accept!;
+        // kept in the page while the phone's picker is open (some WebViews ignore detached inputs)
+        inp.style.cssText = 'position:fixed;left:-9999px;opacity:0';
+        document.body.appendChild(inp);
+        // a cancelled picker never fires change: tidy up once the game has focus again
+        window.addEventListener('focus', () => setTimeout(() => inp.remove(), 2000), { once: true });
+        inp.onchange = async () => {
+          const f = inp.files?.[0];
+          inp.remove();
+          if (!f) return;
+          try {
+            if (key.startsWith('art:')) await media.setImage(key.slice(4), f);
+            else await media.setSound(key, f);
+            audio.play('equip');
+            this.game.toast('Saved on this phone', 'good', 1.6);
+          } catch (err) {
+            audio.play('error');
+            this.game.toast((err as Error).message || 'That file could not be used', 'warn', 3);
+          }
+          this.render();
+        };
+        inp.click();
+      });
+    }
+  }
+
+  /** Akari Nitta's board: today's exorcisms, what each drops, and seals traded for signature pieces. */
+  private renderDaily() {
+    const ps = this.game.ps!;
+    const roster = dailyRoster(ps);
+    const seals = ps.countItem('seal');
+    const ms = msToReset(), hh = Math.floor(ms / 3600000), mm = Math.floor(ms / 60000) % 60;
+    const icon = (id: string, r = 0) => `<img class="r${r}" src="${itemIcon(ITEMS[id].icon)}" title="${escapeHtml(ITEMS[id].name)}">`;
+    const rows = roster.map(b => {
+      const done = dailyCleared(ps, b.id), lv = dailyLevel(ps, b), def = ENEMIES[b.id];
+      const drops = b.drops.map(d => `${icon(d.id)}<i>${d.qty[0]}–${d.qty[1]}</i>`).join('');
+      return `<div class="daily-row ${done ? 'done' : ''}">
+        <div class="daily-portrait" style="background-image:url(${this.game.portraits.get(b.id)})"></div>
+        <div class="sr-info"><b>${escapeHtml(def.name)} <span class="dj">${escapeHtml(b.jp)}</span></b><small>${escapeHtml(b.blurb)}</small>
+          <div class="daily-drops">${icon(b.sig, 3)}<i class="sig">${Math.round(SIG_CHANCE * 100)}%</i>${drops}${icon('seal')}<i>${b.seals[0]}${b.seals[1] > b.seals[0] ? '–' + b.seals[1] : ''}</i></div></div>
+        <div class="daily-act"><small>Lv ${lv}</small>${done ? '<span class="here-tag">CLEARED</span>' : `<button class="btn small primary" data-act="dailyfight" data-id="${b.id}">Exorcise</button>`}</div></div>`;
+    }).join('') || '<div class="detail-empty">No reports yet. The windows only post curses you have already faced in the story.</div>';
+    const pool = DAILY_BOSSES.filter(b => ps.questState(b.after)?.state === 'done');
+    const trade = pool.map(b => `<div class="shop-row">${icon(b.sig, 3)}<div class="sr-info"><b>${escapeHtml(ITEMS[b.sig].name)}</b><small>${escapeHtml(ENEMIES[b.id].name)}'s signature · Lv ${ITEMS[b.sig].req}</small></div>
+      <button class="btn small" data-act="sealtrade" data-id="${b.sig}" ${seals >= SIG_SEALS ? '' : 'disabled'}>${SIG_SEALS} seals</button></div>`).join('');
+    return `<div class="shop daily"><div class="shop-head"><div class="shop-portrait" style="background-image:url(${this.game.portraits.get('nitta')})"></div>
+      <div><div class="id-name">Today's Exorcisms <span class="dj">本日の祓除</span></div><div class="id-sub">"The windows report new curses every morning. Each one, once a day!" · New list in ${hh}h ${mm}m · Seals: ${seals}</div></div></div>
+      <div class="shop-list">${rows}<div class="panel-title">Seal Exchange</div>${trade || '<div class="hint">Beat a daily exorcism to start collecting seals.</div>'}</div></div>`;
+  }
+
   // ------------------------------------------------------------------
   // Events
   // ------------------------------------------------------------------
@@ -802,6 +904,15 @@ export class Menus {
       case 'quality': this.game.settings.quality = t.dataset.q as any; this.game.settings.autoQ = false; this.game.applySettings(); break;
       case 'zoom': this.game.settings.zoom = +t.dataset.z!; this.game.applySettings(); break;
       case 'shake': this.game.settings.shake = +t.dataset.v!; this.game.applySettings(); break;
+      case 'setchip': {
+        const k = t.dataset.k as 'voice' | 'textSpeed' | 'cutscenes';
+        (this.game.settings as any)[k] = k === 'textSpeed' ? +t.dataset.v! : t.dataset.v;
+        this.game.applySettings();
+        if (k === 'voice' && t.dataset.v === 'tts' && !voice.ttsAvailable()) this.game.toast('This device has no text-to-speech voice; character voices will be used.', 'warn', 3);
+        if (k === 'voice') { voice.syllable(voiceFor(this.game.ps ? CLASSES[this.game.ps.d.cls].model : 'gojo'), 0.09); }
+        this.refresh();
+        break;
+      }
       case 'cheat-t': {
         const on = toggleCheat(this.game, t.dataset.id as any);
         audio.play(on ? 'equip' : 'click');
@@ -860,6 +971,37 @@ export class Menus {
         break;
       }
       case 'travel': this.close(); this.game.travel(t.dataset.id!); return;
+      case 'openmedia': this.openShop('media', 'gojo'); return;
+      case 'mediaclear': {
+        const key = t.dataset.key!;
+        void media.remove(key).then(() => { audio.play('tab'); this.render(); });
+        return;
+      }
+      case 'mediatest': {
+        const name = t.dataset.key!;
+        if (name.startsWith('sfx:')) audio.play(name.slice(4));
+        return;
+      }
+      case 'dailyfight': {
+        const b = DAILY_BOSSES.find(x => x.id === t.dataset.id);
+        const ps = this.game.ps!;
+        if (!b || dailyCleared(ps, b.id)) return;
+        setDailyPick(b, dailyLevel(ps, b));
+        audio.play('portal');
+        this.close();
+        this.game.travel('dailyArena');
+        return;
+      }
+      case 'sealtrade': {
+        const ps = this.game.ps!, id = t.dataset.id!;
+        if (ps.countItem('seal') < SIG_SEALS) return;
+        if (!ps.addItem(makeItem(id, 3))) { audio.play('error'); this.game.toast('Inventory full!', 'warn'); return; }
+        ps.removeItem('seal', SIG_SEALS);
+        audio.play('rare');
+        this.game.toast(`Traded ${SIG_SEALS} seals for ${ITEMS[id].name}`, 'good', 2.5);
+        this.render();
+        return;
+      }
       case 'maptravel': this.mapTravel(t.dataset.id!); return;
       case 'mapview': this.mapView = t.dataset.v as 'world' | 'area'; audio.play('tab'); break;
     }

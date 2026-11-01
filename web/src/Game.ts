@@ -6,11 +6,15 @@ import { Input } from './core/Input';
 import { UI } from './ui/UI';
 import { Dialogue } from './ui/Dialogue';
 import { Portraits } from './ui/Portraits';
+import { Busts } from './ui/Busts';
+import { voice, VoiceMode } from './audio/Voice';
 import { PlayerState } from './rpg/PlayerState';
 import { runCheat, toggleCheat } from './rpg/Cheats';
-import { ClassId } from './rpg/types';
+import { ClassId, ItemInstance } from './rpg/types';
 import { CLASSES } from './rpg/classes';
-import { QUEST_BY_ID, QUESTS, IDLE, Line, NPC_NAMES } from './data/story';
+import { QUEST_BY_ID, QUESTS, IDLE, Line, NPC_NAMES, SceneSpec, Choice } from './data/story';
+import { Director } from './world/Director';
+import { media } from './core/CustomMedia';
 import { NPC } from './entities/NPC';
 import { MAPS } from './world/maps';
 import { audio } from './audio/Audio';
@@ -19,11 +23,26 @@ import { IconSpec, ITEMS } from './rpg/items';
 import { setIconWarmGate, warmIcons } from './ui/Icons';
 import { classSkills } from './rpg/skills';
 import './rpg/skillsUnlock';
-import { pick } from './core/util';
+import { pick, rand } from './core/util';
+import { Loot } from './entities/Loot';
 import { checkUnlocks, isUnlocked } from './rpg/Unlocks';
 import { occlusion } from './render/toon';
 
-export type GameState = 'boot' | 'title' | 'play' | 'dialogue' | 'menu' | 'dead' | 'loading';
+export type GameState = 'boot' | 'title' | 'play' | 'dialogue' | 'menu' | 'dead' | 'loading' | 'cutscene';
+
+/** The last main quest of each chapter (its report ends the chapter), and the first (its offer starts one). */
+const CHAPTER_END = new Map<number, string>();
+const CHAPTER_START = new Map<number, string>();
+for (const q of QUESTS) if (q.type === 'main') { CHAPTER_END.set(q.chapter, q.id); if (!CHAPTER_START.has(q.chapter)) CHAPTER_START.set(q.chapter, q.id); }
+
+const CREDITS = [
+  'CURSED CHRONICLES', '— THE END —', '',
+  'An unofficial fan game inspired by', 'Jujutsu Kaisen and Zenonia', '',
+  'Jujutsu Kaisen © Gege Akutami / Shueisha', '',
+  'Every model, sound, song and voice', 'is generated in code', '',
+  'Thank you for playing.', '',
+  'The story goes on:', 'Tengen has asked for you,', 'the hills past the east gate are full of curses,', 'and the King of Curses can now fight at your side.',
+];
 
 const SETTINGS_KEY = 'cursedChronicles.settings';
 
@@ -35,10 +54,18 @@ export class Game {
   ui: UI;
   dialogue: Dialogue;
   portraits: Portraits;
+  busts: Busts;
+  director: Director;
   ps: PlayerState | null = null;
   state: GameState = 'boot';
   private dtS = 1 / 60;
-  settings = { music: 0.55, sfx: 0.85, amb: 0.6, quality: 'high' as Quality, zoom: 1, autoQ: true, shake: 1 };
+  settings = {
+    music: 0.55, sfx: 0.85, amb: 0.6, quality: 'high' as Quality, zoom: 1, autoQ: true, shake: 1,
+    /** dialogue voices: generated per character, spoken by the phone's text-to-speech, or simple blips */
+    voice: 'gen' as VoiceMode, voiceVol: 0.9, textSpeed: 1, vnAuto: false,
+    /** story cutscenes and domain cut-ins */
+    cutscenes: 'full' as 'full' | 'short' | 'off',
+  };
   private last = performance.now();
   private autosaveT = 0;
   private titleT = 0;
@@ -55,8 +82,11 @@ export class Game {
     this.overlay = new Overlay2D(document.getElementById('overlay') as HTMLCanvasElement, this.r);
     this.world = new World(this, this.r, this.overlay);
     this.portraits = new Portraits(this.r);
+    this.busts = new Busts(this.r);
     this.ui = new UI(this);
     this.dialogue = new Dialogue(this, this.ui.root);
+    this.director = new Director(this, this.ui.root);
+    media.onChange = () => { this.ui.hud?.refreshPortrait(); music.refresh(); };
     window.addEventListener('resize', () => { this.r.resize(); this.overlay.resize(); });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { this.save(false); audio.ctx?.suspend(); } else if (this.state !== 'boot') audio.ctx?.resume();
@@ -135,15 +165,22 @@ export class Game {
         occlusion.uOccOn.value = 1;
         this.world.update(dt);
         this.ui.hud?.update(dt);
+        this.director.blend(dt);
+        if (this.outroQ && (this.outroQ.t -= dt) <= 0 && this.state === 'play') { const o = this.outroQ; this.outroQ = null; this.say(o.lines, o.spec); }
         this.autosaveT += dt;
         if (this.autosaveT > 60) { this.autosaveT = 0; this.save(false); }
         break;
       case 'dialogue':
         this.dialogue.update(dt);
         this.world.fx.update(dt);
-        this.world.followCamera(dt);
+        if (this.director.sceneCamera(dt)) occlusion.uOccOn.value = 0; else this.world.followCamera(dt);
         for (const n of this.world.npcs) n.update(dt);
         this.world.player.syncModel(dt);
+        break;
+      case 'cutscene':
+        // the wall fade follows the play camera; a cutscene camera elsewhere would dither the wrong things
+        occlusion.uOccOn.value = 0;
+        this.director.update(dt);
         break;
       case 'menu':
       case 'dead':
@@ -202,7 +239,13 @@ export class Game {
     }
     this.r.zoom = s.zoom;
     this.r.shakeScale = s.shake;
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch { /* ignore */ }
+    voice.mode = s.voice;
+    voice.volume = s.voiceVol;
+    this.saveSettings();
+  }
+
+  saveSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings)); } catch { /* ignore */ }
   }
 
   // ------------------------------------------------------------------
@@ -218,8 +261,18 @@ export class Game {
         const p = this.world.player;
         if (p) { this.world.fx.pillar(p.x, p.z, 1.2, 5, 0xffd23a, 1.2); this.world.fx.burst(p.x, 1, p.z, 0xffe08a, 40, 6, 0.25, 1); }
       }
-      if (ev === 'questAccept') { audio.play('questAccept'); this.toast(`Quest accepted: ${data.name}`, 'quest', 2.5); }
-      if (ev === 'questReady') { audio.play('questDone'); this.toast(`Objective complete — report to ${NPC_NAMES[data.turnIn ?? data.giver] ?? ''}`, 'quest', 3); }
+      if (ev === 'questAccept') {
+        audio.play('questAccept');
+        this.toast(`Quest accepted: ${data.name}`, 'quest', 2.5);
+        if (data.type === 'main' && CHAPTER_START.get(data.chapter) === data.id) this.director.chapterTitle(data.chapter);
+      }
+      if (ev === 'questReady') { audio.play('questDone'); this.toast(`Objective complete — report to ${NPC_NAMES[ps.turnInOf(data)] ?? ''}`, 'quest', 3); }
+      if (ev === 'rewardSpill') {
+        // a full bag never eats a reward: it lands at the player's feet until there is room
+        const p = this.world.player;
+        for (const it of data as ItemInstance[]) this.world.loot.push(new Loot(this.world, p.x + rand(-0.8, 0.8), p.z + rand(-0.8, 0.8), 0, it));
+        this.toast('Bag full — rewards dropped at your feet', 'warn', 3);
+      }
       if (ev === 'questDone') {
         this.toast(`Quest complete: ${data.name}`, 'quest', 3);
         this.announceUnlocks(checkUnlocks(ps.d));
@@ -240,6 +293,8 @@ export class Game {
     this.world.player.model!.root.visible = true;
     this.ui.createHud();
     this.ui.hud!.buildMinimap();
+    // the player's dialogue art, drawn behind the loading fade (this also readies its shaders)
+    this.busts.get(CLASSES[ps.d.cls].model);
     // paint this class's skill icons and the player's gear icons in the background
     warmIcons(classSkills(ps.d.cls).map(s => s.id), [...ps.d.inventory, ...Object.values(ps.d.equip)].filter(Boolean).map(it => ITEMS[it!.base].icon), true);
     // shop stock is painted while in town (see World.loadMap); combat pauses all of this
@@ -258,7 +313,7 @@ export class Game {
     // the opening scene
     const q = QUEST_BY_ID.m1;
     this.world.schedule(0.6, () => {
-      this.dialogue.play(q.offer, { onEnd: () => ps.accept('m1') });
+      this.say(q.offer, q.cine?.offer, () => ps.accept('m1'));
     });
   }
 
@@ -388,15 +443,20 @@ export class Game {
     // 1. completing a quest
     const ready = ps.turnInsFor(id).find(q => ps.questState(q.id)?.state === 'ready');
     if (ready) {
-      this.dialogue.play(ready.complete, {
-        onEnd: () => {
-          ps.complete(ready.id);
-          this.save(false);
-          this.world.refreshNpcs();
-          // chain straight into an auto-accepted follow-up from the same NPC
-          const next = ps.offersFor(id).find(q => q.autoAccept);
-          if (next) this.offerQuest(next.id);
-        },
+      // the part of a boss quest's ending that happened where the boss fell has already played
+      const end = ps.endingSplit(ready);
+      const split = !!ps.d.flags['outro_' + ready.id];
+      const lines = split ? end.report : ps.completeLines(ready);
+      this.say(lines.length ? lines : [{ who: id, text: 'It\'s done. Good work.' }], ready.cine?.complete ?? (split ? undefined : ready.cine?.outro), () => {
+        ps.complete(ready.id);
+        this.save(false);
+        this.world.refreshNpcs();
+        // chain straight into an auto-accepted follow-up from the same NPC, after any chapter clear
+        const next = ps.offersFor(id).find(q => q.autoAccept);
+        const cont = () => { if (next) this.offerQuest(next.id); };
+        if (ready.type === 'main' && CHAPTER_END.get(ready.chapter) === ready.id) {
+          this.director.chapterClear(ready.chapter, ready.id === 'm26' ? () => this.director.ending(CREDITS, cont) : cont);
+        } else cont();
       });
       return;
     }
@@ -405,7 +465,7 @@ export class Game {
     if (offer) { this.offerQuest(offer.id); return; }
     // 3. progress hints for active quests involving this NPC
     const activeQ = ps.turnInsFor(id).find(q => ps.questState(q.id)?.state === 'active');
-    const gated = QUESTS.find(q => q.giver === id && !ps.questState(q.id) && (q.prereq ?? []).every(p => ps.questState(p)?.state === 'done') && q.level && ps.d.level < q.level);
+    const gated = QUESTS.find(q => ps.giverOf(q) === id && !ps.questState(q.id) && (q.prereq ?? []).every(p => ps.questState(p)?.state === 'done') && q.level && ps.d.level < q.level);
     if (n.d.shop) {
       // A shop always opens, even mid-quest: Yaga's infusion request is finished inside his
       // workshop, and Ijichi still has to drive you places while his errands are open.
@@ -416,16 +476,41 @@ export class Game {
       this.ui.menus.openShop(n.d.shop === 'workshop' ? 'workshop' : n.d.shop, n.d.model ?? id);
       return;
     }
-    if (activeQ?.progress) { this.dialogue.play(activeQ.progress); return; }
+    const hint = activeQ && ps.progressLines(activeQ);
+    if (hint) { this.say(hint); return; }
     const lines: Line[] = [...pick(IDLE[id] ?? IDLE.civilian ?? [[{ who: id, text: '…' }]])];
     if (gated) lines.push({ who: id, text: `Get a little stronger first. Come back at level ${gated.level}.` });
     this.dialogue.play(lines.map(l => ({ ...l, who: l.who === 'civilian' || l.who === 'student' ? id : l.who })));
   }
 
+  /** The lines of a boss quest's ending that happen where the boss fell, waiting for the dust to settle. */
+  private outroQ: { lines: Line[]; t: number; spec?: SceneSpec } | null = null;
+
+  /** Called when a boss falls: queue the on-the-spot part of the ending of the quest it finished. */
+  bossOutro(bossId: string) {
+    const ps = this.ps!;
+    for (const q of QUESTS) {
+      const last = q.objectives[q.objectives.length - 1];
+      if (ps.questState(q.id)?.state !== 'ready' || last.type !== 'boss' || last.target !== bossId || ps.d.flags['outro_' + q.id]) continue;
+      const { outro } = ps.endingSplit(q);
+      if (!outro.length) continue;
+      ps.d.flags['outro_' + q.id] = true;
+      this.outroQ = { lines: outro, t: 1.8, spec: q.cine?.outro };
+      return;
+    }
+  }
+
   offerQuest(qid: string) {
     const q = QUEST_BY_ID[qid];
     const ps = this.ps!;
-    this.dialogue.play(q.offer, { onEnd: () => { ps.accept(qid); this.save(false); this.world.refreshNpcs(); } });
+    this.say(ps.offerLines(q), ps.giverOf(q) === q.giver ? q.cine?.offer : undefined, () => { ps.accept(qid); this.save(false); this.world.refreshNpcs(); });
+  }
+
+  /** Play lines, staged as a cutscene when the story calls for it. */
+  say(lines: Line[], spec?: SceneSpec, onEnd?: () => void, choices?: Choice[]) {
+    const run = () => this.dialogue.play(lines, { choices, onEnd: () => { this.director.endScene(); onEnd?.(); } });
+    // never over a cutscene: a conversation waits for it to finish
+    if (spec) this.director.beginScene(spec, run); else this.director.after(run);
   }
 
   npcEmote(who: string, emote: string) {

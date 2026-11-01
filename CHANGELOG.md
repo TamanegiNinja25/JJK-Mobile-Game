@@ -3,6 +3,100 @@
 All notable changes to Cursed Chronicles. Every release since 1.2.0 installs over the
 previous one and keeps your saves.
 
+## 1.5.0 — Cutscenes, voices and daily bosses
+
+### Conversations like a visual novel
+- Both people in a conversation stand in large character art, drawn from their models: the
+  player on the left, whoever they are talking to on the right. The one speaking is lit,
+  hops when their line starts and moves their mouth; the other waits in shadow.
+- Faces change with what is said: neutral, happy, angry, surprised or sad. Name plates show
+  each name in Japanese too.
+- **Every character has their own voice.** Pitch, pace and tone differ per character, and
+  curses growl and echo. In **System → Dialogue** you can switch to **Spoken**, which reads
+  each line aloud with your phone's text-to-speech in that character's pitch, or to simple
+  blips.
+- **AUTO** advances lines by itself, **SKIP** fast-forwards, and text speed is adjustable.
+- Characters in the world blink, and whoever is talking moves their mouth.
+- The Sukuna sorcerers now speak as Sukuna. Seventy lines they used to borrow from Yuji and
+  Megumi were rewritten in his voice.
+- The Status page and the sorcerer select use the new art.
+
+### Cutscenes
+- **Domain Expansion cut-in** for you and for bosses: the world stops, the camera closes in
+  on the hand sign, 領域展開 slams across the screen, then the domain's name in Japanese
+  and English.
+- **Bosses rise on camera** with their grade and name written across the screen.
+- **Chapter clears**: finishing the last quest of a chapter turns the camera around you
+  under "第三章 完", with the chapter's name. A new chapter's title appears when it begins.
+- **Staged story moments**: the opening night at Sugisawa, Sukuna's awakening, Eishu, the
+  Shibuya Incident, the Prison Realm, the Culling Game, Gojo's return, the Shinjuku
+  Showdown, the King's fall and Gojo's last lesson. Each has a title shot, letterbox and a
+  moving camera.
+- **Boss defeats play where the boss falls.** Eso's last words, Jogo crumbling, Sukuna's
+  laughter and the others used to wait until you reported back.
+- **Ending credits** after the final battle.
+- Cutscenes can be set to Full, Short or Off in **System → Dialogue**.
+
+### Domains
+- **Domain meter**: while a domain is up, its name and a 20-segment bar count down from 100%
+  in 5% steps, for your domains and the enemies'.
+- **Every domain keeps moving.** Inside **Malevolent Shrine**, Dismantle and Cleave never
+  stop: slashes cut across the floor and through the air everywhere in range, with crossing
+  Cleaves and the sound of blades. Unlimited Void streams information, Chimera Shadow Garden
+  boils with shadow, Coffin of the Iron Mountain erupts, Self-Embodiment of Perfection grows
+  hands, and the others have effects of their own.
+- Modulo Yuji's domain was announced as "Unlimited Void". It now has its own name.
+
+### Daily exorcisms
+- **Akari Nitta**, beside Ijichi's car at Jujutsu High from Chapter 2, posts three bosses a
+  day out of ten. The list refreshes at midnight on your phone, and each boss can be beaten
+  once a day. Only bosses you have already met in the story appear.
+- You fight in the new **Curtain Arena**, at your own level.
+- **Every boss has its own drops**: Grade 1 Cores, Cursed Fragments, potions, Hei crests or
+  Cursed Ash. Each also has a 30% chance of its **signature piece**, one of eight new unique
+  accessories that only daily bosses drop. Every win also pays **Special Grade Seals**.
+- **12 seals buy any signature piece outright** at Nitta's board, so farming always adds
+  up.
+
+### Quest fixes
+- **"The Cursed Spirit Storehouse" could not be finished.** The storehouse door stayed
+  sealed until the quest was done. It now opens once you accept it, and saves stuck there
+  can carry on.
+- **"Overtime in Kawasaki"** sent you back to Gojo to hear Nanami's lines. You now report
+  to Nanami in Kawasaki, and the next lead follows on the spot.
+- **"October 31st"** is reported to Ijichi at the veil and leads straight into "Prison
+  Realm".
+- **"King of Curses"** is reported to Yaga at Jujutsu High. Ijichi used to speak Yaga's
+  lines.
+- Gojo no longer stands in Jujutsu High while he is sealed (from the start of Shibuya until
+  the Prison Realm opens). His two side requests pass to Yaga meanwhile, so they can still
+  be taken and finished.
+- Mid-quest hints from the village monk, Noritoshi Kamo and Yuta were spoken by the wrong
+  person.
+- **A full bag no longer eats quest rewards.** Anything that doesn't fit drops at your
+  feet. Quest items never take a bag slot, a stack that overflows starts a new one instead
+  of losing the rest, and a quest pickup in a full bag stays on the ground.
+- All 63 quests were replayed for all seven sorcerers to confirm every giver, target, boss,
+  item and report can be reached.
+
+### HUD
+- **The quest tracker sits under the HP and CE bars**, so the skill buttons never cover it
+  on phone screens. The boss bar and messages are centred in the space between.
+
+### Your own pictures and sounds
+- **System → Your Pictures & Sounds** lets you use files from your phone in your own copy:
+  - a picture for any of 35 characters, used for their portrait and dialogue art
+  - a sound for seven big moments: Domain Expansion, Black Flash, Dismantle/Cleave, a boss
+    appearing, a boss exorcised, level up and quest complete
+  - a song for each of five kinds of place: the title screen, Jujutsu High, missions, boss
+    fights and Domain Expansion
+
+  The files stay on the phone and are never shared.
+
+### Android
+- Spoken dialogue uses the phone's text-to-speech engine through the app.
+- The app can open the phone's file picker for the pictures and sounds above.
+
 ## 1.4.0 — Open world and the King's return
 
 ### New sorcerers you unlock

@@ -58,6 +58,16 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
   r.bone('chest', 'spine', [0, torsoLen * 0.5, 0]);
   r.bone('neck', 'chest', [0, torsoLen * 0.45, 0]);
   r.bone('head', 'neck', [0, 0.06, 0]);
+  // face bones: eyes close (blink, smile), brows tilt, the mouth opens — for dialogue art and talking
+  const hc: V3 = [0, headR * 0.95, 0.01];
+  const eyeY = hc[1] - headR * 0.08, eyeZ = headR * 0.9, eyeX = headR * 0.37;
+  const mouthAt: V3 = [0, eyeY - 0.13, headR * 0.84];
+  for (const s of ['L', 'R'] as const) {
+    const sx = s === 'L' ? 1 : -1;
+    r.bone('eye' + s, 'head', [sx * eyeX, eyeY, eyeZ]);
+    r.bone('brow' + s, 'head', [sx * eyeX, eyeY + 0.1, eyeZ - 0.005], [0, sx * 0.35, sx * 0.12]);
+  }
+  r.bone('mouth', 'head', mouthAt);
   for (const s of ['L', 'R'] as const) {
     const sx = s === 'L' ? 1 : -1;
     r.bone('armUp' + s, 'chest', [sx * (shoulderW + 0.04), torsoLen * 0.38, 0]);
@@ -166,7 +176,6 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
 
   // ---- Head ----
   r.part('neck', G.cyl(0.055, 0.06, 0.12, 10), skin, { pos: [0, 0.02, 0], smooth: true });
-  const hc: V3 = [0, headR * 0.95, 0.01];
   r.part('head', G.ellipsoid(headR * 0.94, headR * 1.02, headR * 0.98, 18, 14), skin, { pos: hc, smooth: true });
   // jaw / chin
   r.part('head', G.ellipsoid(headR * 0.62, headR * 0.5, headR * 0.6, 12, 8), skin, { pos: [0, headR * 0.5, headR * 0.28], smooth: true });
@@ -175,19 +184,19 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
   r.part('head', G.ellipsoid(0.03, 0.05, 0.022, 8, 6), skin, { pos: [-headR * 0.92, headR * 0.92, 0] });
 
   // eyes (large anime style, sitting on the face surface)
-  const eyeY = hc[1] - headR * 0.08, eyeZ = headR * 0.9, eyeX = headR * 0.37;
   const glasses = spec.glasses ?? 'none';
   if (glasses !== 'blindfold') {
     for (const sx of [1, -1]) {
-      const yaw = sx * 0.35;
-      r.part('head', G.ellipsoid(0.05, 0.06, 0.022, 12, 8), 0xf9f7f2, { pos: [sx * eyeX, eyeY, eyeZ], rot: [0, yaw, 0], smooth: true });
-      r.part('head', G.ellipsoid(0.037, 0.05, 0.02, 12, 8), spec.eyes, { pos: [sx * eyeX * 0.98, eyeY - 0.004, eyeZ + 0.01], rot: [0, yaw, 0], smooth: true, glow: spec.extras?.includes('cursedEyes') ? 0.55 : 0.12, topColor: darken(spec.eyes, 0.55) });
-      r.part('head', G.ellipsoid(0.018, 0.026, 0.01, 8, 6), 0x08080e, { pos: [sx * eyeX * 0.97, eyeY - 0.006, eyeZ + 0.02], rot: [0, yaw, 0], smooth: true });
-      r.part('head', G.sphere(0.011, 6, 4), 0xffffff, { pos: [sx * eyeX * 0.95 + 0.013, eyeY + 0.017, eyeZ + 0.027], glow: 0.25 });
-      // upper lash line
+      const yaw = sx * 0.35, eb = sx === 1 ? 'eyeL' : 'eyeR';
+      // eyeball, iris, pupil and highlight ride the eye bone (offsets from the eye centre)
+      r.part(eb, G.ellipsoid(0.05, 0.06, 0.022, 12, 8), 0xf9f7f2, { pos: [0, 0, 0], rot: [0, yaw, 0], smooth: true });
+      r.part(eb, G.ellipsoid(0.037, 0.05, 0.02, 12, 8), spec.eyes, { pos: [-sx * eyeX * 0.02, -0.004, 0.01], rot: [0, yaw, 0], smooth: true, glow: spec.extras?.includes('cursedEyes') ? 0.55 : 0.12, topColor: darken(spec.eyes, 0.55) });
+      r.part(eb, G.ellipsoid(0.018, 0.026, 0.01, 8, 6), 0x08080e, { pos: [-sx * eyeX * 0.03, -0.006, 0.02], rot: [0, yaw, 0], smooth: true });
+      r.part(eb, G.sphere(0.011, 6, 4), 0xffffff, { pos: [-sx * eyeX * 0.05 + 0.013, 0.017, 0.027], glow: 0.25 });
+      // upper lash line (stays put, so a closed eye reads as a line)
       r.part('head', G.box(0.11, 0.016, 0.02), 0x15121a, { pos: [sx * eyeX, eyeY + 0.056, eyeZ + 0.004], rot: [0, yaw, sx * -0.1] });
-      // brow
-      r.part('head', G.box(0.075, 0.014, 0.014), darken(spec.hair, 0.6), { pos: [sx * eyeX, eyeY + 0.1, eyeZ - 0.005], rot: [0, yaw, sx * 0.12] });
+      // brow (its bone carries the tilt)
+      r.part(sx === 1 ? 'browL' : 'browR', G.box(0.075, 0.014, 0.014), darken(spec.hair, 0.6), { pos: [0, 0, 0] });
     }
     if (spec.extras?.includes('sukunaMarks')) {
       for (const sx of [1, -1]) {
@@ -204,7 +213,7 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
     for (const sx of [1, -1]) r.part('head', G.box(0.008, 0.008, headR * 0.9), 0xd8d8d0, { pos: [sx * headR * 0.62, eyeY - 0.08, headR * 0.2], rot: [0, sx * 0.3, 0] });
   }
   if (!spec.extras?.includes('collar') && !spec.extras?.includes('mask') && !spec.extras?.includes('surgicalMask')) {
-    r.part('head', G.box(0.055, 0.009, 0.012), 0x6a2a2a, { pos: [0, eyeY - 0.13, headR * 0.84] });
+    r.part('mouth', G.box(0.055, 0.009, 0.012), 0x6a2a2a, { pos: [0, 0, 0] });
   }
 
   if (glasses === 'round' || glasses === 'shades' || glasses === 'goggles') {
@@ -683,6 +692,10 @@ export class HumanoidAnimator {
   private snap: Float32Array | null = null;
   /** called on every foot plant of the walk cycle */
   onStep: (() => void) | null = null;
+  /** set while this character is the one speaking in a conversation: the mouth moves */
+  talking = false;
+  private blinkT = 2 + Math.random() * 3;
+  private mouthT = 0;
 
   constructor(m: Humanoid) { this.m = m; }
 
@@ -788,6 +801,14 @@ export class HumanoidAnimator {
       b.armUpL.rotation.z = k * 1.2; b.armUpR.rotation.z = -k * 1.2;
       b.legUpL.rotation.x = k * 0.3;
       b.head.rotation.x = -k * 0.4;
+    }
+
+    // ---- face: a blink every few seconds, and a moving mouth while talking ----
+    if (b.eyeL && !this.dead) {
+      this.blinkT -= dt;
+      if (this.blinkT < 0.12) { const s = Math.max(0.08, Math.abs(this.blinkT - 0.06) / 0.06); b.eyeL.scale.y = s; b.eyeR.scale.y = s; }
+      if (this.blinkT <= 0) this.blinkT = 2.2 + Math.random() * 3.5;
+      if (this.talking) { this.mouthT += dt * 13; b.mouth.scale.y = 1 + Math.max(0, Math.sin(this.mouthT) + Math.sin(this.mouthT * 0.53) * 0.6) * 1.4; }
     }
   }
 

@@ -1,15 +1,14 @@
 // Every playable area, built from props and buildings. North is -Z (top of screen).
 import { MapDef } from './MapBuilder';
 import { PlayerState } from '../rpg/PlayerState';
-import { QUEST_BY_ID } from '../data/story';
+import { QUEST_BY_ID, gojoAround } from '../data/story';
 import { INTERIORS } from './interiors';
 import { OPEN_MAPS } from './mapsOpen';
+import { DAILY_MAPS } from './mapsDaily';
 
 const done = (id: string) => (ps: PlayerState) => ps.questState(id)?.state === 'done';
 const active = (id: string) => (ps: PlayerState) => !!ps.questState(id) && ps.questState(id)!.state !== 'done';
 const objDone = (id: string, i: number) => (ps: PlayerState) => { const q = QUEST_BY_ID[id]; return !!ps.questState(id) && ps.objectiveDone(q, i); };
-/** Gojo is away from the end of Shibuya (sealed in the Prison Realm) until he is released, and gone after Shinjuku. */
-const gojoAround = (ps: PlayerState) => !done('m14')(ps) || (!!ps.questState('m22') && !done('m23')(ps));
 /** From Gojo's return until the final battle, Sukuna holds Megumi's body. */
 const megumiTaken = (ps: PlayerState) => !!ps.questState('m22') && !done('m26')(ps);
 
@@ -151,6 +150,9 @@ const hub: MapDef = {
     b.npc({ id: 'panda', x: -13, z: 24, facing: Math.PI / 2 });
     b.npc({ id: 'inumaki', x: -12, z: 26.5, facing: Math.PI / 2 });
     b.npc({ id: 'ijichi', x: 6, z: 27.5, facing: Math.PI, shop: 'travel' });
+    // a few steps from where travellers arrive, so arriving never lands you in a conversation
+    b.npc({ id: 'nitta', x: -6, z: 28.4, facing: Math.PI * 0.85, shop: 'daily', cond: done('m5') });
+    b.prop('signboard', -8.2, 29.2, Math.PI);
     b.portal({ x: 11.5, z: 26, r: 1.2, to: '@travel', label: 'Travel point', style: 'travel' });
     b.npc({ id: 'meimei', x: 20, z: -21, facing: Math.PI, shop: 'exchange', cond: done('m6') });
     b.npc({ id: 'yuji', x: -5, z: 6, facing: Math.PI / 3, cond: (ps) => ps.cls.persona !== 'yuji' });
@@ -473,7 +475,7 @@ const zenin: MapDef = {
     b.building('manorWing', 26, -16, 3);
     b.building('manorWing', -26, 18, 1);
     b.building('zeninStore', 27, 14, 3);
-    b.portal({ x: 23.1, z: 14, r: 1.0, to: 'zeninIn', label: 'Cursed Spirit Storehouse', style: 'door', rot: -Math.PI / 2, cond: 'm16', condText: 'The storehouse doors are sealed with Zen\'in wards.' });
+    b.portal({ x: 23.1, z: 14, r: 1.0, to: 'zeninIn', label: 'Cursed Spirit Storehouse', style: 'door', rot: -Math.PI / 2, cond: '+m16', condText: 'The storehouse doors are sealed with Zen\'in wards. Maki has the key.' });
     b.building('koiPond', -14, 22, 0);
     for (let z = 30; z >= 6; z -= 6) { b.prop('stoneLantern', -3.4, z); b.prop('stoneLantern', 3.4, z); }
     b.prop('paperLantern', -8, -21, 0).prop('paperLantern', 8, -21, Math.PI).prop('well', 14, -2, 0).prop('bell', -14, -2, 0);
@@ -779,7 +781,7 @@ const shinjuku: MapDef = {
   },
 };
 
-export const MAPS: Record<string, MapDef> = { sugisawa, hub, eishu, kawasaki, sewer, kyoto, yasohachi, shibuya, zenin, colony1, sendai, shinjuku, ...OPEN_MAPS, ...INTERIORS };
+export const MAPS: Record<string, MapDef> = { sugisawa, hub, eishu, kawasaki, sewer, kyoto, yasohachi, shibuya, zenin, colony1, sendai, shinjuku, ...OPEN_MAPS, ...DAILY_MAPS, ...INTERIORS };
 /** Destinations Ijichi can drive to; `need` is the quest that must be accepted first. */
 export const TRAVEL_LIST: { id: string; need?: string; level: string }[] = [
   { id: 'hub', need: 'm2', level: 'Town' },
