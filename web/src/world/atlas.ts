@@ -24,6 +24,8 @@ function record(def: MapDef): AtlasEntry {
     pickup: (item: string, _x: number, _z: number, quest: string) => e.pickups.push({ item, quest }),
     portal: (p: PortalDef) => e.portals.push(p),
     spawner: (s: SpawnerDef) => { for (const x of s.enemies) e.enemies.add(x.id); },
+    // training corpses count as enemies for "break the training corpses" (they used to be invisible to guidance)
+    dummy: () => e.enemies.add('dummy'),
   };
   // every other builder call is accepted and ignored; assignments (b.rng = ...) are swallowed
   const stub: any = new Proxy({}, {

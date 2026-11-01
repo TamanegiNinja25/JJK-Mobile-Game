@@ -1,4 +1,7 @@
 // Entry point.
+import { LINES } from './rpg/Reruns';
+import { confirmDialog } from './ui/Confirm';
+import { updates } from './core/Updates';
 import { getAtlas } from './world/atlas';
 import { Game } from './Game';
 import { skillIcon, itemIcon } from './ui/Icons';
@@ -31,4 +34,4 @@ const game = new Game();
 game.start();
 
 // debugging/test hooks
-(window as any).__dbg = { atlas: getAtlas, skillIcon, itemIcon, SKILLS, ITEMS, audio, QUESTS, MAPS, TRAVEL_LIST, ENEMIES, CLASSES, makeItem };
+(window as any).__dbg = { atlas: getAtlas, skillIcon, itemIcon, SKILLS, ITEMS, audio, QUESTS, MAPS, TRAVEL_LIST, ENEMIES, CLASSES, makeItem, confirmDialog, updates, LINES };

@@ -306,6 +306,45 @@ function buildMahoraga(): ModelHandle {
   return finishHumanoid(r, 0.024);
 }
 
+/** Rika Orimoto, the Queen of Curses: a towering pale body, a ragged mane, a mouth full of teeth, long arms, and the ring. */
+function buildRika(): ModelHandle {
+  const r = new RigBuilder();
+  const d: Dims = { leg: 0.4, torso: 0.62, arm: 0.5, shoulder: 0.36, spread: 0.15 };
+  curseSkeleton(r, d);
+  const skin = 0xe6e2ea, dk = 0x9a94a6, hair = 0x1a1820, mouth = 0x2a0a14, teeth = 0xfffaf2;
+  r.part('spine', G.capsuleUp(0.24, 0.5), skin, { scale: [1.1, 1, 0.85] });
+  r.part('chest', G.ellipsoid(0.42, 0.32, 0.28), skin, { pos: [0, 0.12, 0], topColor: 0xffffff });
+  // a ridge of bony plates down the back
+  for (let i = 0; i < 5; i++) r.part('chest', G.cone(0.05, 0.18, 5), dk, { pos: [0, 0.3 - i * 0.12, -0.26], rot: [-0.9, 0, 0] });
+  r.part('hips', G.cyl(0.26, 0.32, 0.34, 12, true), dk, { pos: [0, -0.1, 0] });
+  // the head: wide, with a grin that runs ear to ear
+  r.part('head', G.ellipsoid(0.26, 0.24, 0.24), skin, { pos: [0, 0.2, 0.02] });
+  r.part('head', G.ellipsoid(0.2, 0.08, 0.06), mouth, { pos: [0, 0.1, 0.2] });
+  for (let i = 0; i < 9; i++) {
+    const x = (i - 4) * 0.042;
+    r.part('head', G.cone(0.016, 0.06, 4), teeth, { pos: [x, 0.15, 0.24 - Math.abs(x) * 0.3], rot: [Math.PI, 0, 0] });
+    r.part('head', G.cone(0.016, 0.055, 4), teeth, { pos: [x, 0.05, 0.24 - Math.abs(x) * 0.3] });
+  }
+  for (const sx of [1, -1]) r.part('head', G.sphere(0.035, 8, 6), 0xff6ab0, { pos: [sx * 0.1, 0.27, 0.21], glow: 1.6 });
+  // a ragged mane of black hair
+  for (let i = 0; i < 9; i++) {
+    const a = -1.2 + i * 0.3;
+    r.part('head', G.ellipsoid(0.07, 0.24, 0.06), hair, { pos: [Math.sin(a) * 0.24, 0.3 + Math.cos(a) * 0.06, -0.08 - Math.cos(a) * 0.05], rot: [0.5, 0, -a * 0.8] });
+  }
+  for (const s of ['L', 'R']) {
+    r.part('armUp' + s, G.limb(0.12, 0.1, d.arm), skin);
+    r.part('armLow' + s, G.limb(0.1, 0.085, d.arm), skin);
+    r.part('hand' + s, G.ellipsoid(0.12, 0.13, 0.08), skin, { pos: [0, -0.08, 0] });
+    for (let k = 0; k < 4; k++) r.part('hand' + s, G.cone(0.022, 0.16, 4), dk, { pos: [(k - 1.5) * 0.05, -0.24, 0.02], rot: [Math.PI, 0, 0] });
+    r.part('legUp' + s, G.limb(0.12, 0.1, d.leg), skin);
+    r.part('legLow' + s, G.limb(0.1, 0.08, d.leg), dk);
+    r.part('foot' + s, G.ellipsoid(0.09, 0.05, 0.16), dk, { pos: [0, 0, 0.05] });
+  }
+  // the ring that bound her to Yuta
+  r.part('handL', G.torus(0.04, 0.012, 6, 14), 0xe8ecf4, { pos: [0.03, -0.16, 0.02], rot: [Math.PI / 2, 0, 0], glow: 0.6 });
+  return finishHumanoid(r, 0.026);
+}
+
 function buildDummy(): ModelHandle {
   const r = new RigBuilder();
   const d: Dims = { leg: 0.22, torso: 0.4, arm: 0.2, shoulder: 0.26, spread: 0.12 };
@@ -1256,7 +1295,7 @@ export type CreatureKind =
   | 'flyhead' | 'crawler' | 'lanky' | 'glutton' | 'womb' | 'wretch' | 'hound' | 'fingerBearer'
   | 'transfigured' | 'bloated' | 'leech' | 'rootCurse' | 'bud' | 'hanami' | 'hand' | 'fish'
   | 'pumpkin' | 'dagon' | 'jogo' | 'mahoraga' | 'dummy'
-  | 'dogWhite' | 'dogBlack' | 'nue' | 'toad' | 'elephant' | 'rabbit' | 'serpent' | 'ox' | 'totality'
+  | 'dogWhite' | 'dogBlack' | 'nue' | 'toad' | 'elephant' | 'rabbit' | 'serpent' | 'ox' | 'totality' | 'rika'
   | 'kechizu' | 'eso' | 'riverCurse' | 'bloodFetus' | 'barrierCurse' | 'roach' | 'manipCurse'
   | 'rainbowDragon' | 'smallpox' | 'naoyaCurse';
 
@@ -1283,6 +1322,7 @@ export function buildCreature(kind: CreatureKind): ModelHandle {
     case 'dagon': return dagon();
     case 'jogo': return buildJogo();
     case 'mahoraga': return buildMahoraga();
+    case 'rika': return buildRika();
     case 'dummy': return buildDummy();
     case 'kechizu': return buildKechizu();
     case 'eso': return buildEso();

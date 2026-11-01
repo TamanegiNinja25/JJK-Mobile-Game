@@ -14,7 +14,7 @@ export const DOMAIN_NAMES: Record<string, [string, string]> = {
   shrine: ['伏魔御廚子', 'Malevolent Shrine'], shadow: ['嵌合暗翳庭', 'Chimera Shadow Garden'], nails: ['共鳴り・千本釘', 'Resonance: Thousand Nails'],
   void: ['無量空処', 'Unlimited Void'], coffin: ['蓋棺鉄囲山', 'Coffin of the Iron Mountain'], sea: ['蕩蘊平線', 'Horizon of the Captivating Skandha'],
   hands: ['自閉円頓裹', 'Self-Embodiment of Perfection'], court: ['誅伏賜死', 'Deadly Sentencing'], womb: ['胎蔵遍野', 'Womb Profusion'],
-  home: ['帰郷', 'Homecoming'], moon: ['時胞月宮殿', 'Time Cell Moon Palace'],
+  home: ['帰郷', 'Homecoming'], moon: ['時胞月宮殿', 'Time Cell Moon Palace'], love: ['真贋相愛', 'Authentic Mutual Love'],
 };
 
 const KANJI_NUM = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];

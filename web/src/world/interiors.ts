@@ -278,6 +278,10 @@ export interface InteriorSpec {
   goal?: (ctx: InteriorCtx, c: Cell) => void;
   /** chance an ordinary cell gets a curse spawner */
   density?: number;
+  /** a quest that counts kills in here needs this many curses on every visit, whatever the layout */
+  minFoes?: number;
+  /** seconds before a cleared spawner refills (35 by default) */
+  respawn?: number;
   loops?: number;
 }
 
@@ -390,6 +394,8 @@ function buildInterior(b: MapBuilder, spec: InteriorSpec, T: Theme, L: Layout, r
     return fn;
   };
 
+  const foes: { c: Cell; count: number }[] = [];
+  const spare: Cell[] = [];
   for (const c of cells) {
     // light per cell, a little off-centre so shadows read
     const fl = rng.chance(T.light.flicker);
@@ -407,10 +413,19 @@ function buildInterior(b: MapBuilder, spec: InteriorSpec, T: Theme, L: Layout, r
     // sealed caches reward poking into side rooms; they don't come back until the next visit
     if (c.room && rng.chance(0.4)) b.spawner({ enemies: [{ id: 'treasure' }], x: c.x, z: c.z, w: C - 3, d: C - 3, count: 1, respawn: 1e6, level: spec.levelRange });
     else T.hall(placer(c, 0), rng, ([0, 1, 2, 3] as Side[]).filter(s => !c.links.includes(s)), C);
-    if (rng.chance(spec.density ?? (c.room ? 0.6 : 0.4))) {
-      b.spawner({ enemies: spec.enemies, x: c.x, z: c.z, w: C - 4, d: C - 4, count: rng.int(1, 2), respawn: 35, level: spec.levelRange });
-    }
+    if (rng.chance(spec.density ?? (c.room ? 0.6 : 0.4))) foes.push({ c, count: rng.int(1, 2) });
+    else if (spec.minFoes) spare.push(c);
   }
+  // a sparse layout could leave fewer curses than a quest asks for: top it up, empty cells first
+  let total = foes.reduce((a, f) => a + f.count, 0);
+  while (spec.minFoes && total < spec.minFoes) {
+    const c = spare.length ? spare.splice(rng.int(0, spare.length - 1), 1)[0] : null;
+    if (c) foes.push({ c, count: 1 });
+    else if (foes.length) foes[rng.int(0, foes.length - 1)].count++;
+    else break;
+    total++;
+  }
+  for (const f of foes) b.spawner({ enemies: spec.enemies, x: f.c.x, z: f.c.z, w: C - 4, d: C - 4, count: f.count, respawn: spec.respawn ?? 35, level: spec.levelRange });
 
   // the door back outside
   const ex = spec.exit;
@@ -425,11 +440,13 @@ function buildInterior(b: MapBuilder, spec: InteriorSpec, T: Theme, L: Layout, r
 
 const has = (q: string) => (ps: import('../rpg/PlayerState').PlayerState) => !!ps.questState(q);
 const isActive = (q: string) => (ps: import('../rpg/PlayerState').PlayerState) => ps.questState(q)?.state === 'active';
+/** taken and not yet reported: a scene that sets up the report still plays after the objectives are met */
+const open = (q: string) => (ps: import('../rpg/PlayerState').PlayerState) => { const st = ps.questState(q); return !!st && st.state !== 'done'; };
 
 export const INTERIORS: Record<string, MapDef> = {
   sugisawaIn: interiorMap({
     id: 'sugisawaIn', name: 'Sugisawa Third High — Corridors', jp: '杉沢第三高校 校舎', theme: 'school', cols: 5, rows: 3,
-    levelRange: [2, 5], enemies: [{ id: 'flyhead', w: 2 }, { id: 'crawler', w: 2 }, { id: 'lanky' }],
+    levelRange: [2, 5], enemies: [{ id: 'flyhead', w: 2 }, { id: 'crawler', w: 2 }, { id: 'lanky' }], minFoes: 9, respawn: 18,
     exit: { map: 'sugisawa', x: 0, z: 1.6, facing: 0, label: 'Courtyard' },
     goal: ({ b, place, toWorld }, c) => {
       // the Occult Research Club room, where the seal on the finger was broken
@@ -440,7 +457,7 @@ export const INTERIORS: Record<string, MapDef> = {
       const cond = (ps: import('../rpg/PlayerState').PlayerState) => has('m1c')(ps) && ps.questState('m2')?.state !== 'done';
       b.npc({ id: 'sasaki', x: sx, z: sz, facing: face, cond });
       b.npc({ id: 'iguchi', x: ix, z: iz, facing: face, pose: 'sit', cond });
-      b.scene({ x: c.x, z: c.z, r: 4.2, flag: 'scene_occult', cond: isActive('m1c'), lines: [
+      b.scene({ x: c.x, z: c.z, r: 4.2, flag: 'scene_occult', cond: open('m1c'), lines: [
         { who: 'narrator', text: 'A cramped club room. Candles, a ouija board, a small wooden box with its paper seal torn clean off. It is empty.' },
         { who: 'narrator', text: 'Two students huddle in the corner. The boy is clutching a bleeding arm.' },
         { who: 'player', text: 'Senpai! Sasaki-senpai, Iguchi-senpai — are you okay?!', only: ['yuji'] },
@@ -517,13 +534,13 @@ export const INTERIORS: Record<string, MapDef> = {
   }),
   zeninIn: interiorMap({
     id: 'zeninIn', name: 'Zen\'in Estate — Cursed Spirit Storehouse', jp: '禪院家 呪霊蔵', theme: 'manor', cols: 4, rows: 3,
-    levelRange: [39, 44], enemies: [{ id: 'cagedCurse', w: 2 }, { id: 'starvedHound', w: 2 }], density: 0.55,
+    levelRange: [39, 44], enemies: [{ id: 'cagedCurse', w: 2 }, { id: 'starvedHound', w: 2 }], density: 0.55, minFoes: 13, respawn: 15,
     exit: { map: 'zenin', x: 21.4, z: 14, facing: -Math.PI / 2, label: 'Estate grounds' },
     goal: ({ b, place, toWorld }, c) => {
       place('cursedBox', 0, -3.6, 0).p('crate', -3.2, -3.6, 0.3).p('crate', 3.2, -3.4, -0.2).p('stoneLantern', -3.6, 3.4).p('stoneLantern', 3.6, 3.4);
       const [mx, mz] = toWorld(c, 1.6, -1.2);
       b.spawner({ enemies: [{ id: 'cagedCurse' }], x: c.x, z: c.z, w: 6, d: 6, count: 2, respawn: 30, level: [41, 44], cond: isActive('m16') });
-      b.scene({ x: mx, z: mz, r: 4.2, flag: 'scene_mai', cond: isActive('m16'), lines: [
+      b.scene({ x: mx, z: mz, r: 4.2, flag: 'scene_mai', cond: open('m16'), lines: [
         { who: 'narrator', text: 'The deepest room of the storehouse. The curses kept here have been starving for years.' },
         { who: 'narrator', text: 'Mai is slumped against the far wall, badly hurt. Their father brought both twins in here and locked the door behind them.' },
         { who: 'mai', text: 'Maki... we were always half of one person. As long as I\'m here, you can never be complete.' },

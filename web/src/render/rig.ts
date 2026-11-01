@@ -52,7 +52,11 @@ export class RigBuilder {
   }
 
   /** Add a part in the bone's local space. */
+  /** options merged into every part on the given bone while set (e.g. the hair's sheen) */
+  partDefaults: { bone: string; o: PartOpts } | null = null;
+
   part(boneName: string, geo: THREE.BufferGeometry, color: number, o: PartOpts = {}) {
+    if (this.partDefaults && this.partDefaults.bone === boneName) o = { ...this.partDefaults.o, ...o };
     const b = this.byName[boneName];
     if (!b) throw new Error('No bone ' + boneName);
     this.root.updateMatrixWorld(true);

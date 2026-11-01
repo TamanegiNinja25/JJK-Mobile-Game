@@ -19,6 +19,8 @@ export interface DamageOpts {
   consumeMark?: boolean;
   /** suppress the per-hit spark */
   quiet?: boolean;
+  /** cancels techniques it touches (the Inverted Spear of Heaven): goes through Infinity */
+  nullify?: boolean;
 }
 
 export interface Target {
@@ -31,6 +33,8 @@ export interface Target {
   team: 'player' | 'enemy';
   marked: number;
   isBoss: boolean;
+  hp: number;
+  maxHp: number;
 }
 
 /** Anything that can deal damage. */
@@ -94,7 +98,7 @@ export interface FxAPI {
   light(x: number, y: number, z: number, color: number, intensity: number, dur: number, range?: number): void;
 }
 
-export type DomainKind = 'shrine' | 'shadow' | 'nails' | 'void' | 'coffin' | 'womb' | 'home' | 'moon';
+export type DomainKind = 'shrine' | 'shadow' | 'nails' | 'void' | 'coffin' | 'womb' | 'home' | 'moon' | 'love';
 
 export interface WorldAPI {
   time: number;

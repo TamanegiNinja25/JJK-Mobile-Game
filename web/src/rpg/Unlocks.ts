@@ -14,6 +14,8 @@ const RULES: Partial<Record<ClassId, (d: SaveData) => boolean>> = {
   sukunaMegumi: d => done(d, 'm23'),
   heianSukuna: d => done(d, 'm26'),
   moduloYuji: d => done(d, 'm30') || !!d.flags?.finished_yuji || (done(d, 'm26') && d.cls === 'yuji'),
+  yuta: d => done(d, 'm15'),
+  toji: d => done(d, 'm28'),
 };
 
 function stored(): Set<ClassId> {

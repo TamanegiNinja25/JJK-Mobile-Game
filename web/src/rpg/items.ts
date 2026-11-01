@@ -82,6 +82,20 @@ reg(
   W('heianKingFist', 'Gauntlets of the Heian King', 'heianSukuna', 80, 248, 56000, 'fist', '#0a0a0a', '#ff6a2a'),
   W('burningWraps', 'Ryomen\'s Burning Wraps', 'heianSukuna', 50, 140, 26000, 'fist', '#3a0a06', '#ffd04a', { unique: [{ k: 'atkPct', v: 0.15 }, { k: 'bfChance', v: 0.04 }, { k: 'str', v: 16 }, { k: 'ce', v: 12 }], desc: 'Cloth from a shrine that burned a thousand years ago. It has not stopped smouldering.' }),
 
+  W('yutaKatana', 'Okkotsu\'s Katana', 'yuta', 1, 9, 70, 'blade', '#e8ecf4', '#ffb0e0'),
+  W('wardKatana', 'Ward-Wrapped Katana', 'yuta', 15, 38, 1500, 'blade', '#f0f0f4', '#c8d0ff'),
+  W('rikaKatana', 'Rika\'s Katana', 'yuta', 30, 88, 7800, 'blade', '#f4e8f0', '#ff8ad0'),
+  W('mimicBlade', 'Mimicry Blade', 'yuta', 55, 156, 25000, 'blade', '#d8d0ec', '#9a7aff'),
+  W('loveBlade', 'Blade of Authentic Love', 'yuta', 80, 248, 56000, 'blade', '#ffffff', '#ff6ac0'),
+  W('pureLoveBlade', 'Pure Love', 'yuta', 45, 130, 24000, 'blade', '#ffe8f4', '#ff4aa8', { unique: [{ k: 'summonPow', v: 0.3 }, { k: 'skillPow', v: 0.15 }, { k: 'cePct', v: 0.12 }, { k: 'ce', v: 16 }], desc: 'A blade Yuta never names. Rika hums when he draws it.' }),
+
+  W('tojiKnife', 'Mercenary\'s Knife', 'toji', 1, 10, 70, 'knife', '#c8ccd4', '#8a6aa0'),
+  W('tojiCloud', 'Playful Cloud', 'toji', 15, 40, 1500, 'spear', '#c8a050', '#5a3a2a'),
+  W('tojiSoul', 'Split Soul Katana', 'toji', 30, 92, 7800, 'blade', '#b8a8d8', '#2a2030'),
+  W('tojiChain', 'Chain-Bound Spear', 'toji', 55, 162, 25000, 'spear', '#9a9aa4', '#3a3a44'),
+  W('tojiHeaven', 'Inverted Spear of Heaven (Toji)', 'toji', 80, 256, 56000, 'spear', '#d8d8e0', '#9a2a4a'),
+  W('tojiInventory', 'Inventory Curse\'s Hoard', 'toji', 45, 136, 24000, 'knife', '#6a5a4a', '#c8a050', { unique: [{ k: 'atkPct', v: 0.15 }, { k: 'crit', v: 0.08 }, { k: 'critDmg', v: 0.3 }, { k: 'str', v: 16 }], desc: 'Whatever the worm curse coughs up today. Usually something sharp.' }),
+
   W('moduloWraps', 'Worn Wraps', 'moduloYuji', 1, 8, 60, 'fist', '#d8d0c0', '#ff8aa0'),
   W('oldKnuckle', 'Veteran Knuckles', 'moduloYuji', 15, 36, 1400, 'fist', '#3a3a44', '#ff8aa0'),
   W('bloodFist', 'Blood-Forged Gauntlets', 'moduloYuji', 30, 84, 7400, 'fist', '#2a0a10', '#ff2a4a'),

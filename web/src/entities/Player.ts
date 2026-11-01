@@ -4,7 +4,7 @@ import { Actor } from './Actor';
 import type { World } from '../world/World';
 import { PlayerState } from '../rpg/PlayerState';
 import { Input, Action } from '../core/Input';
-import { buildCharacter } from '../render/models/characters';
+import { buildCharacter, SPECS } from '../render/models/characters';
 import { wrapHumanoid } from '../render/models/model';
 import { ACTION_TIMING } from '../render/models/humanoid';
 import { weaponMesh } from '../render/models/weapons';
@@ -12,6 +12,7 @@ import { ITEMS } from '../rpg/items';
 import { SKILLS, triggerReactions } from '../rpg/skills';
 import { Caster } from '../world/api';
 import { audio } from '../audio/Audio';
+import { voice, voiceFor } from '../audio/Voice';
 import { clamp } from '../core/util';
 
 export class Player extends Actor implements Caster {
@@ -44,8 +45,12 @@ export class Player extends Actor implements Caster {
     const m = wrapHumanoid(buildCharacter(ps.cls.model));
     this.setModel(m, 1);
     m.setStance?.(ps.cls.stance);
-    // footsteps land exactly when a foot plants in the walk cycle
-    m.onStep = () => { if (!this.dashS) audio.step(this.world.surfaceAt(this.x, this.z), { vol: 0.8 }); };
+    // footsteps land exactly when a foot plants in the walk cycle, and carry the body's weight:
+    // Toji and Heian Sukuna land low and heavy, Nobara light
+    const sp = SPECS[ps.cls.model === 'heianSukuna' ? 'sukunaHeian' : ps.cls.model];
+    const weight = (sp?.bulk ?? 1) * (sp?.height ?? 1);
+    const stepO = { vol: 0.8 * Math.min(1.25, Math.max(0.75, weight)), pitch: 1 / Math.sqrt(Math.max(0.6, weight)) };
+    m.onStep = () => { if (!this.dashS) audio.step(this.world.surfaceAt(this.x, this.z), stepO); };
     this.refreshWeapon();
     ps.on((ev) => { if (ev === 'equip') this.refreshWeapon(); });
   }
@@ -246,6 +251,8 @@ export class Player extends Actor implements Caster {
       }
     });
     this.attackT = dur * 0.82;
+    // a grunt on the combo's closing blow, now and then
+    if (this.comboIdx === cls.combo.length - 1 && Math.random() < 0.35) voice.bark('player', voiceFor(cls.model), 'effort', 0.7);
     this.comboIdx = (this.comboIdx + 1) % cls.combo.length;
     this.comboT = dur + 0.5;
   }
@@ -267,7 +274,7 @@ export class Player extends Actor implements Caster {
       if (this.ps.d.domain < 100) { this.world.game.toast('Domain gauge not full', 'warn', 1); audio.play('error'); return false; }
     }
     const cost = s.ce?.(lv) ?? 0;
-    if (this.ps.d.ce < cost) { this.world.game.toast('Not enough cursed energy', 'warn', 1); audio.play('error'); return false; }
+    if (this.ps.d.ce < cost) { this.world.game.toast(this.ps.cls.resource === 'stamina' ? 'Not enough stamina' : 'Not enough cursed energy', 'warn', 1); audio.play('error'); return false; }
     this.ps.d.ce -= cost;
     if (s.type === 'ultimate') this.ps.d.domain = 0;
     this.cds[id] = this.ps.d.cheats?.noCd ? 0 : (s.cd?.(lv) ?? 5) * (1 - this.ps.stats.cdr);
@@ -278,6 +285,8 @@ export class Player extends Actor implements Caster {
     this.attackT = 0;
     this.comboIdx = 0;
     s.cast(this.world, this, lv, t, this.input.moveX, this.input.moveZ);
+    // the sorcerer's own shout on a technique (not every time, or it grates)
+    if (s.type === 'ultimate' || Math.random() < 0.6) voice.bark('player', voiceFor(this.ps.cls.model), 'kiai', s.type === 'ultimate' ? 1.1 : 0.85);
     this.ps.d.domain = Math.min(100, this.ps.d.domain + (s.type === 'ultimate' ? 0 : 2));
     if (s.type === 'ultimate') this.world.onPlayerUltimate(s.id);
     this.world.game.ui.hud?.flashSkill(id);
@@ -328,6 +337,8 @@ export class Player extends Actor implements Caster {
     }
     this.ps.d.domain = Math.min(100, this.ps.d.domain + (dmg / this.ps.stats.maxHp) * 40);
     audio.play('hurt', { vol: 0.7 });
+    // a real blow draws a cry in their own voice
+    if (dmg > this.ps.stats.maxHp * 0.07) voice.bark('player', voiceFor(this.ps.cls.model), 'hurt', 0.8);
     this.model?.hit();
     this.world.fx.flash('#ff0010', 0.18, 0.25);
   }

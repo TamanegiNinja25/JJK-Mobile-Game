@@ -193,6 +193,11 @@ void main(){
     float st = step(0.995, h(floor(uv * 80.0)));
     c = mix(vec3(0.02, 0.04, 0.1), vec3(0.08, 0.14, 0.26), smoothstep(-0.1, 0.6, el)) + vec3(0.8) * st;
     c += vec3(0.95, 0.92, 0.75) * smoothstep(0.24, 0.2, length(vec2(az, el - 0.35)));
+  } else if (uKind == 11) { // Authentic Mutual Love: a pale rose sky with drifting light, like a held breath
+    float s = fbm(uv * 1.4 + vec2(uTime * 0.03, uTime * 0.05));
+    c = mix(vec3(1.0, 0.86, 0.93), vec3(0.42, 0.24, 0.42), smoothstep(-0.05, 0.6, el)) * (0.8 + 0.4 * s);
+    c += vec3(1.0, 0.95, 0.98) * smoothstep(0.035, 0.0, abs(el - 0.05)) * 0.7;
+    c += vec3(1.0, 0.8, 0.92) * step(0.993, h(floor(uv * 60.0) + floor(uTime * 2.0))) * 0.8;
   } else { // Self-Embodiment of Perfection
     float cell = n2(uv * 6.0 + uTime * 0.2);
     c = mix(vec3(0.15, 0.17, 0.22), vec3(0.75, 0.78, 0.82), smoothstep(0.55, 0.75, cell));
@@ -215,12 +220,13 @@ void main(){
   else if (uKind == 8) c = vec3(0.35, 0.08, 0.14) + vec3(0.5, 0.1, 0.2) * rip * 0.4;
   else if (uKind == 9) c = vec3(0.32, 0.24, 0.22) + vec3(0.6, 0.35, 0.2) * step(0.97, fract(vP.x * 0.6)) * 0.6 + vec3(0.3, 0.15, 0.1) * rip * 0.2;
   else if (uKind == 10) c = vec3(0.04, 0.06, 0.12) + vec3(0.3, 0.35, 0.5) * rip * 0.3;
+  else if (uKind == 11) c = vec3(0.55, 0.42, 0.52) + vec3(0.45, 0.3, 0.42) * rip * 0.25;
   else c = vec3(0.3, 0.32, 0.36) + vec3(0.3) * rip * 0.3;
   float edge = smoothstep(1.0, 0.95, r);
   gl_FragColor = vec4(c, uFade * edge * 0.92);
 }`;
 
-export const DOMAIN_KIND: Record<string, number> = { shrine: 0, shadow: 1, nails: 2, void: 3, coffin: 4, sea: 5, hands: 6, court: 7, womb: 8, home: 9, moon: 10 };
+export const DOMAIN_KIND: Record<string, number> = { shrine: 0, shadow: 1, nails: 2, void: 3, coffin: 4, sea: 5, hands: 6, court: 7, womb: 8, home: 9, moon: 10, love: 11 };
 
 export class Effects implements FxAPI {
   r: Renderer;
@@ -368,6 +374,15 @@ export class Effects implements FxAPI {
         const a = Math.random() * TAU, sp = rand(6, 13), y = rand(0.3, 4);
         this.add.spawn(d.x + Math.cos(a), y, d.z + Math.sin(a), Math.cos(a) * sp, rand(-1, 1), Math.sin(a) * sp, c.setHex(Math.random() < 0.5 ? 0xbfefff : 0xffffff), 0.12, 0.02, 1.1, 0, 0);
         if (Math.random() < 0.04) this.ring(d.x, d.z, 0x9ad8ff, d.r * rand(0.3, 0.8), 0.9, 0.12);
+        break;
+      }
+      case 'love': {
+        // the planted katanas flare in turn as the techniques sealed in them go off, and petals drift down
+        this.ambT = 0.07 / q;
+        const [x, z] = spot();
+        this.norm.spawn(x, rand(3, 5), z, rand(-0.5, 0.5), -0.9, rand(-0.5, 0.5), c.setHex(Math.random() < 0.6 ? 0xffc8e4 : 0xffffff), 0.12, 0.1, 3, 0, 0.3);
+        if (Math.random() < 0.18) { this.pillar(x, z, 0.12, 2.2, Math.random() < 0.5 ? 0xffffff : 0xffb0e0, 0.35); this.onSound?.('tink', x, z, 0.18); }
+        if (Math.random() < 0.04) this.ring(d.x, d.z, 0xffb0e0, d.r * rand(0.4, 0.8), 1.0, 0.14);
         break;
       }
       case 'home': {
@@ -723,9 +738,10 @@ export class Effects implements FxAPI {
     if (kind === 'shrine') group.add(shrineModel(r));
     if (kind === 'nails') group.add(nailRing(r));
     if (kind === 'court') group.add(courtModel(r));
+    if (kind === 'love') group.add(swordField(r));
     const intro = 1.1;
-    this.sigil(x, z, 2.5, kind === 'shadow' ? 0x111122 : kind === 'void' || kind === 'moon' ? 0x7fdcff : kind === 'home' ? 0xffa06a : 0xff2a3a, intro + 0.3);
-    this.flash(kind === 'void' ? '#bfefff' : kind === 'shadow' ? '#000000' : kind === 'home' ? '#ffd0a0' : kind === 'moon' ? '#0a1430' : '#30000a', 0.65, 0.9);
+    this.sigil(x, z, 2.5, kind === 'shadow' ? 0x111122 : kind === 'void' || kind === 'moon' ? 0x7fdcff : kind === 'home' ? 0xffa06a : kind === 'love' ? 0xffb0e0 : 0xff2a3a, intro + 0.3);
+    this.flash(kind === 'void' ? '#bfefff' : kind === 'shadow' ? '#000000' : kind === 'home' ? '#ffd0a0' : kind === 'moon' ? '#0a1430' : kind === 'love' ? '#ffe8f4' : '#30000a', 0.65, 0.9);
     this.r.pulseBloom(1.5);
     const total = dur;
     this.domainActive = { kind, x, z, r, start: this.time, until: this.time + total, obj: group };
@@ -740,7 +756,7 @@ export class Effects implements FxAPI {
       group.children.forEach(c => { if (c.userData.spin) c.rotation.y += dt * c.userData.spin; });
       if (t > intro && Math.random() < 0.3) {
         const a = Math.random() * TAU, rr = Math.random() * r * 0.9;
-        const col = kind === 'shrine' ? 0xff2a2a : kind === 'shadow' ? 0x6a5aff : kind === 'void' ? 0x9ad8ff : kind === 'home' ? 0xffc08a : kind === 'moon' ? 0xe8f0ff : 0xff4a6a;
+        const col = kind === 'shrine' ? 0xff2a2a : kind === 'shadow' ? 0x6a5aff : kind === 'void' ? 0x9ad8ff : kind === 'home' ? 0xffc08a : kind === 'moon' ? 0xe8f0ff : kind === 'love' ? 0xffd0ec : 0xff4a6a;
         this.add.spawn(x + Math.cos(a) * rr, 0.1, z + Math.sin(a) * rr, 0, rand(1, 3), 0, this.tmpC.setHex(col), rand(0.1, 0.25), 0, 1.2, -0.3, 0.5);
       }
     }, () => {
@@ -748,6 +764,13 @@ export class Effects implements FxAPI {
       floor.geometry.dispose(); (floor.material as THREE.Material).dispose();
       if (this.domainActive?.obj === group) this.domainActive = null;
       if (lit) this.r.setDomain(null);
+      // the set pieces (shrine, nails, court, swords) are built fresh for every cast: free them too
+      group.traverse(o => {
+        if (o === dome || o === floor || !(o instanceof THREE.Mesh)) return;
+        o.geometry.dispose();
+        const m = o.material as THREE.Material | THREE.Material[];
+        if (Array.isArray(m)) m.forEach(x => x.dispose()); else m.dispose();
+      });
     });
     this.shake(0.4, 0.6);
   }
@@ -834,6 +857,27 @@ function nailRing(r: number) {
   const doll = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.0, 4, 8), new THREE.MeshBasicMaterial({ color: 0xb08a4a }));
   doll.position.set(0, 2, -r * 0.8);
   g.add(doll);
+  return g;
+}
+
+/** Authentic Mutual Love: katanas planted point-down across the whole domain, each holding a copied technique. */
+function swordField(r: number) {
+  const g = new THREE.Group();
+  const blade = new THREE.MeshBasicMaterial({ color: 0xeef0f6 });
+  const hilt = new THREE.MeshBasicMaterial({ color: 0x2a2030 });
+  const guard = new THREE.MeshBasicMaterial({ color: 0xd8b04a });
+  for (let i = 0; i < 46; i++) {
+    const a = i * 2.39996, rr = r * (0.25 + 0.7 * Math.sqrt((i + 0.5) / 46));
+    const s = new THREE.Group();
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.02), blade); b.position.y = 0.55;
+    const gd = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.12), guard); gd.position.y = 1.22;
+    const h = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 5), hilt); h.position.y = 1.44;
+    s.add(b, gd, h);
+    s.position.set(Math.sin(a) * rr, 0, Math.cos(a) * rr);
+    s.rotation.set((Math.sin(i * 3.1) * 0.25), a, Math.cos(i * 1.7) * 0.25);
+    s.scale.setScalar(1.45);
+    g.add(s);
+  }
   return g;
 }
 

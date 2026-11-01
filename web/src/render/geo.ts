@@ -17,6 +17,11 @@ export interface PartOpts {
   topColor?: number;
   /** keep smooth normals (faces, eyes); everything else is shaded flat per facet */
   smooth?: boolean;
+  /**
+   * An anime "angel ring" sheen: vertices within `band` of height `y` (in the bone's space) and facing the
+   * camera side are lifted towards white by up to `k`. Used on hair.
+   */
+  shine?: { y: number; band: number; k: number };
 }
 
 /**
@@ -87,6 +92,16 @@ export function bakePart(src: THREE.BufferGeometry, color: number, o: PartOpts =
   g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   g.setAttribute('glow', new THREE.BufferAttribute(glow, 1));
   g.applyMatrix4(partMatrix(o));
+  if (o.shine) {
+    const P = g.getAttribute('position') as THREE.BufferAttribute, N = g.getAttribute('normal') as THREE.BufferAttribute, C = g.getAttribute('color') as THREE.BufferAttribute;
+    const { y, band, k } = o.shine;
+    for (let i = 0; i < P.count; i++) {
+      const d = Math.abs(P.getY(i) - y);
+      if (d > band || N.getZ(i) < -0.35 || N.getY(i) < -0.3) continue;
+      const t = (1 - d / band) * k;
+      C.setXYZ(i, C.getX(i) + (1 - C.getX(i)) * t, C.getY(i) + (1 - C.getY(i)) * t, C.getZ(i) + (1 - C.getZ(i)) * t);
+    }
+  }
   if (extraMatrix) g.applyMatrix4(extraMatrix);
   return g;
 }

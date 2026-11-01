@@ -10,49 +10,49 @@ const GOLD = 0xe0b84e;
 export const SPECS: Record<string, HumanoidSpec> = {
   yuji: {
     skin: 0xf3c9a6, hair: 0xf28da0, hairStyle: 'yuji', eyes: 0x7a4128, outfit: 'uniformHood',
-    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0xd23a3a, inner: 0xc3262f, bulk: 1.05,
+    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0xd23a3a, inner: 0xc3262f, bulk: 1.05, eyeShape: 'round', shoulders: 1.04,
   },
   megumi: {
     skin: 0xf1d3b8, hair: 0x29324e, hairStyle: 'megumi', eyes: 0x2f5866, outfit: 'uniform',
-    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0x16161a,
+    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0x16161a, eyeShape: 'sharp', legs: 1.02,
   },
   nobara: {
     skin: 0xf7d5bb, hair: 0xd9773a, hairStyle: 'nobara', eyes: 0x8c5a2e, outfit: 'uniformSkirt',
-    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0x4a2e22, height: 0.95, bulk: 0.9, extras: ['hairpin'],
+    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0x4a2e22, height: 0.95, bulk: 0.9, extras: ['hairpin'], eyeShape: 'sharp',
   },
   gojo: {
     skin: 0xf6dcc8, hair: 0xf3f6fb, hairStyle: 'gojo', eyes: 0x7fdcff, outfit: 'uniformHigh',
-    top: 0x12141f, bottom: 0x12141f, accent: 0x12141f, shoes: 0x0e0e12, glasses: 'blindfold', height: 1.14,
+    top: 0x12141f, bottom: 0x12141f, accent: 0x12141f, shoes: 0x0e0e12, glasses: 'blindfold', height: 1.14, eyeShape: 'round', legs: 1.08, shoulders: 1.04,
   },
   nanami: {
     skin: 0xf0cfb0, hair: 0xe9d07b, hairStyle: 'nanami', eyes: 0x5a6a3a, outfit: 'suit',
     top: 0xd2c9ab, bottom: 0xd2c9ab, accent: 0xd2c9ab, shoes: 0x3a2a22, inner: 0xc7973a,
-    glasses: 'goggles', height: 1.1, bulk: 1.18, extras: ['tie', 'leopardTie'],
+    glasses: 'goggles', height: 1.1, bulk: 1.18, extras: ['tie', 'leopardTie'], eyeShape: 'narrow', shoulders: 1.08,
   },
   maki: {
     skin: 0xf2d4b8, hair: 0x2b4a3c, hairStyle: 'maki', eyes: 0x6a5a2a, outfit: 'uniform',
-    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0x1a1a1e, glasses: 'round', extras: ['backPolearm'],
+    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0x1a1a1e, glasses: 'round', extras: ['backPolearm'], eyeShape: 'sharp', legs: 1.04,
   },
   inumaki: {
     skin: 0xf3d8c2, hair: 0xe9e6de, hairStyle: 'inumaki', eyes: 0x7a6aa0, outfit: 'uniformHigh',
-    top: NAVY, bottom: NAVY, accent: NAVY, shoes: 0x1a1a1e, extras: ['collar', 'zipper'], height: 0.96,
+    top: NAVY, bottom: NAVY, accent: NAVY, shoes: 0x1a1a1e, extras: ['collar', 'zipper'], height: 0.96, eyeShape: 'round',
   },
   shoko: {
     skin: 0xf1d6c0, hair: 0x5a3b2c, hairStyle: 'shoko', eyes: 0x4a3a32, outfit: 'labcoat',
-    top: 0xeeeeea, bottom: 0x24242a, accent: 0xdddddd, shoes: 0x1e1e22, inner: 0x2a2a30, extras: ['eyeBags', 'mole'],
+    top: 0xeeeeea, bottom: 0x24242a, accent: 0xdddddd, shoes: 0x1e1e22, inner: 0x2a2a30, extras: ['eyeBags', 'mole'], eyeShape: 'tired',
   },
   yaga: {
     skin: 0xd9b090, hair: 0x2a2420, hairStyle: 'yaga', eyes: 0x222222, outfit: 'casual',
-    top: 0x2a2a2e, bottom: 0x22222a, accent: 0x2a2a2e, shoes: 0x111111, glasses: 'shades', height: 1.12, bulk: 1.4, extras: ['goatee'],
+    top: 0x2a2a2e, bottom: 0x22222a, accent: 0x2a2a2e, shoes: 0x111111, glasses: 'shades', height: 1.12, bulk: 1.4, extras: ['goatee'], eyeShape: 'narrow', shoulders: 1.1,
   },
   ijichi: {
     skin: 0xf0d4bc, hair: 0x2a2620, hairStyle: 'ijichi', eyes: 0x333333, outfit: 'suit',
     top: 0x1f1f25, bottom: 0x1f1f25, accent: 0x1f1f25, shoes: 0x111111, inner: 0x2c2c38,
-    glasses: 'round', bulk: 0.9, extras: ['tie'],
+    glasses: 'round', bulk: 0.9, extras: ['tie'], eyeShape: 'tired',
   },
   todo: {
     skin: 0xd8a882, hair: 0x2c201a, hairStyle: 'todo', eyes: 0x3a2a20, outfit: 'tank',
-    top: 0xf0f0ea, bottom: 0x2c2c3a, accent: 0x2c2c3a, shoes: 0x16161a, height: 1.16, bulk: 1.5, extras: ['facescar'],
+    top: 0xf0f0ea, bottom: 0x2c2c3a, accent: 0x2c2c3a, shoes: 0x16161a, height: 1.16, bulk: 1.5, extras: ['facescar'], eyeShape: 'narrow', shoulders: 1.18,
   },
   nitta: {
     skin: 0xf2d8c4, hair: 0x3a281e, hairStyle: 'nobara', eyes: 0x4a3426, outfit: 'suit',
@@ -64,7 +64,7 @@ export const SPECS: Record<string, HumanoidSpec> = {
   },
   junpei: {
     skin: 0xefd6c4, hair: 0x2a2a34, hairStyle: 'junpei', eyes: 0x3a3a48, outfit: 'casual',
-    top: 0x23232b, bottom: 0x23232b, accent: 0x23232b, shoes: 0x2a2a30, extras: ['eyeBags'],
+    top: 0x23232b, bottom: 0x23232b, accent: 0x23232b, shoes: 0x2a2a30, extras: ['eyeBags'], eyeShape: 'tired',
   },
   miwa: {
     skin: 0xf6dccb, hair: 0x5f8fd8, hairStyle: 'miwa', eyes: 0x3a5a9a, outfit: 'suit',
@@ -72,12 +72,12 @@ export const SPECS: Record<string, HumanoidSpec> = {
   },
   mahito: {
     skin: 0xdcdcd2, hair: 0x7f8fa6, hairStyle: 'mahito', eyes: 0x7ac0dc, outfit: 'patchwork',
-    top: 0x2b2a35, bottom: 0x2b2a35, accent: 0x2b2a35, shoes: 0x1a1a20, extras: ['stitches', 'cursedEyes'], height: 1.04,
+    top: 0x2b2a35, bottom: 0x2b2a35, accent: 0x2b2a35, shoes: 0x1a1a20, extras: ['stitches', 'cursedEyes'], height: 1.04, eyeShape: 'round', legs: 1.03,
   },
   sukuna: {
     skin: 0xf0c4a2, hair: 0xe57b90, hairStyle: 'yuji', eyes: 0xff2a3a, outfit: 'kimono',
     top: 0xeeeae0, bottom: 0xeeeae0, accent: 0x111111, shoes: 0x1a1a1a, height: 1.35, bulk: 1.35,
-    extras: ['sukunaMarks', 'cursedEyes'],
+    extras: ['sukunaMarks', 'cursedEyes'], eyeShape: 'narrow',
   },
   sasaki: {
     skin: 0xf6dccb, hair: 0x1e1a22, hairStyle: 'bob', eyes: 0x3a2a2a, outfit: 'uniformSkirt',
@@ -90,11 +90,11 @@ export const SPECS: Record<string, HumanoidSpec> = {
   choso: {
     skin: 0xe8c8b0, hair: 0x1a1418, hairStyle: 'choso', eyes: 0x6a3a2a, outfit: 'robe',
     top: 0x3a2836, bottom: 0x2a1e26, accent: 0xe8e0d8, shoes: 0x16121a, inner: 0xe8e0d8, height: 1.1, bulk: 1.08,
-    extras: ['bloodStripe'],
+    extras: ['bloodStripe'], eyeShape: 'tired',
   },
   kenjaku: {
     skin: 0xf0d4bc, hair: 0x1a1a20, hairStyle: 'geto', eyes: 0x4a3a2a, outfit: 'kimono',
-    top: 0x2a2a2e, bottom: 0x2a2a2e, accent: 0x8a7a5a, shoes: 0x111111, height: 1.12, bulk: 1.05, extras: ['browStitch'],
+    top: 0x2a2a2e, bottom: 0x2a2a2e, accent: 0x8a7a5a, shoes: 0x111111, height: 1.12, bulk: 1.05, extras: ['browStitch'], eyeShape: 'narrow',
   },
   tsukamoto: {
     skin: 0xc89a6a, hair: 0x6a4a2a, hairStyle: 'bald', eyes: 0x111111, outfit: 'patchwork',
@@ -113,23 +113,23 @@ export const SPECS: Record<string, HumanoidSpec> = {
   },
   yuta: {
     skin: 0xf1d6c2, hair: 0x15151c, hairStyle: 'yuta', eyes: 0x2a2a3a, outfit: 'uniform',
-    top: 0xeeeef0, bottom: 0xeeeef0, accent: 0xd8d8de, shoes: 0x1a1a1e, height: 1.04, extras: ['eyeBags', 'katana', 'ring'],
+    top: 0xeeeef0, bottom: 0xeeeef0, accent: 0xd8d8de, shoes: 0x1a1a1e, height: 1.04, extras: ['eyeBags', 'katana', 'ring'], eyeShape: 'tired', shoulders: 0.96,
   },
   naoya: {
     skin: 0xf0d4bc, hair: 0xe8d48a, hairStyle: 'naoya', eyes: 0x5a3a2a, outfit: 'kimono',
-    top: 0x2a2a34, bottom: 0x3a3a48, accent: 0xd8c8a0, shoes: 0x111111, height: 1.08, extras: ['piercings'],
+    top: 0x2a2a34, bottom: 0x3a3a48, accent: 0xd8c8a0, shoes: 0x111111, height: 1.08, extras: ['piercings'], eyeShape: 'narrow', legs: 1.03,
   },
   higuruma: {
     skin: 0xe2c0a0, hair: 0x1e1a18, hairStyle: 'short', eyes: 0x2a2a2a, outfit: 'suit',
-    top: 0x24262e, bottom: 0x24262e, accent: 0xd8b04a, shoes: 0x111111, inner: 0xe8e4dc, height: 1.1, extras: ['tie', 'stubble', 'eyeBags', 'gavel'],
+    top: 0x24262e, bottom: 0x24262e, accent: 0xd8b04a, shoes: 0x111111, inner: 0xe8e4dc, height: 1.1, extras: ['tie', 'stubble', 'eyeBags', 'gavel'], eyeShape: 'tired',
   },
   hakari: {
     skin: 0xf0d0b4, hair: 0xb8b4a8, hairStyle: 'pompadour', eyes: 0x4a3a2a, outfit: 'uniformHigh',
-    top: 0x1a1c2a, bottom: 0x1a1c2a, accent: GOLD, shoes: 0x16161a, height: 1.12, bulk: 1.12,
+    top: 0x1a1c2a, bottom: 0x1a1c2a, accent: GOLD, shoes: 0x16161a, height: 1.12, bulk: 1.12, eyeShape: 'sharp',
   },
   kashimo: {
     skin: 0xf2dcc8, hair: 0x9adfff, hairStyle: 'kashimo', eyes: 0x3a6a9a, outfit: 'robe',
-    top: 0x2a3448, bottom: 0x1e2636, accent: 0x6adfff, shoes: 0x16161a, inner: 0xe8e8f0, height: 1.06, extras: ['staff', 'cursedEyes'],
+    top: 0x2a3448, bottom: 0x1e2636, accent: 0x6adfff, shoes: 0x16161a, inner: 0xe8e8f0, height: 1.06, extras: ['staff', 'cursedEyes'], eyeShape: 'sharp',
   },
   ishigori: {
     skin: 0xdcb08a, hair: 0x15151a, hairStyle: 'pompadour', eyes: 0x2a2a2a, outfit: 'tank',
@@ -141,11 +141,11 @@ export const SPECS: Record<string, HumanoidSpec> = {
   },
   uraume: {
     skin: 0xf4e8e0, hair: 0xf0f2f8, hairStyle: 'bob', eyes: 0xc83a4a, outfit: 'kimono',
-    top: 0xe8ecf4, bottom: 0xc8d0e0, accent: 0x9ab0d0, shoes: 0x2a2a34, height: 1.04, bulk: 0.9, extras: ['cursedEyes'],
+    top: 0xe8ecf4, bottom: 0xc8d0e0, accent: 0x9ab0d0, shoes: 0x2a2a34, height: 1.04, bulk: 0.9, extras: ['cursedEyes'], eyeShape: 'narrow',
   },
   mai: {
     skin: 0xf2d4b8, hair: 0x1e2a24, hairStyle: 'mai', eyes: 0x6a5a2a, outfit: 'uniformSkirt',
-    top: 0x22242e, bottom: 0x22242e, accent: GOLD, shoes: 0x1a1a1e, height: 0.96, bulk: 0.88,
+    top: 0x22242e, bottom: 0x22242e, accent: GOLD, shoes: 0x1a1a1e, height: 0.96, bulk: 0.88, eyeShape: 'sharp',
   },
   hei: {
     skin: 0xe4c4a6, hair: 0x1a1612, hairStyle: 'short', eyes: 0x2a2020, outfit: 'kimono',
@@ -166,29 +166,29 @@ export const SPECS: Record<string, HumanoidSpec> = {
   sukunaHeian: {
     skin: 0xf0c4a2, hair: 0xe57b90, hairStyle: 'yuji', eyes: 0xff2a3a, outfit: 'kimono',
     top: 0xf2eee4, bottom: 0x1a1a1e, accent: 0x111111, shoes: 0x1a1a1a, inner: 0x111111, height: 1.48, bulk: 1.55,
-    extras: ['sukunaMarks', 'cursedEyes', 'secondFace', 'bellyMouth'],
+    extras: ['sukunaMarks', 'cursedEyes', 'secondFace', 'bellyMouth'], eyeShape: 'narrow', shoulders: 1.1,
   },
   // ---- Unlockable sorcerers ----
   sukunaYuji: {
     skin: 0xf3c9a6, hair: 0xf28da0, hairStyle: 'sukunaBack', eyes: 0xff2a3a, outfit: 'uniformHood',
-    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0xd23a3a, inner: 0xc3262f, bulk: 1.08, extras: ['sukunaMarks', 'cursedEyes', 'wristMarks'],
+    top: NAVY, bottom: NAVY, accent: GOLD, shoes: 0xd23a3a, inner: 0xc3262f, bulk: 1.08, extras: ['sukunaMarks', 'cursedEyes', 'wristMarks'], eyeShape: 'narrow', shoulders: 1.04,
   },
   sukunaMegumi: {
     skin: 0xf1d3b8, hair: 0x29324e, hairStyle: 'megumi', eyes: 0xff2a3a, outfit: 'kimono',
-    top: 0xf2eee4, bottom: 0x1a1a1e, accent: 0x111111, shoes: 0x16161a, inner: 0x111111, extras: ['sukunaMarks', 'cursedEyes', 'wristMarks'],
+    top: 0xf2eee4, bottom: 0x1a1a1e, accent: 0x111111, shoes: 0x16161a, inner: 0x111111, extras: ['sukunaMarks', 'cursedEyes', 'wristMarks'], eyeShape: 'narrow', legs: 1.02,
   },
   moduloYuji: {
     skin: 0xefc29e, hair: 0xf28da0, hairStyle: 'yuji', eyes: 0x7a4128, outfit: 'robe',
-    top: 0x1c1e26, bottom: 0x1a1a20, accent: 0xc3262f, shoes: 0x2a2226, inner: 0xc3262f, height: 1.06, bulk: 1.15, extras: ['facescar', 'eyeBags', 'wristMarks'],
+    top: 0x1c1e26, bottom: 0x1a1a20, accent: 0xc3262f, shoes: 0x2a2226, inner: 0xc3262f, height: 1.06, bulk: 1.15, extras: ['facescar', 'eyeBags', 'wristMarks'], eyeShape: 'tired', shoulders: 1.06,
   },
   // ---- Memories and the open world ----
   toji: {
     skin: 0xe8c4a2, hair: 0x141418, hairStyle: 'toji', eyes: 0x3a4a3a, outfit: 'casual',
-    top: 0x1a1a1e, bottom: 0xd8d4cc, accent: 0x1a1a1e, shoes: 0x1a1a1a, height: 1.14, bulk: 1.32, extras: ['lipScar', 'wormCurse'],
+    top: 0x1a1a1e, bottom: 0xd8d4cc, accent: 0x1a1a1e, shoes: 0x1a1a1a, height: 1.14, bulk: 1.32, extras: ['lipScar', 'wormCurse'], eyeShape: 'narrow', shoulders: 1.16, legs: 1.03,
   },
   geto: {
     skin: 0xf0d4bc, hair: 0x1a1a20, hairStyle: 'geto', eyes: 0x4a3a2a, outfit: 'robe',
-    top: 0x1a1a1e, bottom: 0x1a1a1e, accent: 0x9a7a3a, shoes: 0x111111, inner: 0xd8d0c0, height: 1.14, bulk: 1.08, extras: ['kesa'],
+    top: 0x1a1a1e, bottom: 0x1a1a1e, accent: 0x9a7a3a, shoes: 0x111111, inner: 0xd8d0c0, height: 1.14, bulk: 1.08, extras: ['kesa'], eyeShape: 'narrow', shoulders: 1.04,
   },
   kuchisake: {
     skin: 0xf4ece4, hair: 0x101014, hairStyle: 'long', eyes: 0x8a0d18, outfit: 'robe',
@@ -196,7 +196,7 @@ export const SPECS: Record<string, HumanoidSpec> = {
   },
   kamo: {
     skin: 0xf2dcc8, hair: 0x1a1a1e, hairStyle: 'kamo', eyes: 0x3a2a2a, outfit: 'robe',
-    top: 0x2a2a34, bottom: 0x2a2a34, accent: 0xd8c8a0, shoes: 0x111111, inner: 0xe8e0d0, height: 1.06,
+    top: 0x2a2a34, bottom: 0x2a2a34, accent: 0xd8c8a0, shoes: 0x111111, inner: 0xe8e0d0, height: 1.06, eyeShape: 'narrow',
   },
   monk: {
     skin: 0xe0c0a0, hair: 0xd8d0c4, hairStyle: 'bald', eyes: 0x2a2420, outfit: 'robe',

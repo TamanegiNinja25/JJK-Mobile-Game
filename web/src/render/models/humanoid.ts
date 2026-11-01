@@ -31,6 +31,11 @@ export interface HumanoidSpec {
     | 'katana' | 'gavel' | 'staff' | 'stubble' | 'piercings' | 'secondFace' | 'bellyMouth' | 'ring' | 'scarf' | 'wristMarks'
     | 'lipScar' | 'wormCurse' | 'kesa' | 'scissors' | 'longCoat' | 'fourEyes' | 'surgicalMask')[];
   outline?: number;
+  /** silhouette, so characters aren't one body in different colours: leg length and shoulder width */
+  legs?: number;
+  shoulders?: number;
+  /** eye shape: round (open, young), sharp (focused), narrow (cold, menacing), tired (heavy lids) */
+  eyeShape?: 'round' | 'sharp' | 'narrow' | 'tired';
 }
 
 export interface Humanoid extends RigModel {
@@ -47,10 +52,10 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
   const HS = spec.head ?? 1;
   const r = new RigBuilder();
 
-  const legLen = 0.42 * H;
+  const legLen = 0.42 * H * (spec.legs ?? 1);
   const hipY = legLen * 2 + 0.06;
   const torsoLen = 0.5 * H;
-  const shoulderW = 0.2 * B;
+  const shoulderW = 0.2 * B * (spec.shoulders ?? 1);
   const headR = 0.215 * HS;
 
   r.bone('hips', 'root', [0, hipY, 0]);
@@ -186,17 +191,27 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
   // eyes (large anime style, sitting on the face surface)
   const glasses = spec.glasses ?? 'none';
   if (glasses !== 'blindfold') {
+    // eye shape: how open the eye is, how the lash line slants, and how heavy it is
+    const shape = spec.eyeShape ?? 'round';
+    const ey = shape === 'sharp' ? 0.8 : shape === 'narrow' ? 0.62 : shape === 'tired' ? 0.84 : 1.04;
+    // positive: inner corners low (a hard stare); negative: inner corners high (soft, worried, tired)
+    const slant = shape === 'sharp' ? 0.12 : shape === 'narrow' ? 0.22 : shape === 'tired' ? -0.2 : -0.1;
+    const browTilt = shape === 'sharp' ? 0.14 : shape === 'narrow' ? 0.22 : shape === 'tired' ? -0.1 : 0;
+    const lash = shape === 'sharp' || shape === 'narrow' ? 0.02 : 0.016;
+    const lidY = 0.056 * (0.55 + 0.45 * ey);
     for (const sx of [1, -1]) {
       const yaw = sx * 0.35, eb = sx === 1 ? 'eyeL' : 'eyeR';
       // eyeball, iris, pupil and highlight ride the eye bone (offsets from the eye centre)
-      r.part(eb, G.ellipsoid(0.05, 0.06, 0.022, 12, 8), 0xf9f7f2, { pos: [0, 0, 0], rot: [0, yaw, 0], smooth: true });
-      r.part(eb, G.ellipsoid(0.037, 0.05, 0.02, 12, 8), spec.eyes, { pos: [-sx * eyeX * 0.02, -0.004, 0.01], rot: [0, yaw, 0], smooth: true, glow: spec.extras?.includes('cursedEyes') ? 0.55 : 0.12, topColor: darken(spec.eyes, 0.55) });
-      r.part(eb, G.ellipsoid(0.018, 0.026, 0.01, 8, 6), 0x08080e, { pos: [-sx * eyeX * 0.03, -0.006, 0.02], rot: [0, yaw, 0], smooth: true });
-      r.part(eb, G.sphere(0.011, 6, 4), 0xffffff, { pos: [-sx * eyeX * 0.05 + 0.013, 0.017, 0.027], glow: 0.25 });
-      // upper lash line (stays put, so a closed eye reads as a line)
-      r.part('head', G.box(0.11, 0.016, 0.02), 0x15121a, { pos: [sx * eyeX, eyeY + 0.056, eyeZ + 0.004], rot: [0, yaw, sx * -0.1] });
+      r.part(eb, G.ellipsoid(0.05, 0.06 * ey, 0.022, 12, 8), 0xf9f7f2, { pos: [0, 0, 0], rot: [0, yaw, 0], smooth: true });
+      r.part(eb, G.ellipsoid(0.037, 0.05 * ey, 0.02, 12, 8), spec.eyes, { pos: [-sx * eyeX * 0.02, -0.004, 0.01], rot: [0, yaw, 0], smooth: true, glow: spec.extras?.includes('cursedEyes') ? 0.55 : 0.12, topColor: darken(spec.eyes, 0.55) });
+      r.part(eb, G.ellipsoid(0.018, 0.026 * Math.max(0.75, ey), 0.01, 8, 6), 0x08080e, { pos: [-sx * eyeX * 0.03, -0.006, 0.02], rot: [0, yaw, 0], smooth: true });
+      r.part(eb, G.sphere(0.011, 6, 4), 0xffffff, { pos: [-sx * eyeX * 0.05 + 0.013, 0.017 * ey, 0.027], glow: 0.25 });
+      // upper lash line (stays put, so a closed eye reads as a line); its slant carries the expression
+      r.part('head', G.box(0.11, lash, 0.02), 0x15121a, { pos: [sx * eyeX, eyeY + lidY, eyeZ + 0.004], rot: [0, yaw, sx * slant] });
+      // a heavy upper lid for tired eyes
+      if (shape === 'tired') r.part('head', G.ellipsoid(0.052, 0.018, 0.016, 10, 6), darken(skin, 0.86), { pos: [sx * eyeX, eyeY + lidY - 0.012, eyeZ + 0.006], rot: [0, yaw, sx * 0.08] });
       // brow (its bone carries the tilt)
-      r.part(sx === 1 ? 'browL' : 'browR', G.box(0.075, 0.014, 0.014), darken(spec.hair, 0.6), { pos: [0, 0, 0] });
+      r.part(sx === 1 ? 'browL' : 'browR', G.box(0.075, 0.014, 0.014), darken(spec.hair, 0.6), { pos: [0, browTilt ? -0.004 : 0, 0], rot: [0, 0, sx * browTilt] });
     }
     if (spec.extras?.includes('sukunaMarks')) {
       for (const sx of [1, -1]) {
@@ -345,7 +360,10 @@ export function buildHumanoid(spec: HumanoidSpec): Humanoid {
   if (spec.extras?.includes('longCoat')) {
     r.part('spine', G.cyl(torsoW * 1.0, torsoW * 1.25, 0.62 * H, 14, false), spec.top, { pos: [0, -0.3 * H, 0] });
   }
+  // every hair part on the head gets the anime sheen: a light band across the crown
+  r.partDefaults = { bone: 'head', o: { shine: { y: hc[1] + headR * 0.62, band: headR * 0.14, k: 0.3 } } };
   buildHair(r, spec, headR, hc);
+  r.partDefaults = null;
 
   const model = r.build({ outline: spec.outline ?? 0.018 });
   const hm = model as Humanoid;

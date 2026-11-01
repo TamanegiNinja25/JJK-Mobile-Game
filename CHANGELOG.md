@@ -3,6 +3,103 @@
 All notable changes to Cursed Chronicles. Every release since 1.2.0 installs over the
 previous one and keeps your saves.
 
+## 1.6.0 — Yuta, Toji, reruns and hints
+
+### Two new sorcerers
+- **Yuta Okkotsu** unlocks when you clear "The Executioner" (Chapter 6). A special grade
+  with a bottomless well of cursed energy: a katana, **Rika** fighting at his side, Inumaki's
+  Cursed Speech ("Don't move", "Blast away"), Mimicry, Pure Love, reverse cursed technique
+  and Rika's Full Manifestation. Ultimate: **Domain Expansion — Authentic Mutual Love**, a
+  new domain with a field of planted katanas, each holding a copied technique.
+- **Toji Fushiguro** unlocks when you clear "Hidden Inventory" (Chapter 9). Heavenly
+  Restriction left him with no cursed energy at all: his bar holds **stamina**, he can
+  never land a Black Flash, and he is the fastest and toughest fighter in the game. The
+  Inverted Spear of Heaven, Playful Cloud, the Split Soul Katana, the Chain of a Thousand
+  Miles, Heavenly Speed and Sorcerer Killer. The Inverted Spear goes straight through
+  Infinity, and enemy domains barely find a body with no cursed energy (their sure-hit
+  deals him 70% less). Ultimate: **Sorcerer Killer — Unbound**.
+- Each has about fifteen techniques and six weapons, including a unique one.
+- **They replay the story as themselves.** Neither is one of the first-years, so everyone
+  talks about Yuji, Megumi and Nobara in the third person, and their own lines are written
+  in their voice. When the story reaches the person you are playing, that person steps
+  aside and their lines and errands become yours: Yuta's quests start and finish on their
+  own. As Yuta, the one waiting for the executioner in Shibuya is Yuji. As Toji, the
+  memory in the corridor puts Satoru Gojo in front of you, the night he became the
+  strongest.
+
+### Reruns: replay any quest line
+- **Quests → Reruns** lists every chapter and side request you have finished. Each can be
+  played again as often as you like.
+- Rewards grow with every run up to the fifth, which **masters** the line and pays a bonus:
+  extra EXP and Special Grade Seals (6 for a chapter, 3 for a side request). Reruns go on
+  after that at the fifth run's rewards.
+- A rerun skips the conversations: its quests start and report by themselves, and the
+  curses and bosses on the way rise to your level. Sukuna's fingers and each sorcerer's own
+  rewards stay with the story.
+- Abandon a rerun at any time and the line goes back to finished, exactly as it was.
+
+### Hints when you're stuck
+- If the quest you are following hasn't moved for **two minutes** of play, whoever gave it
+  tells you what is needed and where. After four minutes they offer to open the map, and
+  after seven to **take you there**. Time in menus, conversations, cutscenes and boss fights
+  doesn't count.
+- Every active quest in the log has a **Hint** button.
+- **System → Dialogue → Quest hints** turns them off.
+
+### Update notice
+- The game asks GitHub whether a newer version is out, at most every six hours. When one
+  is, the title screen shows what's new once, then keeps a small banner. **Get the update**
+  opens the latest release page in your browser. Nothing is sent but the request itself,
+  and offline it just tries again later.
+- **System → Updates** shows your version and has **Check for updates**.
+- The title screen shows the version you are running.
+
+### Themed confirmations
+- **Deleting a save** opens a sealed talisman instead of the phone's plain pop-up. It shows
+  the slot's sorcerer, level, location, story chapter, quests done, play time and when you
+  last played. **Hold to erase** until the seal burns; a tap alone does nothing. Unlocked
+  sorcerers stay unlocked.
+- Overwriting a save, pasting a save code over one, switching sorcerers and discarding an
+  item use the same dialog. Back cancels it.
+
+### Models and sound
+- **Characters have their own silhouettes.** Leg length and shoulder width are set per
+  character (Gojo's long legs, Toji's and Todo's shoulders), not one body in different
+  colours.
+- **Eye shapes**: round, sharp, narrow or tired, with matching brows. Sukuna, Naoya and
+  Toji glare, Yuta looks tired, Yuji's eyes stay wide.
+- **Hair sheen**: a light band across the crown of every hairstyle, as in the anime.
+- **Combat voices** in each character's own generated voice: a shout on a technique, a
+  grunt on the last hit of a combo, a cry when a heavy blow lands and a last breath.
+  Human bosses shout on their big moves. **System → Dialogue → Combat voices** turns them
+  off.
+
+### Zen'in Estate fixes
+- The cursed spirit storehouse always holds enough curses for "The Cursed Spirit
+  Storehouse". Its rooms could run dry at 7 of 10 and only refill slowly.
+- Mai's scene in the deepest room only played if you got there before the tenth curse
+  fell. Now it plays whenever you reach the room before reporting, and if you never do,
+  Maki tells it when you report.
+- Playing as Megumi, Maki and Naoya now talk to you rather than about you.
+- The same fix for the Occult Research Club room at Sugisawa: its scene now plays even
+  after the corridors are cleared.
+
+### Other fixes
+- "Training Day" had no gold arrow or minimap marker: the training corpses at Jujutsu High
+  were never located. Now they are.
+
+### Stability
+- A domain's set pieces (the shrine, nails, court and swords) are freed when it ends. Each
+  cast used to leave them in memory.
+- A dialog that is closing no longer catches taps meant for the next one.
+- The web build stops with an error if the game and the APK carry different version numbers,
+  so the update check can never compare against the wrong one.
+- Save data for reruns is checked when a save loads, and anything damaged is put back.
+
+### Install
+Download **CursedChronicles.apk** from the release. It installs over 1.5.0 (and any version
+from 1.2.0 on) and keeps your saves.
+
 ## 1.5.0 — Cutscenes, voices and daily bosses
 
 ### Conversations like a visual novel

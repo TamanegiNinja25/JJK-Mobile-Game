@@ -274,7 +274,8 @@ export class AudioSys {
     if (this.throttle('step', 90)) return;
     const t = this.now;
     const out = this.out({ ...o, vol: (o.vol ?? 1) * 0.35 });
-    const r = 0.85 + Math.random() * 0.3;
+    // pitch carries the walker's weight (a heavy body lands lower)
+    const r = (0.85 + Math.random() * 0.3) * (o.pitch ?? 1);
     switch (surface) {
       case 'grass': case 'dirt':
         this.noiseBurst(t, 0.09, out, { type: 'bandpass', f0: 1800 * r, q: 0.8, vol: 0.5, pink: true });
@@ -331,6 +332,16 @@ const SFX: Record<string, SfxFn> = {
     a.fm(t + 0.45, 1046 * p, 2, 1.5, 1.2, d, 0.2);
   },
   skillUp: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.35, wet: 0.4 }); a.osc('sawtooth', 300 * p, 1200 * p, t, 0.3, d, 0.15); a.fm(t + 0.25, 1200 * p, 1.5, 2, 0.5, d, 0.2); },
+  // a hanko stamping onto paper: a soft thud and a rustle
+  seal: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.45, wet: 0.25 }); a.osc('sine', 140 * p, 46 * p, t, 0.16, d, 0.55); a.noiseBurst(t, 0.07, d, { type: 'bandpass', f0: 1800, q: 0.8, vol: 0.35 }); a.noiseBurst(t + 0.05, 0.22, d, { type: 'highpass', f0: 4200, vol: 0.12, attack: 0.03 }); },
+  // a talisman catching fire and burning out, then a low knell
+  erase: (a, t, p, o) => {
+    const d = a.out({ ...o, vol: 0.55, wet: 0.5 });
+    a.noiseBurst(t, 0.7, d, { type: 'lowpass', f0: 600 * p, f1: 3200, vol: 0.55, pink: true, attack: 0.05 });
+    for (let i = 0; i < 9; i++) a.noiseBurst(t + 0.05 + Math.random() * 0.55, 0.018, d, { type: 'highpass', f0: 2600 + Math.random() * 2400, vol: 0.28 });
+    a.osc('sine', 330 * p, 110 * p, t + 0.1, 0.7, d, 0.16);
+    a.fm(t + 0.55, 98 * p, 3.5, 2.5, 1.6, d, 0.2);
+  },
   save: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.3, wet: 0.3 }); a.fm(t, 880 * p, 2, 1, 0.5, d, 0.25); a.fm(t + 0.12, 1320 * p, 2, 1, 0.6, d, 0.2); },
   enhanceOk: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.45, wet: 0.5 }); a.fm(t, 300 * p, 3.1, 6, 0.3, d, 0.3); [784, 988, 1318, 1568].forEach((f, i) => a.osc('triangle', f, f, t + 0.25 + i * 0.07, 0.5, d, 0.25)); },
   enhanceFail: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.45, wet: 0.3 }); a.fm(t, 300 * p, 3.1, 6, 0.3, d, 0.3); a.osc('sawtooth', 300, 60, t + 0.25, 0.6, d, 0.25); a.noiseBurst(t + 0.25, 0.4, d, { type: 'lowpass', f0: 800, vol: 0.4 }); },
@@ -640,6 +651,6 @@ const SFX: Record<string, SfxFn> = {
 };
 
 /** Interface sounds always play, whatever else is going on. */
-const UI_SFX = new Set(['click', 'tab', 'open', 'close', 'error', 'equip', 'coin', 'buy', 'pickup', 'rare', 'dialog', 'levelup', 'questAccept', 'questDone', 'skillUp', 'save', 'enhanceOk', 'enhanceFail', 'potion', 'heal']);
+const UI_SFX = new Set(['click', 'tab', 'open', 'close', 'error', 'seal', 'erase', 'equip', 'coin', 'buy', 'pickup', 'rare', 'dialog', 'levelup', 'questAccept', 'questDone', 'skillUp', 'save', 'enhanceOk', 'enhanceFail', 'potion', 'heal']);
 
 export const audio = new AudioSys();

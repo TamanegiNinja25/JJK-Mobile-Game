@@ -283,6 +283,8 @@ const DOMAIN_LIGHT: Record<string, Partial<LightingPreset>> = {
   shrine: { sky: 0x6a0a14, ground: 0x200004, hemiIntensity: 1.2, sun: 0xff5a5a, sunIntensity: 1.5, ambient: 0xff6a6a, ambientIntensity: 0.25, fog: 0x2a0206, fogNear: 18, fogFar: 52, bg: 0x1a0002, exposure: 1.0 },
   womb: { sky: 0x8a2a4a, ground: 0x2a0610, hemiIntensity: 1.25, sun: 0xff7a9a, sunIntensity: 1.5, ambient: 0xff8aa8, ambientIntensity: 0.28, fog: 0x2a0612, fogNear: 18, fogFar: 52, bg: 0x1a0208, exposure: 1.0 },
   home: { sky: 0xffb07a, ground: 0x3a2a2a, hemiIntensity: 1.3, sun: 0xffc08a, sunIntensity: 1.8, ambient: 0xffd0b0, ambientIntensity: 0.25, fog: 0x8a5a5a, fogNear: 18, fogFar: 55, bg: 0x6a3a4a, exposure: 1.05 },
+  // Authentic Mutual Love: a pale sky over a field of planted katanas
+  love: { sky: 0xffd8ec, ground: 0x2a2030, hemiIntensity: 1.25, sun: 0xfff0f6, sunIntensity: 1.9, ambient: 0xffe0f0, ambientIntensity: 0.28, fog: 0x7a5a7a, fogNear: 18, fogFar: 55, bg: 0x4a2a44, exposure: 1.06 },
   moon: { sky: 0x3a4a7a, ground: 0x05060c, hemiIntensity: 1.1, sun: 0xe8f0ff, sunIntensity: 1.4, ambient: 0x8a9ac8, ambientIntensity: 0.3, fog: 0x060a18, fogNear: 16, fogFar: 48, bg: 0x02040a, exposure: 1.05 },
   shadow: { sky: 0x3a3a7a, ground: 0x05050a, hemiIntensity: 1.0, sun: 0x9a9aff, sunIntensity: 0.9, ambient: 0x6a6aaa, ambientIntensity: 0.3, fog: 0x05050c, fogNear: 14, fogFar: 42, bg: 0x020205, exposure: 1.05 },
   nails: { sky: 0x7a1424, ground: 0x1a0408, hemiIntensity: 1.2, sun: 0xff7a8a, sunIntensity: 1.3, ambient: 0xff8a9a, ambientIntensity: 0.25, fog: 0x1a0206, fogNear: 18, fogFar: 50, bg: 0x100002, exposure: 1.0 },

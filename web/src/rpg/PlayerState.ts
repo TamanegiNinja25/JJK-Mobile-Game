@@ -1,5 +1,6 @@
 // Persistent player progression: stats, inventory, equipment, skills, quests and saving.
-import { Attr, ClassId, ItemInstance, RosterEntry, SaveData, Slot, Stats, StatKey } from './types';
+import { Attr, ClassId, ItemInstance, QuestState, RerunData, RosterEntry, SaveData, Slot, Stats, StatKey } from './types';
+import { LINE_BY_ID, RERUN_GOAL, masteryReward, rerunFloor, rerunMult } from './Reruns';
 import { CLASSES, LEVEL_CAP, expToNext } from './classes';
 import { REFORGE_MAX, reforgeCost, ITEMS, makeItem, itemStats, isGear, enhanceCost, getUidCounter, setUidCounter, classRewardItem } from './items';
 import { SKILLS, classSkills } from './skills';
@@ -99,7 +100,8 @@ export class PlayerState {
       hpRegen: 0.4 + vit * 0.05 + (add.hpRegen ?? 0),
       evasion: Math.min(0.6, dex * 0.0018 + (add.evasion ?? 0)),
       skillPow: 1 + ce * 0.012 + (add.skillPow ?? 0),
-      bfChance: Math.min(0.5, 0.02 + c.bfBonus + (add.bfChance ?? 0)),
+      // Black Flash is a distortion of cursed energy: a body with none (Toji) can never land one
+      bfChance: c.resource === 'stamina' ? 0 : Math.min(0.5, 0.02 + c.bfBonus + (add.bfChance ?? 0)),
       dmgReduce: Math.min(0.6, add.dmgReduce ?? 0),
       lifesteal: add.lifesteal ?? 0,
       cdr: Math.min(0.5, add.cdr ?? 0),
@@ -433,7 +435,7 @@ export class PlayerState {
   questState(id: string) { return this.d.quests[id]; }
 
   isAvailable(q: QuestDef) {
-    if (this.d.quests[q.id]) return false;
+    if (this.d.quests[q.id] || this.inRerunLine(q.id)) return false;
     if (q.level && this.d.level < q.level) return false;
     if (q.prereq) for (const p of q.prereq) if (this.d.quests[p]?.state !== 'done') return false;
     return true;
@@ -468,7 +470,7 @@ export class PlayerState {
   turnInsFor(npc: string) {
     return QUESTS.filter(q => {
       const st = this.d.quests[q.id];
-      if (!st || st.state === 'done') return false;
+      if (!st || st.state === 'done' || this.inRerunLine(q.id)) return false;
       return this.turnInOf(q) === npc;
     });
   }
@@ -477,6 +479,8 @@ export class PlayerState {
     const q = QUEST_BY_ID[id];
     if (!q || this.d.quests[id]) return;
     this.d.quests[id] = { state: 'active', progress: q.objectives.map(() => 0) };
+    // a rerun is about the fights: talking, paying and enhancing were done the first time
+    if (this.inRerunLine(id)) q.objectives.forEach((o, i) => { if (o.type === 'talk' || o.type === 'pay' || o.type === 'enhance') this.d.quests[id].progress[i] = objCount(o); });
     this.emit('questAccept', q);
     // Collect objectives count what we already hold; reach objectives check the current map.
     this.questCheckCollect();
@@ -550,10 +554,12 @@ export class PlayerState {
     const st = this.d.quests[id];
     if (!q || !st) return;
     st.state = 'done';
+    const rerun = this.d.reruns?.active && this.inRerunLine(id) ? this.d.reruns.active : null;
     for (const o of q.objectives) {
       if (o.type === 'collect' && ITEMS[o.item].questItem) this.removeItem(o.item, o.count);
-      if (o.type === 'pay') this.addGold(-o.gold);
+      if (o.type === 'pay' && !rerun) this.addGold(-o.gold);
     }
+    if (rerun) { this.completeRerunQuest(q, rerun); return; }
     const r = q.rewards;
     const spill: ItemInstance[] = [];
     const give = (it: ItemInstance) => { if (!this.addItem(it)) spill.push(it); };
@@ -570,6 +576,90 @@ export class PlayerState {
     this.emit('questDone', q);
     this.gainExp(r.exp);
     this.recalc();
+  }
+
+  // ------------------------------------------------------------------
+  // Reruns (see rpg/Reruns)
+  // ------------------------------------------------------------------
+  /** Is this quest part of the line being rerun right now? */
+  inRerunLine(id: string) {
+    const a = this.d.reruns?.active;
+    return !!a && !!LINE_BY_ID[a.line]?.quests.includes(id);
+  }
+
+  rerunCount(line: string) { return this.d.reruns?.counts[line] ?? 0; }
+
+  /** A line can be rerun once all of its quests are done, and only one at a time. */
+  canRerun(line: string) {
+    const l = LINE_BY_ID[line];
+    return !!l && !this.d.reruns?.active && l.quests.every(id => this.d.quests[id]?.state === 'done');
+  }
+
+  startRerun(line: string) {
+    const l = LINE_BY_ID[line];
+    if (!l || !this.canRerun(line)) return false;
+    const rr = this.d.reruns ??= { counts: {} };
+    const saved: Record<string, QuestState> = {};
+    for (const id of l.quests) { saved[id] = { state: 'done', progress: [...this.d.quests[id].progress] }; delete this.d.quests[id]; }
+    rr.active = { line, run: (rr.counts[line] ?? 0) + 1, saved };
+    this.emit('rerunStart', l);
+    this.accept(l.quests[0]);
+    this.track(l.quests[0]);
+    return true;
+  }
+
+  /** Stops the rerun and puts the line back as it was. */
+  abandonRerun() {
+    const a = this.d.reruns?.active;
+    if (!a) return;
+    const l = LINE_BY_ID[a.line];
+    for (const id of l?.quests ?? Object.keys(a.saved)) {
+      const q = QUEST_BY_ID[id];
+      // quest items picked up on the way have no quest to go to any more
+      for (const o of q?.objectives ?? []) if (o.type === 'collect' && ITEMS[o.item]?.questItem && this.d.quests[id]?.state !== 'done') this.removeItem(o.item, this.countItem(o.item));
+      if (a.saved[id]) this.d.quests[id] = a.saved[id];
+    }
+    delete this.d.reruns!.active;
+    if (this.d.tracked && l?.quests.includes(this.d.tracked)) this.d.tracked = null;
+    this.emit('rerunEnd', { line: l, finished: false });
+    this.emit('quest', null);
+  }
+
+  private completeRerunQuest(q: QuestDef, a: NonNullable<RerunData['active']>) {
+    const l = LINE_BY_ID[a.line];
+    const r = q.rewards, f = rerunFloor(this.d.level), k = rerunMult(a.run);
+    const exp = Math.round(Math.max(r.exp, f.exp) * k), gold = Math.round(Math.max(r.gold, f.gold) * k);
+    const spill: ItemInstance[] = [];
+    const give = (it: ItemInstance) => { if (!this.addItem(it)) spill.push(it); };
+    // the materials and potions come again; Sukuna's fingers and a sorcerer's own reward are the story's alone
+    for (const it of r.items ?? []) give(makeItem(it.id, it.rarity ?? 0, it.qty ?? 1));
+    delete this.d.flags['outro_' + q.id];
+    this.addGold(gold);
+    this.emit('rerunQuest', { q, exp, gold, run: a.run });
+    this.gainExp(exp);
+    const i = l.quests.indexOf(q.id);
+    const next = l.quests[i + 1];
+    if (next) {
+      if (spill.length) this.emit('rewardSpill', spill);
+      this.accept(next);
+      this.track(next);
+    } else {
+      // the line is finished: count the run, and master the line on the fifth
+      const rr = this.d.reruns!;
+      rr.counts[a.line] = a.run;
+      delete rr.active;
+      let mastery: { exp: number; seals: number } | null = null;
+      if (a.run === RERUN_GOAL) {
+        mastery = masteryReward(l, this.d.level);
+        give(makeItem('seal', 0, mastery.seals));
+      }
+      if (spill.length) this.emit('rewardSpill', spill);
+      if (this.d.tracked && l.quests.includes(this.d.tracked)) this.d.tracked = null;
+      this.emit('rerunEnd', { line: l, finished: true, run: a.run, mastery });
+      if (mastery) this.gainExp(mastery.exp);
+    }
+    this.recalc();
+    this.emit('quest', q);
   }
 
   activeQuests() {
@@ -598,10 +688,13 @@ export class PlayerState {
   }
 
   /** What the tracked quest needs next, in a form the world can locate. */
+  /** The next story quest not yet taken (a rerun's line doesn't count: it starts its own quests). */
+  nextStory() { return QUESTS.find(x => x.type === 'main' && !this.d.quests[x.id] && !this.inRerunLine(x.id)) ?? null; }
+
   trackGoal(): TrackGoal | null {
     const q = this.trackedQuest();
     if (!q) {
-      const next = QUESTS.find(x => x.type === 'main' && !this.d.quests[x.id]);
+      const next = this.nextStory();
       return next && !(next.level && this.d.level < next.level) ? { kind: 'talk', npc: this.giverOf(next) } : null;
     }
     const st = this.d.quests[q.id];
@@ -626,7 +719,7 @@ export class PlayerState {
   trackerText(): { name: string; text: string; ready: boolean } | null {
     const q = this.trackedQuest();
     if (!q) {
-      const next = QUESTS.find(x => x.type === 'main' && !this.d.quests[x.id]);
+      const next = this.nextStory();
       if (next) {
         const lvlGate = next.level && this.d.level < next.level;
         return { name: next.name, text: lvlGate ? `Reach Lv ${next.level} — train and do side quests` : `Talk to ${npcName(this.giverOf(next))}`, ready: false };
@@ -735,6 +828,16 @@ function migrate(d: SaveData) {
     if (q.m12 && !q.m11p) q.m11p = { state: 'done', progress: [1, 1] };
     // m6 gained "investigate the cinema" as its second objective
     if (q.m6 && q.m6.progress.length === 2) q.m6.progress.splice(1, 0, q.m6.progress[0] >= 1 ? 1 : 0);
+  }
+  // a rerun whose line no longer exists (or a damaged record) is put back rather than left half-open
+  const rr = d.reruns;
+  if (rr) {
+    rr.counts = rr.counts && typeof rr.counts === 'object' ? rr.counts : {};
+    const a = rr.active;
+    if (a && (!LINE_BY_ID[a.line] || !a.saved || typeof a.saved !== 'object')) {
+      for (const [id, q] of Object.entries(a?.saved ?? {})) d.quests[id] = q;
+      delete rr.active;
+    }
   }
   if (v < 4) {
     // the Death Painting arc now sits between Kyoto and Shibuya

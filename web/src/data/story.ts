@@ -7,6 +7,10 @@ export interface Line {
   text: string;
   only?: BaseClassId[];   // shown only for these story voices (see ClassDef.persona)
   not?: BaseClassId[];    // hidden for these story voices
+  cls?: string[];         // shown only to these sorcerers (class ids, e.g. a guest who is someone else in the story)
+  notCls?: string[];      // hidden from these sorcerers
+  ifFlag?: string;        // shown only once this flag is set (e.g. a scene the player has seen)
+  unlessFlag?: string;    // shown only while this flag is unset (a fallback for a missed scene)
   emote?: string;         // animation for the speaker
   sfx?: string;
   mood?: 'neutral' | 'happy' | 'angry' | 'surprised' | 'sad';  // expression in the dialogue art (guessed from the text if unset)
@@ -704,13 +708,16 @@ export const QUESTS: QuestDef[] = [
   {
     id: 'm15', name: 'The Executioner', type: 'main', chapter: 6, giver: 'yaga', turnIn: 'yuta', prereq: ['m14'], level: 36,
     cine: { complete: { cam: 'orbit', tint: 'gold' } },
-    summary: 'The higher-ups have ordered an execution, and sent a special grade sorcerer to carry it out. Yuta Okkotsu waits in the ruins of Shibuya.',
-    objectives: [{ type: 'boss', target: 'yuta', label: 'Face Yuta Okkotsu in Shibuya' }],
+    summary: 'The higher-ups have ordered Yuji\'s execution and sent a special grade sorcerer to carry it out. It ends in the ruins of Shibuya.',
+    objectives: [{ type: 'boss', target: 'yuta', label: 'Settle the execution order in Shibuya' }],
     offer: [
       { who: 'yaga', text: 'The higher-ups have made their decision. They are blaming Shibuya on Sukuna\'s vessel, and on everyone who stood beside him.' },
       { who: 'yaga', text: 'Your suspended execution has been revoked, Yuji. A special grade sorcerer has been ordered to carry it out.', only: ['yuji'] },
-      { who: 'yaga', text: 'Yuji\'s execution has been ordered, and anyone who protects him is to be treated the same. A special grade sorcerer has been sent.', not: ['yuji'] },
-      { who: 'yaga', text: 'Yuta Okkotsu. He returned from abroad this morning. He is waiting for you in the ruins of Shibuya.' },
+      { who: 'yaga', text: 'Yuji\'s execution has been ordered, and anyone who protects him is to be treated the same. A special grade sorcerer has been sent.', not: ['yuji'], notCls: ['yuta'] },
+      { who: 'yaga', text: 'Yuta Okkotsu. He returned from abroad this morning. He is waiting for you in the ruins of Shibuya.', notCls: ['yuta'] },
+      { who: 'yaga', text: 'Yuji\'s execution has been ordered, and anyone who protects him is to be treated the same. They chose you to carry it out, Okkotsu.', cls: ['yuta'] },
+      { who: 'yaga', text: 'You came back from abroad this morning and they handed you the order before you had unpacked. Yuji is in the ruins of Shibuya.', cls: ['yuta'] },
+      { who: 'player', text: 'Then it has to be me. If anyone else took this order, they would mean it.', cls: ['yuta'] },
       { who: 'player', text: 'If that\'s what they decided... then I\'ll face him. I\'m done running.', only: ['yuji'] },
       { who: 'player', text: 'Okkotsu-senpai wouldn\'t take an order like that without a reason. I\'m going.', only: ['megumi'] },
       { who: 'player', text: 'Execute Yuji? Over my dead body. Which is probably what they\'re hoping for.', only: ['nobara'] },
@@ -734,13 +741,20 @@ export const QUESTS: QuestDef[] = [
       { type: 'kill', target: ['cagedCurse', 'starvedHound'], count: 10, map: 'zeninIn', label: 'Destroy the storehouse curses' },
     ],
     offer: [
-      { who: 'maki', text: 'I\'m going back to the Zen\'in estate. The old head left a will naming Megumi his heir, so naturally the clan voted to have him killed.' },
+      { who: 'maki', text: 'I\'m going back to the Zen\'in estate. The old head left a will naming Megumi his heir, so naturally the clan voted to have him killed.', not: ['megumi'] },
+      { who: 'maki', text: 'I\'m going back to the Zen\'in estate. The old head left a will naming you his heir, Megumi, so naturally the clan voted to have you killed.', only: ['megumi'] },
       { who: 'maki', text: 'The clan keeps a storehouse full of cursed tools. I\'m taking all of them. Mai says she\'s coming too. She says she has something to give me.' },
       { who: 'maki', text: 'Want to help? Fine. Don\'t get in my way, and don\'t feel sorry for anyone in there.' },
     ],
     progress: [{ who: 'maki', text: 'The storehouse is the old building by the east wall.' }],
     complete: [
+      // the storehouse's deepest room holds Mai's last scene; if the player cleared enough curses to report without
+      // reaching it, Maki tells it here instead of mentioning a sword they never saw her get
+      { who: 'narrator', text: 'Maki is the last one out of the storehouse. She is carrying a katana you have never seen before.', unlessFlag: 'scene_mai' },
+      { who: 'maki', text: 'Mai was in the deepest room. Our father threw the two of us in there and locked the door.', unlessFlag: 'scene_mai' },
+      { who: 'maki', text: 'She said we were always half of one person. That as long as she was alive, I could never be complete.', unlessFlag: 'scene_mai' },
       { who: 'maki', text: '...She made me this with the last of her cursed energy. A sword. And she took the rest of hers with her.' },
+      { who: 'maki', text: 'Her last words were "destroy everything". So that\'s what I\'m going to do.', unlessFlag: 'scene_mai' },
       { who: 'maki', text: 'There\'s nothing left in me now for the clan to call "cursed energy". I\'m finally whole.' },
       { who: 'maki', text: 'The Hei are gathering in the courtyard. Naoya\'s with them. Let\'s finish this.' },
     ],
@@ -761,7 +775,8 @@ export const QUESTS: QuestDef[] = [
     progress: [{ who: 'maki', text: 'Courtyard. Hei first, then Naoya.' }],
     complete: [
       { who: 'narrator', text: 'Naoya drags himself across the raked gravel, swearing at the sky. His rhythm is broken at last.' },
-      { who: 'maki', text: 'The Zen\'in clan is finished. Megumi can do whatever he wants with the name.' },
+      { who: 'maki', text: 'The Zen\'in clan is finished. Megumi can do whatever he wants with the name.', not: ['megumi'] },
+      { who: 'maki', text: 'The Zen\'in clan is finished. You\'re the head of nothing now, Megumi. Do whatever you want with the name.', only: ['megumi'] },
       { who: 'maki', text: '...Thanks. Don\'t make it weird.' },
       { who: 'narrator', text: 'Across the country, every screen flickers. A man with Geto\'s face announces the rules of a game. The Culling Game has begun.' },
     ],
@@ -1144,15 +1159,18 @@ export const QUESTS: QuestDef[] = [
   },
   {
     id: 'm28', name: 'Hidden Inventory', type: 'main', chapter: 9, giver: 'tengen', prereq: ['m27'], autoAccept: true, level: 82,
-    summary: 'Relive the memory of 2006: the Star Plasma Vessel and the sorcerer killer who walked into Tengen\'s barrier. Defeat Toji Fushiguro.',
+    summary: 'Relive the memory of 2006: the Star Plasma Vessel, the sorcerer killer who walked into Tengen\'s barrier, and the fight in the corridor.',
     objectives: [
       { type: 'kill', target: ['memoryCurse', 'templeAssassin'], count: 12, map: 'starCorridor', label: 'Clear the memory\'s curses' },
-      { type: 'boss', target: 'toji', label: 'Defeat Toji Fushiguro in the corridor' },
+      { type: 'boss', target: 'toji', label: 'Win the fight in the corridor' },
     ],
     offer: [
       { who: 'tengen', text: 'In 2006 a girl named Riko Amanai was to merge with me. Two students guarded her: Satoru Gojo and Suguru Geto.' },
-      { who: 'tengen', text: 'A man with no cursed energy at all walked through my barriers as if they were not there. Toji Fushiguro. He nearly ended everything.' },
-      { who: 'tengen', text: 'He has no cursed energy, so domains can barely find him. Fight him with your own hands.' },
+      { who: 'tengen', text: 'A man with no cursed energy at all walked through my barriers as if they were not there. Toji Fushiguro. He nearly ended everything.', notCls: ['toji'] },
+      { who: 'tengen', text: 'He has no cursed energy, so domains can barely find him. Fight him with your own hands.', notCls: ['toji'] },
+      { who: 'tengen', text: 'You walked through my barriers as if they were not there, Toji Fushiguro. A man with no cursed energy at all. You nearly ended everything.', cls: ['toji'] },
+      { who: 'tengen', text: 'The memory has a hole where you should be. It will fill it with the one you fought that night: Satoru Gojo, the moment he became the strongest.', cls: ['toji'] },
+      { who: 'player', text: 'Getting paid to relive my own job. Fine. Point me at him.', cls: ['toji'] },
       { who: 'player', text: 'Fushiguro... Megumi\'s dad?', only: ['yuji', 'nobara'] },
       { who: 'player', text: '...I know who he is.', only: ['megumi'] },
     ],

@@ -16,10 +16,19 @@ export interface ComboHit {
 
 export interface ClassDef {
   id: ClassId;
-  /** whose lines this sorcerer speaks in the story (the unlockable sorcerers borrow a first-year's) */
-  persona: BaseClassId;
-  /** 'sukuna': borrowed story lines are swapped for his own (data/sukunaVoice.ts) */
-  voice?: 'sukuna';
+  /**
+   * whose lines this sorcerer speaks in the story (the Sukunas and Modulo Yuji borrow a first-year's).
+   * Unset for a guest who is someone else in the story: they hear everyone's third-person lines.
+   */
+  persona?: BaseClassId;
+  /** the story NPC this sorcerer is: that NPC steps aside, and their lines and errands become the player's */
+  self?: string;
+  /** what the CE bar holds: Toji has no cursed energy, so his skills spend stamina */
+  resource?: 'stamina';
+  /** 'sukuna': borrowed story lines are swapped for his own (data/sukunaVoice.ts); the guests re-voice theirs (data/guestVoice.ts) */
+  voice?: 'sukuna' | 'yuta' | 'toji';
+  /** a guest with no persona still speaks in conversations: this first-year's player lines, in their own words */
+  voiceFrom?: BaseClassId;
   /** unlockable sorcerers: what unlocks them, as shown on the select screen */
   unlock?: string;
   /** colour of the dash trail and aura */
@@ -155,11 +164,46 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     startGear: ['moduloWraps', 'uniform', 'sneakers'],
     weaponModel: 'fist',
   },
+
+  // ---- Guests: special grades who are somebody else in the story ----
+  yuta: {
+    id: 'yuta', short: 'Yuta', self: 'yuta', voice: 'yuta', voiceFrom: 'megumi', trail: 0xffb0e0, name: 'Yuta Okkotsu', title: 'Special Grade · Queen of Curses', model: 'yuta', stance: 'blade', color: '#ff9ad8',
+    unlock: 'Clear "The Executioner" (Chapter 6), where Yuta comes for Yuji.',
+    desc: 'A special grade with an endless well of cursed energy. A katana, Rika the Queen of Curses at his side, Inumaki\'s Cursed Speech and whatever else he has copied, and reverse cursed technique to heal. Ultimate: Domain Expansion — Authentic Mutual Love.',
+    base: { hp: 215, hpLv: 33, ce: 190, ceLv: 12.5, atk: 20, atkLv: 4.6, def: 9, defLv: 1.8 },
+    attrs: { str: 10, dex: 11, vit: 10, ce: 15 },
+    atkScale: { str: 1.2, ce: 1.25 },
+    bfBonus: 0.03,
+    combo: [
+      { anim: 'slash1', dur: 0.27, mult: 1.05, range: 2.4, arc: 2.0, sfx: 'slash', swingSfx: 'swing', lunge: 0.5 },
+      { anim: 'slash2', dur: 0.27, mult: 1.1, range: 2.4, arc: 2.4, sfx: 'slash', swingSfx: 'swing', lunge: 0.5 },
+      { anim: 'thrust', dur: 0.4, mult: 1.6, range: 3.0, arc: 1.0, sfx: 'slash', swingSfx: 'swingHeavy', knock: 2, lunge: 1.0 },
+    ],
+    startGear: ['yutaKatana', 'uniform', 'sneakers'],
+    weaponModel: 'blade',
+  },
+  toji: {
+    id: 'toji', short: 'Toji', self: 'toji', voice: 'toji', voiceFrom: 'megumi', resource: 'stamina', trail: 0x8a6aa0, name: 'Toji Fushiguro', title: 'Sorcerer Killer · Heavenly Restriction', model: 'toji', stance: 'blade', color: '#a88ac8',
+    unlock: 'Clear "Hidden Inventory" (Chapter 9, the Memories in the Barrier).',
+    desc: 'Born with no cursed energy at all, and a body pushed past human limits in exchange. The fastest and toughest fighter here, with the Inverted Spear of Heaven, Playful Cloud, the Split Soul Katana and an endless chain. His skills spend stamina, not cursed energy. Ultimate: Sorcerer Killer — Unbound.',
+    base: { hp: 255, hpLv: 39, ce: 80, ceLv: 3.5, atk: 23, atkLv: 5.2, def: 11, defLv: 2.2 },
+    attrs: { str: 15, dex: 14, vit: 12, ce: 1 },
+    atkScale: { str: 1.8, dex: 0.8 },
+    bfBonus: 0,
+    combo: [
+      { anim: 'slash1', dur: 0.22, mult: 1.0, range: 2.4, arc: 1.8, sfx: 'slash', swingSfx: 'swing', lunge: 0.7 },
+      { anim: 'slash2', dur: 0.22, mult: 1.05, range: 2.4, arc: 2.0, sfx: 'slash', swingSfx: 'swing', lunge: 0.7 },
+      { anim: 'kick', dur: 0.32, mult: 1.25, range: 2.4, arc: 2.0, sfx: 'kick', swingSfx: 'swingHeavy', knock: 2.2, lunge: 0.8 },
+      { anim: 'thrust', dur: 0.4, mult: 1.7, range: 3.2, arc: 0.9, sfx: 'slash', swingSfx: 'swingHeavy', knock: 2.6, lunge: 1.2 },
+    ],
+    startGear: ['tojiKnife', 'uniform', 'sneakers'],
+    weaponModel: 'blade',
+  },
 };
 
 /** The first three can be picked from the start; the rest are unlocked by play. */
 export const BASE_CLASSES: ClassId[] = ['yuji', 'megumi', 'nobara'];
-export const UNLOCKABLE_CLASSES: ClassId[] = ['sukunaYuji', 'sukunaMegumi', 'heianSukuna', 'moduloYuji'];
+export const UNLOCKABLE_CLASSES: ClassId[] = ['sukunaYuji', 'sukunaMegumi', 'heianSukuna', 'moduloYuji', 'yuta', 'toji'];
 
 export const LEVEL_CAP = 100;
 export function expToNext(level: number) {
