@@ -11,6 +11,8 @@ import { ClassId } from '../rpg/types';
 import { PlayerState, STAT_POINTS_PER_LEVEL } from '../rpg/PlayerState';
 import { MAPS } from '../world/maps';
 import { audio } from '../audio/Audio';
+import { confirmDialog, slotCard } from './Confirm';
+import { APP_VERSION, UpdateInfo, openReleasePage, updates } from '../core/Updates';
 
 export class UI {
   root: HTMLElement;
@@ -117,6 +119,40 @@ export class UI {
     this.titleEl = t;
     this.root.appendChild(t);
     this.titleMain();
+    // ask GitHub whether a newer version is out (at most every few hours; silent when offline)
+    void updates.check().then(() => this.titleUpdate());
+  }
+
+  private updateHooked = false;
+  /** The title's update banner, and the full notice the first time a version is found. */
+  private titleUpdate() {
+    if (!this.updateHooked) {
+      this.updateHooked = true;
+      updates.onChange((u) => {
+        this.titleUpdate();
+        // found while playing: one quiet line, the notice waits for the title screen
+        if (u && !this.titleEl && this.game.state === 'play') this.game.toast(`Update ${u.version} is out. Get it from System → Updates.`, 'info', 5);
+      });
+    }
+    const slot = this.titleEl?.querySelector('.title-update') as HTMLElement | null;
+    if (!slot) return;
+    const u = updates.latest;
+    slot.innerHTML = u ? `<button class="upd-pill" data-a="update"><span class="upd-k">新着</span>Update ${escapeHtml(u.version)} is out <b>Get it ›</b></button>` : '';
+    if (u && updates.unseen && !document.querySelector('.ccf')) void this.updateNotice(u);
+  }
+
+  async updateNotice(u: UpdateInfo) {
+    updates.markSeen();
+    const news = u.news.length ? `<div class="upd-news-h">What's new</div><ul class="upd-news">${u.news.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>` : '';
+    // a release titled just "v1.7.0" says nothing the version line doesn't
+    const named = !!u.name && u.name.replace(/^v/i, '') !== u.version;
+    const ok = await confirmDialog({
+      seal: '新着', title: `Update ${u.version} is out`,
+      card: `<div class="upd-card"><div class="upd-ver"><span>v${escapeHtml(APP_VERSION)}</span><i>→</i><b>v${escapeHtml(u.version)}</b></div>${named ? `<div class="upd-name">${escapeHtml(u.name)}</div>` : ''}${news}</div>`,
+      text: 'Download the APK from the release page. It installs over this version and keeps your saves.',
+      yes: 'Get the update', no: 'Later',
+    });
+    if (ok && !openReleasePage()) this.game.toast('Open github.com/TamanegiNinja25/JJK-Mobile-Game/releases in your browser.', 'warn', 6);
   }
 
   hideTitle() { this.titleEl?.remove(); this.titleEl = null; }
@@ -137,7 +173,9 @@ export class UI {
         <button class="tbtn" data-a="transfer">Transfer Save</button>
         <button class="tbtn" data-a="settings">Settings</button>
       </div>
-      <div class="title-foot">Unofficial fan game · Not affiliated with Gege Akutami, Shueisha or MAPPA</div>`;
+      <div class="title-update"></div>
+      <div class="title-foot">v${escapeHtml(APP_VERSION)} · Unofficial fan game · Not affiliated with Gege Akutami, Shueisha or MAPPA</div>`;
+    this.titleUpdate();
     t.onclick = (e) => {
       const b = (e.target as HTMLElement).closest('[data-a]') as HTMLElement | null;
       if (!b) return;
@@ -147,6 +185,7 @@ export class UI {
       if (a === 'new') this.slotSelect('new');
       if (a === 'load') this.slotSelect('load');
       if (a === 'settings') this.titleSettings();
+      if (a === 'update' && updates.latest) void this.updateNotice(updates.latest);
       if (a === 'transfer') this.saveTransfer();
     };
   }
@@ -183,7 +222,12 @@ export class UI {
       if (imp) {
         const i = +imp.dataset.imp!;
         if (!area.value.trim()) { audio.play('error'); this.saveTransferMsg(t, 'Paste a save code into the box first.'); return; }
-        if (PlayerState.peek(i) && !confirm(`Overwrite slot ${i + 1}?`)) return;
+        const prev = PlayerState.peek(i);
+        if (prev && !await confirmDialog({
+          seal: '上書', title: `Replace slot ${i + 1} with this code?`, card: slotCard(i, prev, this.slotPortrait(prev)),
+          text: 'The pasted save takes this slot\'s place, and the sorcerer above is gone for good.',
+          yes: 'Hold to replace', no: 'Keep', danger: true, hold: 1100,
+        })) return;
         const err = PlayerState.importCode(area.value, i);
         audio.play(err ? 'error' : 'questDone');
         this.saveTransfer(err ?? `Save imported into slot ${i + 1}.`);
@@ -196,6 +240,8 @@ export class UI {
     if (!m) { m = el('div', 'xfer-msg'); t.querySelector('.save-code')!.after(m); }
     m.textContent = msg;
   }
+
+  private slotPortrait(s: { cls: string }) { return this.game.portraits.get(CLASSES[s.cls as ClassId]?.model ?? 'yuji'); }
 
   private slotSelect(mode: 'new' | 'load') {
     const t = this.titleEl!;
@@ -214,7 +260,19 @@ export class UI {
       const del = tgt.closest('[data-del]') as HTMLElement | null;
       if (del) {
         e.stopPropagation();
-        if (confirm('Delete this save permanently?')) { PlayerState.erase(+del.dataset.del!); this.slotSelect(mode); }
+        const i = +del.dataset.del!, s = PlayerState.peek(i);
+        if (!s) { this.slotSelect(mode); return; }
+        audio.play('click');
+        void confirmDialog({
+          seal: '抹消', title: 'Erase this record?', card: slotCard(i, s, this.slotPortrait(s)),
+          text: `Every quest, item and level of this ${CLASSES[s.cls]?.short ?? 'sorcerer'} will be exorcised for good. Sorcerers you have unlocked stay unlocked.`,
+          yes: 'Hold to erase', no: 'Keep', danger: true, hold: 1100,
+        }).then(ok => {
+          if (!ok) return;
+          PlayerState.erase(i);
+          // the title may have moved on while the seal burned; only redraw the list that was open
+          if (this.titleEl?.isConnected && this.titleEl.querySelector('.slots-panel')) this.slotSelect(mode);
+        });
         return;
       }
       const s = tgt.closest('[data-s]') as HTMLElement | null;
@@ -222,8 +280,13 @@ export class UI {
       audio.play('click');
       const i = +s.dataset.s!;
       if (mode === 'load') { if (PlayerState.peek(i)) this.game.loadGame(i); return; }
-      if (PlayerState.peek(i) && !confirm('Overwrite this save?')) return;
-      this.classSelect(i);
+      const prev = PlayerState.peek(i);
+      if (!prev) { this.classSelect(i); return; }
+      void confirmDialog({
+        seal: '上書', title: `Start over in slot ${i + 1}?`, card: slotCard(i, prev, this.slotPortrait(prev)),
+        text: 'A new game here replaces this sorcerer for good once you begin. Choose an empty slot to keep both.',
+        yes: 'Hold to start over', no: 'Keep', danger: true, hold: 1100,
+      }).then(ok => { if (ok && this.titleEl?.isConnected) this.classSelect(i); });
     };
   }
 

@@ -253,7 +253,14 @@ const starCorridor: MapDef = {
     b.npc({ id: 'tengen', x: 0, z: -28, facing: 0 });
     b.portal({ x: -12, z: -24, r: 1.8, to: 'nightParade', label: 'Memory: December 24th, 2017', cond: 'm28', condText: 'Tengen: "One memory at a time. Finish this one first."' });
     b.portal({ x: 12, z: -24, r: 1.8, to: 'lastLesson', label: 'Memory: the Strongest', cond: 'm29', condText: 'Tengen: "That memory is the heaviest of all. Not yet."' });
-    b.boss({ id: 'toji', x: 0, z: 8, r: 11, quest: 'm28', intro: [
+    // playing as Toji, the memory fills the hole where he should be with the one he fought that night
+    b.boss({ id: 'gojo2006', as: 'toji', x: 0, z: 8, r: 11, quest: 'm28', cond: (ps) => ps.d.cls === 'toji', intro: [
+      { who: 'narrator', text: 'The memory takes hold. 2006: a corridor full of lanterns. A boy in round sunglasses walks out of the dark, his uniform torn, blood drying on his forehead. He is grinning.' },
+      { who: 'gojo', text: 'Hey. I remember you. You put a blade through my throat a little while ago.' },
+      { who: 'gojo', text: 'Funny thing about almost dying. Everything is so clear now. Throughout heaven and earth, I alone am the honoured one.' },
+      { who: 'player', text: 'Huh. So the brat woke up. ...Whatever. Somebody paid me, and I don\'t give refunds.' },
+    ] });
+    b.boss({ id: 'toji', x: 0, z: 8, r: 11, quest: 'm28', cond: (ps) => ps.d.cls !== 'toji', intro: [
       { who: 'narrator', text: 'The memory takes hold. 2006: a corridor full of lanterns, and a man in black leaning against a pillar, as if he had been waiting for hours.' },
       { who: 'toji', text: 'Huh. Not the kid with the Six Eyes. Guess the memory picked someone else to play him.' },
       { who: 'toji', text: 'Nothing personal. Somebody paid me, and I don\'t give refunds.' },

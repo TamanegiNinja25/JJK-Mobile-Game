@@ -24,19 +24,22 @@
 Play as Yuji, Megumi or Nobara and fight through the story from the Sugisawa High
 rooftop, through the Shibuya Incident and the Culling Game, to the Shinjuku Showdown and
 the memories in Tengen's barrier. Finish the right chapters and Sukuna (in Yuji's body,
-in Megumi's body and in his Heian form) and Yuji decades later join as playable
-sorcerers. Combat is real-time with combos, skills, dodges and Black Flashes, wrapped in a
+in Megumi's body and in his Heian form), Yuji decades later, Yuta Okkotsu and Toji
+Fushiguro join as playable sorcerers. Combat is real-time with combos, skills, dodges and Black Flashes, wrapped in a
 classic Zenonia-style RPG loop: quests, loot, stat points, skill trees, gear upgrades and
 boss fights. Past the east gate of Jujutsu High, an open region of forest, villages,
 lakes and ruins connects on foot to the city. Schools, cinemas and stations can be
 entered, and their halls are laid out fresh every time you walk in. Conversations play
 like a visual novel, with both speakers in large character art and a voice of their own.
 Domain expansions, boss entrances, chapter clears and the big story moments are staged
-as cutscenes. Every day, three bosses return for farming, each with drops of its own.
+as cutscenes. Every day, three bosses return for farming, each with drops of its own, and
+every chapter you finish can be replayed for growing rewards. Stuck on a quest? After a
+few minutes, whoever gave it offers a hint.
 
 Every model, building, texture, icon, portrait, music track, sound effect and voice is
 generated in code. The game ships no art or audio files, so the APK is under 2 MB
-and runs without an internet connection. If you want, you can add pictures and sounds
+and runs without an internet connection; the only thing it ever asks the internet is
+whether a newer version is out. If you want, you can add pictures and sounds
 from your own phone; they stay on the phone.
 
 > [!NOTE]
@@ -59,6 +62,18 @@ from your own phone; they stay on the phone.
 
 <table>
   <tr>
+    <td width="50%"><img src="docs/screenshots/yuta-domain.jpg" alt="Yuta's Authentic Mutual Love"><br><sub><b>Yuta Okkotsu</b> opens Authentic Mutual Love, a field of katanas, with Rika at his side</sub></td>
+    <td width="50%"><img src="docs/screenshots/toji-play.jpg" alt="Playing as Toji Fushiguro"><br><sub><b>Toji Fushiguro</b>: no cursed energy, a stamina bar and a storehouse of cursed tools</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/reruns.jpg" alt="Reruns"><br><sub><b>Reruns</b>: replay any finished chapter or request; the fifth run masters it</sub></td>
+    <td><img src="docs/screenshots/hint.jpg" alt="Quest hint"><br><sub><b>Hints when you're stuck</b>: what is needed, where, and a way there</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/erase.jpg" alt="Erasing a save"><br><sub><b>Erasing a save</b>: the whole record is shown, and you hold until the seal burns</sub></td>
+    <td><img src="docs/screenshots/update.jpg" alt="Update notice"><br><sub><b>Update notice</b>: when a newer version is out, the title screen says so</sub></td>
+  </tr>
+  <tr>
     <td width="50%"><img src="docs/screenshots/vn-dialogue.jpg" alt="Visual-novel dialogue"><br><sub><b>Conversations like a visual novel</b>: both speakers in large art, each with their own voice</sub></td>
     <td width="50%"><img src="docs/screenshots/domain-cutin.jpg" alt="Domain Expansion cut-in"><br><sub><b>Domain Expansion cut-in</b>: 領域展開, then the domain's name</sub></td>
   </tr>
@@ -71,7 +86,7 @@ from your own phone; they stay on the phone.
     <td><img src="docs/screenshots/daily.jpg" alt="Daily exorcisms"><br><sub><b>Daily exorcisms</b>: three bosses a day from Akari Nitta, each with drops of its own</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/class-select.jpg" alt="Class select"><br><sub><b>Choose your sorcerer</b>: three first-years and four unlockable sorcerers, each with its own skill tree</sub></td>
+    <td width="50%"><img src="docs/screenshots/class-select.jpg" alt="Class select"><br><sub><b>Choose your sorcerer</b>: three first-years and six unlockable sorcerers, each with its own skill tree</sub></td>
     <td width="50%"><img src="docs/screenshots/jujutsu-high.jpg" alt="Jujutsu High"><br><sub><b>Tokyo Jujutsu High</b>: the hub, with shops, quests and fast travel</sub></td>
   </tr>
   <tr>
@@ -134,7 +149,9 @@ from your own phone; they stay on the phone.
    open the APK.
 
 **Updating:** from v1.2.0 on, every release is signed with the same key, so a new APK
-(such as 1.5.0 over 1.4.0) installs straight over the old one and keeps your saves. What
+(such as 1.6.0 over 1.5.0) installs straight over the old one and keeps your saves. From
+1.6.0 on, the title screen tells you when a newer version is out, and **Get the update**
+opens the latest release page. What
 changed in each version is in [CHANGELOG.md](CHANGELOG.md). Versions 1.0.0 and 1.1.0 were
 each signed with a one-off key, so moving from those needs one uninstall first. Before
 uninstalling anything, you can keep your progress with **System → Copy Save Code** (from
@@ -144,13 +161,14 @@ Requirements: Android 7.0 (API 24) or newer with OpenGL ES 3.0. The game plays i
 landscape. If the frame rate stays low, it lowers the graphics quality automatically;
 you can also set it under **System**, along with camera distance, screen shake
 (Off / Light / Full), dialogue voices (character voices, spoken with your phone's
-text-to-speech, or blips), text speed and cutscenes (Full / Short / Off).
+text-to-speech, or blips), combat voices, text speed, cutscenes (Full / Short / Off) and
+quest hints. **System → Updates** shows your version and checks for a newer one.
 
 ## Features
 
-### Seven sorcerers
+### Nine sorcerers
 
-Three first-years from the start, and four more you unlock:
+Three first-years from the start, and six more you unlock:
 
 | | Style | Signature skills | Ultimate |
 |---|---|---|---|
@@ -161,11 +179,20 @@ Three first-years from the start, and four more you unlock:
 | **Sukuna (Megumi's body)** 🔒 | The Ten Shadows and Kamutoke's lightning | Dismantle · Totality · Nue · Kamutoke · Cleave · Agito · Open: Fuga | Mahoraga, then the World-Cutting Slash |
 | **Heian Sukuna** 🔒 | The strongest stats in the game, four arms | Four-Armed Barrage · Dismantle · Cleave · Divine Flame · Calamity Stomp · World-Cutting Slash | Malevolent Shrine: True Form |
 | **Modulo Yuji** 🔒 | Yuji decades on, with everything he learned | Divergent Fist · Piercing Blood · Supernova · Dismantle · Soul Strike · Black Flash: The Zone | His own Domain Expansion |
+| **Yuta Okkotsu** 🔒 | Special grade swordsman with Rika and copied techniques | Cursed Edge · Rika · Cursed Speech · Pure Love · Mimicry · Full Manifestation · Reverse Cursed Technique | Domain Expansion: Authentic Mutual Love |
+| **Toji Fushiguro** 🔒 | No cursed energy: stamina, speed and cursed tools | Inverted Spear of Heaven · Playful Cloud · Chain of a Thousand Miles · Split Soul Katana · Heavenly Speed · Sorcerer Killer | Sorcerer Killer: Unbound |
 
-The locked four show on the select screen with what unlocks them: clearing the Shibuya
+The locked six show on the select screen with what unlocks them: clearing the Shibuya
 Incident (Sukuna in Yuji's body), clearing "Shinjuku Showdown" (Sukuna in Megumi's body),
-finishing the story (Heian Sukuna), and finishing the story as Yuji or clearing the
-Memories chapter (Modulo Yuji). Unlocks belong to the phone, so they work in every slot.
+finishing the story (Heian Sukuna), finishing the story as Yuji or clearing the Memories
+chapter (Modulo Yuji), clearing "The Executioner" (Yuta) and clearing "Hidden Inventory"
+(Toji). Unlocks belong to the phone, so they work in every slot.
+
+Yuta and Toji replay the story as themselves. Everyone talks about the first-years in the
+third person, their own lines are written in their voice, and when the story reaches the
+person you are playing, that person's lines and errands become yours. As Yuta, the one
+waiting for the executioner in Shibuya is Yuji; as Toji, the memory in the corridor puts
+the 2006 Satoru Gojo in front of you.
 Start a new game with one, or switch inside a save from **Status → Sorcerers** while in
 Jujutsu High. Each sorcerer keeps their own level, techniques and weapon, while armour,
 items, yen and quests are shared.
@@ -202,6 +229,13 @@ Sovereign (Lv 80) gear starts dropping.
   it follows you on the HUD. A gold arrow on the ground, a ◆ on the minimap and a
   distance readout point at the objective, or at the door, exit or travel gate that
   leads to it.
+- **Hints when you're stuck:** if the quest you follow hasn't moved for two minutes of
+  play, whoever gave it says what is needed and where; after four minutes they offer the
+  map, after seven to take you there. Every active quest in the log has a **Hint** button.
+- **Reruns:** **Quests → Reruns** replays any chapter or side request you have finished,
+  as often as you like. The quests start and report by themselves, the curses rise to
+  your level, and rewards grow up to the fifth run, which masters the line for bonus EXP
+  and Special Grade Seals. Abandon a run and the line is put back as it was.
 - **Towns and travel:** Shoko sells potions, Maki runs the armory and Mei Mei trades
   materials. Travel from the **Map** tab by tapping an area, or walk into the cyan
   travel gate in each area. The map marks every area's travel point, its enterable
@@ -223,8 +257,11 @@ Sovereign (Lv 80) gear starts dropping.
   pitch, pace and tone, and curses growl and echo. Pick **Spoken** in System to have
   lines read aloud by your phone's text-to-speech instead. Characters in the world blink
   and move their mouths while they talk.
-- **Sukuna speaks as Sukuna.** When you replay the story as one of the Sukunas, his
-  lines are his own, not Yuji's or Megumi's.
+- **Sukuna speaks as Sukuna**, and Yuta and Toji speak as themselves. When you replay
+  the story as one of them, the lines are their own, not a first-year's.
+- **Combat voices:** a shout on a technique, a grunt on a combo's last hit, a cry when a
+  heavy blow lands, all in each character's own voice. Human bosses shout on their big
+  moves.
 - **Domain Expansion cut-ins** for you and for bosses: a close-up on the hand sign,
   領域展開, then the domain's name in Japanese and English.
 - **Boss entrances**, **chapter clears** (第三章 完) and **chapter titles**.
@@ -356,6 +393,9 @@ Some of the later bosses play by their own rules:
   leopard-print tie, Maki's glasses and polearm, Inumaki's zipped collar, Todo's scar,
   Choso's blood stripe, Yuta's white uniform and katana, Higuruma's gavel, Kashimo's staff,
   and Sukuna's four arms and second face in his true form.
+- Each character has their own silhouette (leg length, shoulder width) and eye shape
+  (round, sharp, narrow or tired, with matching brows), and every hairstyle catches a band
+  of light across the crown.
 - Day and night lighting, dynamic lights and weather: rain, sakura, falling leaves, ash,
   embers, fireflies and snow.
 - Trees, roofs and walls fade out when they would hide your character.
@@ -473,16 +513,16 @@ painted once in idle time before menus need them.
 
 ```
 web/                    the game (TypeScript + three.js)
-  src/core/             input, math, noise, your own pictures and sounds (IndexedDB)
+  src/core/             input, math, noise, your own pictures and sounds (IndexedDB), the update check
   src/render/           renderer, toon shaders, rigs, models, effects, weather, textures
   src/audio/            synthesized SFX, music sequencer, ambience, character voices
-  src/rpg/              stats, classes, skills (and the unlockable sorcerers'), items, enemies, unlocks, daily exorcisms, player state
+  src/rpg/              stats, classes, skills (and the unlockable sorcerers'), items, enemies, unlocks, daily exorcisms, reruns, quest hints, player state
   src/world/            maps (story areas, open regions, interiors, the daily arena), map builder, collision, world simulation, cutscenes
   src/entities/         player, enemies, bosses, summons, projectiles, NPCs
-  src/ui/               HUD, menus, visual-novel dialogue, dialogue art, icons, portraits
-  src/data/             quests, dialogue and Sukuna's own lines
+  src/ui/               HUD, menus, visual-novel dialogue, dialogue art, themed confirmations, icons, portraits
+  src/data/             quests, dialogue, and the lines Sukuna, Yuta and Toji speak in their own voice
   static/               index.html and the UI stylesheet
-android/                WebView host app (Java), text-to-speech bridge
+android/                WebView host app (Java), text-to-speech bridge, opening the release page
 docs/                   icon and screenshots for this README
 .github/workflows/      APK build and release
 ```

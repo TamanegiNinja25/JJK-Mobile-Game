@@ -33,6 +33,8 @@ export interface BossDef {
   cond?: (ps: PlayerState) => boolean;
   repeatable?: boolean;
   level?: number;
+  /** counts as this boss for quests: a stand-in fight when the player is the usual boss (Yuta, Toji) */
+  as?: string;
   /** open-world boss: no quest, comes back this many seconds of play after it falls, and scales to the player */
   world?: number;
 }

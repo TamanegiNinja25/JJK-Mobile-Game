@@ -1,6 +1,7 @@
 // Visual-novel dialogue: the two people talking stand in large art (the player on the left, whoever
 // they are talking to on the right). The speaker is lit and moves their mouth in time with a voice of
 // their own; text types out with natural pauses, and Auto / Skip work like any dating sim.
+import { guestLine } from '../data/guestVoice';
 import type { Game } from '../Game';
 import { Line, Choice, NPC_NAMES, NPC_JP } from '../data/story';
 import { audio } from '../audio/Audio';
@@ -156,8 +157,28 @@ export class Dialogue {
     // the unlockable sorcerers speak a first-year's lines; the King of Curses gets his own
     const def = this.game.ps ? CLASSES[this.game.ps.d.cls] : undefined;
     const cls = def?.persona;
-    this.lines = lines.filter(l => (!l.only || (cls && l.only.includes(cls))) && (!l.not || !cls || !l.not.includes(cls)))
-      .map(l => l.who === 'player' && def?.voice === 'sukuna' ? { ...l, text: sukunaLine(l.text) } : l);
+    const flags = this.game.ps?.d.flags ?? {};
+    const id = this.game.ps?.d.cls ?? '';
+    // a guest's own words come from a first-year's player lines (see ClassDef.voiceFrom)
+    const pv = def?.voiceFrom ?? cls;
+    const fits = (l: Line) => {
+      const v = l.who === 'player' && !l.cls ? pv : cls;
+      return (!l.only || (!!v && l.only.includes(v))) && (!l.not || !v || !l.not.includes(v));
+    };
+    const voice = def?.voice;
+    this.lines = lines.filter(l => fits(l)
+        && (!l.cls || l.cls.includes(id)) && (!l.notCls || !l.notCls.includes(id))
+        && (!l.ifFlag || !!flags[l.ifFlag]) && (!l.unlessFlag || !flags[l.unlessFlag]))
+      .map(l => {
+        // a guest who is someone in the story (Yuta, Toji) speaks that someone's lines as they are
+        if (def?.self && l.who === def.self) return { ...l, who: 'player' };
+        if (l.who !== 'player' || l.cls) return l;
+        if (voice === 'sukuna') return { ...l, text: sukunaLine(l.text) };
+        // a guest re-voices only the first-year's own lines; lines written for anyone stay as they are
+        if (voice === 'yuta' || voice === 'toji') return l.only ? { ...l, text: guestLine(voice, l.text) } : l;
+        return l;
+      })
+      .filter(l => l.text !== '');
     this.idx = 0;
     this.onEnd = opts.onEnd ?? null;
     this.choices = opts.choices;

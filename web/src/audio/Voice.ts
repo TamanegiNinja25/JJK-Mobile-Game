@@ -161,6 +161,61 @@ class VoiceSys {
     if (p.breath) audio.noiseBurst(t, dur, out, { type: 'bandpass', f0: v2 * p.formant, q: 2, vol: 0.12 * p.breath, pink: true });
   }
 
+  /** combat voices: off in System, or no generated voices at all */
+  barks = true;
+  private lastBark = new Map<string, number>();
+
+  /**
+   * A combat vocal in a character's own voice (the same profile their dialogue uses): a shout on a
+   * technique, a grunt on a heavy blow, a cry when hurt, a last breath. One short open vowel, shaped
+   * like the character's speech, so a seventeen-year-old and a curse never sound alike.
+   */
+  bark(key: string, p: VoiceProfile, kind: 'kiai' | 'effort' | 'hurt' | 'die', vol = 1) {
+    if (!this.barks || !audio.ctx || audio.muted) return;
+    const now = audio.ctx.currentTime;
+    const gap = kind === 'hurt' ? 1.3 : kind === 'die' ? 0 : 0.55;
+    if (now - (this.lastBark.get(key) ?? -9) < gap) return;
+    this.lastBark.set(key, now);
+    const ctx = audio.ctx, t = now + 0.01, out = this.out();
+    const dur = kind === 'kiai' ? 0.2 : kind === 'effort' ? 0.11 : kind === 'hurt' ? 0.17 : 0.5;
+    const up = kind === 'kiai' ? 4 : kind === 'effort' ? 2 : kind === 'hurt' ? 5 : 2;
+    const glide = kind === 'kiai' ? -2 : kind === 'effort' ? -1 : kind === 'hurt' ? -6 : -9;
+    const f = p.f0 * Math.pow(2, (up + (Math.random() - 0.5) * 1.5) / 12);
+    const src = ctx.createOscillator();
+    src.type = p.wave ?? 'sawtooth';
+    src.frequency.setValueAtTime(f, t);
+    src.frequency.exponentialRampToValueAtTime(f * Math.pow(2, glide / 12), t + dur);
+    // open vowels: "ha" for a shout, "uh" for effort, "ah" for pain
+    const [v1, v2] = kind === 'effort' ? [520, 1050] : kind === 'kiai' ? [820, 1250] : [760, 1180];
+    const env = ctx.createGain();
+    const peak = 0.42 * vol * (kind === 'die' ? 0.8 : 1);
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(peak, t + (kind === 'kiai' ? 0.02 : 0.012));
+    env.gain.setValueAtTime(peak * 0.85, t + dur * 0.55);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.06);
+    for (const [fr, q, g] of [[v1 * p.formant, 6, 1], [v2 * p.formant, 9, 0.6]] as const) {
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = fr; bp.Q.value = q;
+      const gg = ctx.createGain(); gg.gain.value = g;
+      src.connect(bp); bp.connect(gg); gg.connect(env);
+    }
+    const body = ctx.createBiquadFilter(); body.type = 'lowpass'; body.frequency.value = 1000 * p.formant;
+    const bg = ctx.createGain(); bg.gain.value = 0.22;
+    src.connect(body); body.connect(bg); bg.connect(env);
+    if (p.growl) {
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 24 + Math.random() * 14;
+      const depth = ctx.createGain(); depth.gain.value = 0.18 * p.growl;
+      lfo.connect(depth); depth.connect(env.gain);
+      lfo.start(t); lfo.stop(t + dur + 0.08);
+    }
+    env.connect(out);
+    if (p.echo) { const s = ctx.createGain(); s.gain.value = p.echo; env.connect(s); s.connect(audio.reverbSend); }
+    src.start(t); src.stop(t + dur + 0.08);
+    // the breath that carries a shout, and the "h" before it
+    audio.noiseBurst(t - 0.01, kind === 'kiai' ? 0.05 : 0.03, out, { type: 'bandpass', f0: 1800 * p.formant, q: 1.2, vol: 0.1 * vol });
+    audio.noiseBurst(t, dur, out, { type: 'bandpass', f0: v2 * p.formant, q: 2, vol: (0.06 + 0.12 * (p.breath ?? 0.2)) * vol, pink: true });
+  }
+
   /** Read a whole line aloud with text-to-speech. Returns false if speech isn't available. */
   speak(text: string, p: VoiceProfile): boolean {
     if (this.mode !== 'tts' || audio.muted) return false;

@@ -1,4 +1,6 @@
 // Top-level controller: main loop, state machine, saving, travel, dialogue/quest flow.
+import { LINE_BY_ID, QuestLine } from './rpg/Reruns';
+import { QuestHints } from './rpg/Hints';
 import { Renderer, Quality } from './render/Renderer';
 import { Overlay2D } from './ui/Overlay2D';
 import { World } from './world/World';
@@ -12,7 +14,7 @@ import { PlayerState } from './rpg/PlayerState';
 import { runCheat, toggleCheat } from './rpg/Cheats';
 import { ClassId, ItemInstance } from './rpg/types';
 import { CLASSES } from './rpg/classes';
-import { QUEST_BY_ID, QUESTS, IDLE, Line, NPC_NAMES, SceneSpec, Choice } from './data/story';
+import { QUEST_BY_ID, QUESTS, IDLE, Line, NPC_NAMES, SceneSpec, Choice, QuestDef } from './data/story';
 import { Director } from './world/Director';
 import { media } from './core/CustomMedia';
 import { NPC } from './entities/NPC';
@@ -23,7 +25,8 @@ import { IconSpec, ITEMS } from './rpg/items';
 import { setIconWarmGate, warmIcons } from './ui/Icons';
 import { classSkills } from './rpg/skills';
 import './rpg/skillsUnlock';
-import { pick, rand } from './core/util';
+import './rpg/skillsGuest';
+import { formatNum, pick, rand } from './core/util';
 import { Loot } from './entities/Loot';
 import { checkUnlocks, isUnlocked } from './rpg/Unlocks';
 import { occlusion } from './render/toon';
@@ -65,7 +68,12 @@ export class Game {
     voice: 'gen' as VoiceMode, voiceVol: 0.9, textSpeed: 1, vnAuto: false,
     /** story cutscenes and domain cut-ins */
     cutscenes: 'full' as 'full' | 'short' | 'off',
+    /** hints when a quest step has stalled for a few minutes */
+    hints: 'on' as 'on' | 'off',
+    /** shouts, grunts and cries in combat, in each character's voice */
+    barks: 'on' as 'on' | 'off',
   };
+  hints = new QuestHints(this);
   private last = performance.now();
   private autosaveT = 0;
   private titleT = 0;
@@ -165,8 +173,15 @@ export class Game {
         occlusion.uOccOn.value = 1;
         this.world.update(dt);
         this.ui.hud?.update(dt);
+        this.hints.update(dt);
+        if (this.ps) { this.selfErrands(dt); this.rerunWatch(dt); }
         this.director.blend(dt);
         if (this.outroQ && (this.outroQ.t -= dt) <= 0 && this.state === 'play') { const o = this.outroQ; this.outroQ = null; this.say(o.lines, o.spec); }
+        if (this.rerunReport && (this.rerunReport.t -= dt) <= 0) {
+          const id = this.rerunReport.id;
+          this.rerunReport = null;
+          if (this.ps?.questState(id)?.state === 'ready' && this.ps.inRerunLine(id)) { this.ps.complete(id); this.world.refreshNpcs(); this.world.refreshGuide(); this.save(false); }
+        }
         this.autosaveT += dt;
         if (this.autosaveT > 60) { this.autosaveT = 0; this.save(false); }
         break;
@@ -241,6 +256,7 @@ export class Game {
     this.r.shakeScale = s.shake;
     voice.mode = s.voice;
     voice.volume = s.voiceVol;
+    voice.barks = s.barks !== 'off';
     this.saveSettings();
   }
 
@@ -263,10 +279,29 @@ export class Game {
       }
       if (ev === 'questAccept') {
         audio.play('questAccept');
-        this.toast(`Quest accepted: ${data.name}`, 'quest', 2.5);
+        const rr = ps.inRerunLine(data.id) ? ps.d.reruns?.active : null;
+        this.toast(rr ? `Rerun ${rr.run}: ${data.name}` : `Quest accepted: ${data.name}`, 'quest', 2.5);
         if (data.type === 'main' && CHAPTER_START.get(data.chapter) === data.id) this.director.chapterTitle(data.chapter);
       }
-      if (ev === 'questReady') { audio.play('questDone'); this.toast(`Objective complete — report to ${NPC_NAMES[ps.turnInOf(data)] ?? ''}`, 'quest', 3); }
+      if (ev === 'questReady') {
+        audio.play('questDone');
+        // a rerun reports itself a moment later; the story's quests go back to whoever gave them
+        if (ps.inRerunLine(data.id)) this.rerunReport = { id: data.id, t: 1.2 };
+        else this.toast(`Objective complete — report to ${NPC_NAMES[ps.turnInOf(data)] ?? ''}`, 'quest', 3);
+      }
+      if (ev === 'rerunStart') { this.world.refreshNpcs(); this.world.refreshGuide(); this.save(false); }
+      if (ev === 'rerunQuest') this.toast(`${data.q.name} cleared · +${formatNum(data.exp)} EXP · ¥${formatNum(data.gold)}`, 'good', 3);
+      if (ev === 'rerunEnd') {
+        const { line, finished, run, mastery } = data as { line: QuestLine; finished: boolean; run?: number; mastery?: { exp: number; seals: number } | null };
+        if (finished) {
+          audio.play(mastery ? 'rare' : 'questDone');
+          this.toast(mastery ? `${line.name} mastered! Run ${run} · +${mastery.seals} Special Grade Seals` : `Rerun ${run} complete: ${line.name}`, 'quest', 4.5);
+        } else this.toast(`Rerun abandoned: ${line?.name ?? ''}. The line is back as it was.`, 'info', 3);
+        this.rerunReport = null;
+        this.world.refreshNpcs();
+        this.world.refreshGuide();
+        this.save(false);
+      }
       if (ev === 'rewardSpill') {
         // a full bag never eats a reward: it lands at the player's feet until there is room
         const p = this.world.player;
@@ -442,24 +477,7 @@ export class Game {
     n.model.play('wave', 0.8);
     // 1. completing a quest
     const ready = ps.turnInsFor(id).find(q => ps.questState(q.id)?.state === 'ready');
-    if (ready) {
-      // the part of a boss quest's ending that happened where the boss fell has already played
-      const end = ps.endingSplit(ready);
-      const split = !!ps.d.flags['outro_' + ready.id];
-      const lines = split ? end.report : ps.completeLines(ready);
-      this.say(lines.length ? lines : [{ who: id, text: 'It\'s done. Good work.' }], ready.cine?.complete ?? (split ? undefined : ready.cine?.outro), () => {
-        ps.complete(ready.id);
-        this.save(false);
-        this.world.refreshNpcs();
-        // chain straight into an auto-accepted follow-up from the same NPC, after any chapter clear
-        const next = ps.offersFor(id).find(q => q.autoAccept);
-        const cont = () => { if (next) this.offerQuest(next.id); };
-        if (ready.type === 'main' && CHAPTER_END.get(ready.chapter) === ready.id) {
-          this.director.chapterClear(ready.chapter, ready.id === 'm26' ? () => this.director.ending(CREDITS, cont) : cont);
-        } else cont();
-      });
-      return;
-    }
+    if (ready) { this.reportQuest(ready, id); return; }
     // 2. offering a new quest
     const offer = ps.offersFor(id)[0];
     if (offer) { this.offerQuest(offer.id); return; }
@@ -483,15 +501,77 @@ export class Game {
     this.dialogue.play(lines.map(l => ({ ...l, who: l.who === 'civilian' || l.who === 'student' ? id : l.who })));
   }
 
+  /** Hands a finished quest in to `id` (an NPC, or the player when they are that NPC), with its ending. */
+  private reportQuest(ready: QuestDef, id: string) {
+    const ps = this.ps!;
+    // the part of a boss quest's ending that happened where the boss fell has already played
+    const end = ps.endingSplit(ready);
+    const split = !!ps.d.flags['outro_' + ready.id];
+    const lines = split ? end.report : ps.completeLines(ready);
+    this.say(lines.length ? lines : [{ who: id, text: 'It\'s done. Good work.' }], ready.cine?.complete ?? (split ? undefined : ready.cine?.outro), () => {
+      ps.complete(ready.id);
+      this.save(false);
+      this.world.refreshNpcs();
+      // chain straight into an auto-accepted follow-up from the same NPC, after any chapter clear
+      const next = ps.offersFor(id).find(q => q.autoAccept);
+      const cont = () => { if (next) this.offerQuest(next.id); };
+      if (ready.type === 'main' && CHAPTER_END.get(ready.chapter) === ready.id) {
+        this.director.chapterClear(ready.chapter, ready.id === 'm26' ? () => this.director.ending(CREDITS, cont) : cont);
+      } else cont();
+    });
+  }
+
+  private rerunT = 0;
+  /**
+   * Keeps a rerun moving even across a reload: a finished quest whose report was pending when the game
+   * was saved is reported, and if the next quest of the line somehow wasn't started, it is.
+   */
+  private rerunWatch(dt: number) {
+    const ps = this.ps!;
+    const a = ps.d.reruns?.active;
+    if (!a || (this.rerunT -= dt) > 0) return;
+    this.rerunT = 1;
+    if (this.rerunReport || this.state !== 'play') return;
+    const line = LINE_BY_ID[a.line];
+    if (!line) return;
+    const ready = line.quests.find(id => ps.questState(id)?.state === 'ready');
+    if (ready) { this.rerunReport = { id: ready, t: 0.3 }; return; }
+    if (!line.quests.some(id => ps.questState(id)?.state === 'active')) {
+      const next = line.quests.find(id => !ps.questState(id));
+      if (next) { ps.accept(next); ps.track(next); this.world.refreshGuide(); }
+      // every quest done but the run never closed: close it rather than leave the line locked
+      else delete ps.d.reruns!.active;
+    }
+  }
+
+  private selfT = 0;
+  /**
+   * A guest sorcerer who is someone in the story (Yuta, Toji) runs that someone's errands: their quests start
+   * and finish on their own, a moment after they become possible, with the lines now the player's.
+   */
+  private selfErrands(dt: number) {
+    const ps = this.ps!;
+    const self = CLASSES[ps.d.cls]?.self;
+    if (!self || (this.selfT -= dt) > 0) return;
+    this.selfT = 0.75;
+    if (this.state !== 'play' || this.dialogue.active || this.world.bossActive || this.outroQ) return;
+    const ready = ps.turnInsFor(self).find(q => ps.questState(q.id)?.state === 'ready');
+    if (ready) { this.reportQuest(ready, self); return; }
+    const offer = ps.offersFor(self)[0];
+    if (offer) this.offerQuest(offer.id);
+  }
+
   /** The lines of a boss quest's ending that happen where the boss fell, waiting for the dust to settle. */
   private outroQ: { lines: Line[]; t: number; spec?: SceneSpec } | null = null;
+  /** a rerun quest whose objectives are done, reported automatically after a beat */
+  private rerunReport: { id: string; t: number } | null = null;
 
   /** Called when a boss falls: queue the on-the-spot part of the ending of the quest it finished. */
   bossOutro(bossId: string) {
     const ps = this.ps!;
     for (const q of QUESTS) {
       const last = q.objectives[q.objectives.length - 1];
-      if (ps.questState(q.id)?.state !== 'ready' || last.type !== 'boss' || last.target !== bossId || ps.d.flags['outro_' + q.id]) continue;
+      if (ps.questState(q.id)?.state !== 'ready' || last.type !== 'boss' || last.target !== bossId || ps.d.flags['outro_' + q.id] || ps.inRerunLine(q.id)) continue;
       const { outro } = ps.endingSplit(q);
       if (!outro.length) continue;
       ps.d.flags['outro_' + q.id] = true;

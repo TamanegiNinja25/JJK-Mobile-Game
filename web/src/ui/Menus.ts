@@ -1,5 +1,8 @@
 // Full-screen menus (status, bag, skills, quests, map, system) and the shop,
 // infusion workshop and travel windows.
+import { confirmDialog } from './Confirm';
+import { APP_VERSION, ago, updates } from '../core/Updates';
+import { LINES, LINE_BY_ID, QuestLine, RERUN_GOAL, lineReward, masteryReward } from '../rpg/Reruns';
 import type { Game } from '../Game';
 import { copyText, el, escapeHtml, formatNum } from '../core/util';
 import { itemIcon, skillIcon } from './Icons';
@@ -36,6 +39,9 @@ export class Menus {
   private selSkill: string | null = null;
   private skillFilter: 'all' | SkillDef['type'] = 'all';
   private selQuest: string | null = null;
+  /** the quest tab shows the log or the reruns of finished lines */
+  private questView: 'log' | 'reruns' = 'log';
+  private selLine: string | null = null;
   private bagFilter: 'all' | ItemKind = 'all';
   private shopCat: 'all' | ItemKind = 'all';
   // shop state
@@ -171,10 +177,10 @@ export class Menus {
         ${rows}
         <div class="panel-title">Combat</div>
         <div class="stats">
-          ${sv('maxHp', 'Max HP')}${sv('maxCe', 'Max CE')}${sv('atk', 'Attack')}${sv('def', 'Defense')}
+          ${sv('maxHp', 'Max HP')}${sv('maxCe', CLASSES[ps.d.cls].resource === 'stamina' ? 'Max Stamina' : 'Max CE')}${sv('atk', 'Attack')}${sv('def', 'Defense')}
           ${sv('crit', 'Crit Rate', 'p')}${sv('critDmg', 'Crit Damage', 'p')}${sv('bfChance', 'Black Flash', 'p')}${sv('atkSpd', 'Attack Speed', 'p')}
           ${sv('evasion', 'Evasion', 'p')}${sv('dmgReduce', 'Damage Reduction', 'p')}${sv('skillPow', 'Skill Power', 'p')}${sv('cdr', 'Cooldown Reduction', 'p')}
-          ${sv('ceRegen', 'CE Regen', 'r')}${sv('hpRegen', 'HP Regen', 'r')}${sv('lifesteal', 'Lifesteal', 'p')}${sv('summonPow', 'Shikigami Power', 'p')}
+          ${sv('ceRegen', CLASSES[ps.d.cls].resource === 'stamina' ? 'Stamina Regen' : 'CE Regen', 'r')}${sv('hpRegen', 'HP Regen', 'r')}${sv('lifesteal', 'Lifesteal', 'p')}${sv('summonPow', 'Shikigami Power', 'p')}
         </div>
       </div>
     </div>`;
@@ -343,7 +349,7 @@ export class Menus {
       const slot = d.quick.indexOf(sel.id);
       detail = `<div class="skill-detail">
         <div class="id-head"><img src="${skillIcon(sel.id, 96)}"><div><div class="id-name" style="color:${sel.color}">${escapeHtml(sel.name)}</div>
-        <div class="id-sub"><span class="type-badge ${sel.type}">${typeLabel(sel.type)}</span> Lv ${lv}/${sel.max}${sel.ce && castable && sel.type !== 'ultimate' ? ` · CE ${sel.ce(Math.max(1, lv))}` : ''}${sel.cd && castable ? ` · Cooldown ${sel.cd(Math.max(1, lv))}s` : ''}${sel.react ? ` · Rearms in ${sel.react.icd}s` : ''}</div></div></div>
+        <div class="id-sub"><span class="type-badge ${sel.type}">${typeLabel(sel.type)}</span> Lv ${lv}/${sel.max}${sel.ce && castable && sel.type !== 'ultimate' ? ` · ${CLASSES[ps.d.cls].resource === 'stamina' ? 'Stamina' : 'CE'} ${sel.ce(Math.max(1, lv))}` : ''}${sel.cd && castable ? ` · Cooldown ${sel.cd(Math.max(1, lv))}s` : ''}${sel.react ? ` · Rearms in ${sel.react.icd}s` : ''}</div></div></div>
         ${cur ? `<div class="sd-cur"><b>Current</b>${escapeHtml(cur)}</div>` : ''}
         ${next ? `<div class="sd-next"><b>${lv ? 'Next level' : 'When learned'}</b>${escapeHtml(next)}</div>` : '<div class="sd-cur"><b>Mastered</b>This technique is at its highest level.</div>'}
         ${lv < sel.max ? `<div class="sd-req">${reqs.join(' · ')}</div>` : ''}
@@ -366,7 +372,60 @@ export class Menus {
   // ------------------------------------------------------------------
   // Quests
   // ------------------------------------------------------------------
+  private questTabs() {
+    const n = LINES.filter(l => this.game.ps!.canRerun(l.id) || this.game.ps!.d.reruns?.active?.line === l.id).length;
+    return `<div class="chips q-views"><button class="chip ${this.questView === 'log' ? 'on' : ''}" data-act="qview" data-v="log">Quest log</button><button class="chip ${this.questView === 'reruns' ? 'on' : ''}" data-act="qview" data-v="reruns">再 Reruns${n ? ` <b>${n}</b>` : ''}</button></div>`;
+  }
+
+  private renderReruns() {
+    const ps = this.game.ps!;
+    const act = ps.d.reruns?.active;
+    const open = LINES.filter(l => ps.canRerun(l.id) || act?.line === l.id);
+    if (!this.selLine || !open.some(l => l.id === this.selLine)) this.selLine = act?.line ?? open[0]?.id ?? null;
+    const badge = (l: QuestLine) => {
+      const c = ps.rerunCount(l.id);
+      return act?.line === l.id ? `<span class="rr-badge on">Run ${act.run}</span>` : c >= RERUN_GOAL ? `<span class="rr-badge done">★ ${c}</span>` : `<span class="rr-badge">${c}/${RERUN_GOAL}</span>`;
+    };
+    const row = (l: QuestLine) => `<div class="q-row ${this.selLine === l.id ? 'sel' : ''}" data-act="rerunsel" data-id="${l.id}"><span class="q-type ${l.kind === 'story' ? 'main' : 'side'}">${l.kind === 'story' ? '本' : '依'}</span>${escapeHtml(l.name)}${badge(l)}</div>`;
+    const story = open.filter(l => l.kind === 'story'), side = open.filter(l => l.kind === 'side');
+    let detail = `<div class="detail-empty">Finish a chapter of the story or a side request, and you can play it again here as often as you like.</div>`;
+    const l = this.selLine ? LINE_BY_ID[this.selLine] : null;
+    if (l) {
+      const c = ps.rerunCount(l.id);
+      const running = act?.line === l.id;
+      const run = running ? act!.run : c + 1;
+      const rw = lineReward(l, run, ps.d.level);
+      const m = run === RERUN_GOAL ? masteryReward(l, ps.d.level) : null;
+      const qs = l.quests.map(id => {
+        const st = ps.questState(id);
+        const mark = !running ? '◇' : st?.state === 'done' ? '✔' : st ? '▶' : '◇';
+        return `<div class="obj ${running && st?.state === 'done' ? 'ok' : ''}">${mark} ${escapeHtml(QUEST_BY_ID[id].name)}</div>`;
+      }).join('');
+      const pips = Array.from({ length: RERUN_GOAL }, (_, i) => `<i class="${i < c ? 'on' : ''}"></i>`).join('');
+      detail = `<div class="quest-detail">
+        <div class="id-name">${escapeHtml(l.name)}</div>
+        <div class="id-sub">${l.kind === 'story' ? 'Story chapter' : `Side request · Chapter ${l.chapter}`} · ${l.quests.length} quest${l.quests.length > 1 ? 's' : ''}</div>
+        <div class="rr-pips" title="Runs">${pips}<span>${c >= RERUN_GOAL ? `Mastered · ${c} runs` : `${c} of ${RERUN_GOAL} runs to master`}</span></div>
+        <div class="objs">${qs}</div>
+        <div class="rewards"><b>${running ? 'This run' : `Run ${run}`}</b> about ${formatNum(rw.exp)} EXP · ¥${formatNum(rw.gold)} plus the quests' items${m ? `<br><b class="rr-m">Mastery bonus</b> +${formatNum(m.exp)} EXP · ${m.seals} Special Grade Seals` : ''}</div>
+        <div class="help">Quests start and report by themselves, curses and bosses rise to your level, and rewards grow until the fifth run. Sukuna's fingers and sorcerer rewards stay with the story.</div>
+        ${running ? '<button class="btn danger wide" data-act="rerunabandon">Abandon this rerun</button>'
+          : act ? `<div class="id-err">Finish or abandon the rerun of ${escapeHtml(LINE_BY_ID[act.line]?.name ?? '')} first.</div>`
+          : `<button class="btn primary wide" data-act="rerunstart" data-id="${l.id}">Start run ${run}</button>`}
+      </div>`;
+    }
+    return `<div class="quests">
+      <div class="quests-left">${this.questTabs()}
+        ${story.length ? `<div class="panel-title">Story</div>${story.map(row).join('')}` : ''}
+        ${side.length ? `<div class="panel-title">Side requests</div>${side.map(row).join('')}` : ''}
+        ${!open.length ? '<div class="none">Nothing finished yet</div>' : ''}
+      </div>
+      <div class="quests-right">${detail}</div>
+    </div>`;
+  }
+
   private renderQuests() {
+    if (this.questView === 'reruns') return this.renderReruns();
     const ps = this.game.ps!;
     const act = QUESTS.filter(q => ps.questState(q.id) && ps.questState(q.id)!.state !== 'done');
     const done = QUESTS.filter(q => ps.questState(q.id)?.state === 'done');
@@ -393,11 +452,12 @@ export class Menus {
         <div class="objs">${objs}</div>
         <div class="rewards"><b>Rewards</b> ${formatNum(r.exp)} EXP · ¥${formatNum(r.gold)}${items.length ? ' · ' + items.map(escapeHtml).join(', ') : ''}</div>
         ${!st ? `<div class="id-err">Talk to ${escapeHtml(this.npcName(ps.giverOf(q)))} to accept${q.level ? ` (Lv ${q.level})` : ''}.</div>` : ''}
-        ${st && st.state !== 'done' ? `<div class="slots"><small>${tracked?.id === q.id ? '◎ This quest is on your HUD. Follow the gold arrow and the ◆ on the minimap.' : 'Selecting an active quest puts it on your HUD.'}</small></div>` : ''}
+        ${st && st.state !== 'done' ? `<div class="slots"><small>${tracked?.id === q.id ? '◎ This quest is on your HUD. Follow the gold arrow and the ◆ on the minimap.' : 'Selecting an active quest puts it on your HUD.'}</small></div>
+          <button class="btn small hint-btn" data-act="qhint" data-id="${q.id}">助言 Hint</button>` : ''}
       </div>`;
     }
     return `<div class="quests">
-      <div class="quests-left">
+      <div class="quests-left">${this.questTabs()}
         <div class="panel-title">Active</div>${act.map(q => row(q, 'qa')).join('') || '<div class="none">None</div>'}
         ${avail.length ? `<div class="panel-title">Available</div>${avail.map(q => row(q, 'qv')).join('')}` : ''}
         <div class="panel-title">Completed</div>${done.map(q => row(q, 'qd')).join('') || '<div class="none">None yet</div>'}
@@ -540,7 +600,7 @@ export class Menus {
     const q = (v: string, l: string) => `<button class="chip ${s.quality === v ? 'on' : ''}" data-act="quality" data-q="${v}">${l}</button>`;
     const z = (v: number, l: string) => `<button class="chip ${s.zoom === v ? 'on' : ''}" data-act="zoom" data-z="${v}">${l}</button>`;
     const sh = (v: number, l: string) => `<button class="chip ${s.shake === v ? 'on' : ''}" data-act="shake" data-v="${v}">${l}</button>`;
-    const ch = (key: 'voice' | 'textSpeed' | 'cutscenes', v: string | number, l: string) => `<button class="chip ${(s as any)[key] === v ? 'on' : ''}" data-act="setchip" data-k="${key}" data-v="${v}">${l}</button>`;
+    const ch = (key: 'voice' | 'textSpeed' | 'cutscenes' | 'hints' | 'barks', v: string | number, l: string) => `<button class="chip ${(s as any)[key] === v ? 'on' : ''}" data-act="setchip" data-k="${key}" data-v="${v}">${l}</button>`;
     return `<div class="system">
       <div class="sys-col">
         <div class="panel-title">Game</div>
@@ -549,6 +609,8 @@ export class Menus {
         <button class="btn wide" data-act="exportsave">Copy Save Code</button>
         <button class="btn wide" data-act="openmedia">Your Pictures &amp; Sounds</button>
         <div class="help">The save code keeps your progress if you reinstall or change phones. Paste it under <b>Transfer Save</b> on the title screen.</div>
+        <div class="panel-title">Updates</div>
+        ${this.updateRow()}
         <div class="panel-title">Controls</div>
         <div class="help">Touch: drag the left half of the screen to move. Tap or hold <b>攻</b> to attack (it becomes <b>話</b> to talk). Skills sit around it, <b>回避</b> dodges, the gold-rimmed button is your Ultimate.<br>Keyboard: WASD move · J/Space attack · 1–5 skills · R ultimate · Shift dodge · Q/E potions · F talk · I/K/L/M menus · Esc close.</div>
       </div>
@@ -565,14 +627,30 @@ export class Menus {
         <div class="set-label">Voices</div>
         <div class="chips">${ch('voice', 'gen', 'Character voices')}${ch('voice', 'tts', 'Spoken (phone TTS)')}${ch('voice', 'off', 'Blips')}</div>
         ${sl('voiceVol', 'Voice volume', s.voiceVol)}
+        <div class="set-label">Combat voices</div>
+        <div class="chips">${ch('barks', 'on', 'On')}${ch('barks', 'off', 'Off')}</div>
         <div class="set-label">Text speed</div>
         <div class="chips">${ch('textSpeed', 0.6, 'Slow')}${ch('textSpeed', 1, 'Normal')}${ch('textSpeed', 1.7, 'Fast')}</div>
         <div class="set-label">Cutscenes</div>
         <div class="chips">${ch('cutscenes', 'full', 'Full')}${ch('cutscenes', 'short', 'Short')}${ch('cutscenes', 'off', 'Off')}</div>
+        <div class="set-label">Quest hints</div>
+        <div class="chips">${ch('hints', 'on', 'When I\'m stuck')}${ch('hints', 'off', 'Off')}</div>
         <div class="help">Spoken voices use your phone's text-to-speech engine; if it isn't available the character voices are used. Tap AUTO in a conversation to let lines advance by themselves, or SKIP to fast-forward.</div>
         <div class="credits">Cursed Chronicles is an unofficial, non-commercial fan game inspired by Jujutsu Kaisen and Zenonia. All models, sounds and music are procedurally generated. Jujutsu Kaisen © Gege Akutami / Shueisha.</div>
       </div>
     </div>`;
+  }
+
+  private updateRow() {
+    const u = updates.latest;
+    const st = updates.status === 'checking' ? 'Checking…'
+      : u ? `<b class="upd-new">Version ${escapeHtml(u.version)} is out.</b>`
+      : updates.status === 'offline' ? 'Offline. The game checks again when you\'re connected.'
+      : updates.status === 'error' ? 'GitHub didn\'t answer. Try again later.'
+      : updates.checked ? `Up to date (checked ${ago(updates.checked)}).` : 'Not checked yet.';
+    return `<div class="upd-row"><div class="help">This is version <b>${escapeHtml(APP_VERSION)}</b>. ${st}</div>
+      ${u ? '<button class="btn primary wide" data-act="getupdate">Get the update</button>' : ''}
+      <button class="btn wide" data-act="checkupdate" ${updates.status === 'checking' ? 'disabled' : ''}>Check for updates</button></div>`;
   }
 
   private bindSystem() {
@@ -854,9 +932,17 @@ export class Menus {
         if (!unlockedClasses().has(id)) { audio.play('error'); this.game.toast(`${c.short} is locked. ${c.unlock ?? ''}`, 'warn', 4); break; }
         if (!this.game.world.mapDef.town) { audio.play('error'); this.game.toast('Switch sorcerers while in Jujutsu High.', 'warn', 2.5); break; }
         const lv = ps.d.roster?.[id]?.level;
-        if (!confirm(lv ? `Switch to ${c.short} (Lv ${lv})?` : `${c.short} joins this save at Lv ${ps.d.level}. Their attribute and skill points are spent for you. Switch now?`)) break;
-        this.close();
-        this.game.switchSorcerer(id);
+        audio.play('click');
+        void confirmDialog({
+          seal: '交代', title: `Switch to ${c.name}?`,
+          card: `<div class="ccf-slot"><div class="ccf-port" style="background-image:url(${this.game.portraits.get(c.model)});--c:${c.color}"></div><div class="ccf-info"><div class="ccf-who">${escapeHtml(c.name)}</div><div>${escapeHtml(c.title)}</div><small>${lv ? `Lv ${lv} · picks up where they left off` : `Joins this save at Lv ${ps.d.level}`}</small></div></div>`,
+          text: lv ? 'Your quests, items and gold are shared by every sorcerer in this save.' : 'Their attribute and skill points are spent for you. Your quests, items and gold are shared by every sorcerer in this save.',
+          yes: 'Switch', no: 'Stay',
+        }).then(ok => {
+          if (!ok || !this.game.ps || this.game.ps.d.cls === id) return;
+          this.close();
+          this.game.switchSorcerer(id);
+        });
         return;
       }
       case 'selitem': this.selItem = uid; this.selSlot = null; audio.play('click', { vol: 0.5 }); break;
@@ -870,10 +956,62 @@ export class Menus {
         break;
       }
       case 'pot': ps.d.potions[+t.dataset.i!] = t.dataset.id!; audio.play('equip'); this.game.toast(`${ITEMS[t.dataset.id!].name} set to potion slot ${+t.dataset.i! + 1}`, 'info'); break;
+      case 'qview': this.questView = t.dataset.v === 'reruns' ? 'reruns' : 'log'; audio.play('tab'); break;
+      case 'rerunsel': this.selLine = t.dataset.id!; audio.play('click', { vol: 0.5 }); break;
+      case 'rerunstart': {
+        const l = LINE_BY_ID[t.dataset.id!];
+        if (!l || !ps.canRerun(l.id)) { audio.play('error'); break; }
+        if (this.game.world.bossActive) { audio.play('error'); this.game.toast('Finish this fight first.', 'warn', 2); break; }
+        const run = ps.rerunCount(l.id) + 1;
+        audio.play('click');
+        void confirmDialog({
+          seal: '再演', title: `Rerun ${l.name}?`,
+          text: `Run ${run}${run === RERUN_GOAL ? ' masters this line' : run > RERUN_GOAL ? '' : ` of ${RERUN_GOAL}`}. Its quests start and report by themselves and the curses rise to your level. You can abandon it any time; the line goes back to finished.`,
+          yes: `Start run ${run}`, no: 'Not now',
+        }).then(ok => {
+          if (!ok || !this.game.ps?.startRerun(l.id)) return;
+          this.close();
+        });
+        return;
+      }
+      case 'rerunabandon': {
+        audio.play('click');
+        void confirmDialog({
+          seal: '中断', title: 'Abandon this rerun?', text: 'This run\'s progress is lost and it doesn\'t count. The line goes back to finished, exactly as it was.',
+          yes: 'Abandon', no: 'Keep going', danger: true,
+        }).then(ok => { if (ok && this.game.ps) { this.game.ps.abandonRerun(); this.refresh(); } });
+        return;
+      }
+      case 'qhint': {
+        const h = this.game.hints.now(t.dataset.id);
+        this.close();
+        if (h) this.game.ui.hud?.showHint(h);
+        else this.game.toast('Nothing to hint at right now.', 'info', 2);
+        return;
+      }
+      case 'checkupdate': {
+        audio.play('click');
+        void updates.check(true).then((u) => { audio.play(u ? 'questAccept' : 'tab'); this.refresh(); });
+        break;
+      }
+      case 'getupdate': {
+        const u = updates.latest;
+        if (u) { this.close(); void this.game.ui.updateNotice(u); }
+        return;
+      }
       case 'discard': {
         const it = ps.d.inventory.find(x => x.uid === uid);
-        if (it && confirm(`Discard ${itemName(it)}?`)) { ps.removeInstance(it.uid); this.selItem = null; }
-        break;
+        if (!it) break;
+        void confirmDialog({
+          seal: '破棄', title: `Throw away ${itemName(it)}?`, text: 'It will be gone from your bag for good.',
+          yes: 'Discard', no: 'Keep', danger: true,
+        }).then(ok => {
+          if (!ok || !this.game.ps) return;
+          this.game.ps.removeInstance(it.uid);
+          if (this.selItem === it.uid) this.selItem = null;
+          this.refresh();
+        });
+        return;
       }
       case 'selskill': this.selSkill = t.dataset.id!; audio.play('click', { vol: 0.5 }); break;
       case 'learn': if (ps.learn(t.dataset.id!)) { audio.play('skillUp'); } else audio.play('error'); break;

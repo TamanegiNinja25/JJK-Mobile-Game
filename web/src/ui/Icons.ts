@@ -357,6 +357,10 @@ Object.assign(KANJI, {
   hs_calamity: '災', hs_arms: '四', hs_faces: '面', hs_millennium: '千', hs_shrine: '魔',
   my_divergent: '逕', my_piercing: '穿', my_supernova: '星', my_dismantle: '解', my_soul: '魂', my_zone: '閃', my_redScale: '赤', my_winters: '冬', my_counter: '返', my_secondWind: '息',
   my_body: '体', my_mastery: '黒', my_blood: '血', my_unbreakable: '忍', my_domain: '域',
+  yu_slash: '刃', yu_rika: '里', yu_speech: '止', yu_blast: '飛', yu_rct: '反', yu_beam: '愛', yu_mimic: '模', yu_full: '顕', yu_guard: '守', yu_promise: '約',
+  yu_reserves: '底', yu_sword: '剣', yu_love: '純', yu_special: '特', yu_domain: '域',
+  tj_spear: '矛', tj_cloud: '雲', tj_chain: '鎖', tj_katana: '魂', tj_flash: '迅', tj_hunt: '殺', tj_restrict: '縛', tj_focus: '仕', tj_sense: '覚', tj_instinct: '獣',
+  tj_body: '天', tj_senses: '感', tj_tools: '具', tj_zero: '零', tj_ult: '殺',
 });
 
 /** The unlockable sorcerers reuse the art of the technique they share with a first-year. */
@@ -366,6 +370,10 @@ const ART_ALIAS: Record<string, string> = {
   hs_barrage: 'rush', hs_dismantle: 'dismantleY', hs_stomp: 'slam', hs_blackflash: 'blackflash', hs_shrine: 'shrine',
   my_divergent: 'divergent', my_piercing: 'piercingBlood', my_supernova: 'supernova', my_dismantle: 'dismantleY', my_zone: 'blackflash', my_counter: 'counterStrike',
   my_secondWind: 'secondWind', my_body: 'physique', my_mastery: 'bfInstinct', my_unbreakable: 'unyielding', my_redScale: 'cursedSurge', my_winters: 'ironWill',
+  yu_slash: 'swordsman', yu_rika: 'totality', yu_speech: 'nerves', yu_blast: 'slam', yu_rct: 'secondWind', yu_beam: 'piercingBlood', yu_mimic: 'insight',
+  yu_full: 'cursedSurge', yu_guard: 'shadowGuard', yu_promise: 'bond', yu_reserves: 'reserves', yu_sword: 'swordsman', yu_love: 'bond', yu_special: 'physique',
+  tj_spear: 'shadowArsenal', tj_cloud: 'rush', tj_chain: 'volley', tj_katana: 'swordsman', tj_flash: 'shadowStep', tj_hunt: 'slaughter', tj_restrict: 'fightingSpirit',
+  tj_focus: 'steadyAim', tj_sense: 'counterStrike', tj_instinct: 'secondWind', tj_body: 'physique', tj_senses: 'insight', tj_tools: 'shadowArsenal', tj_zero: 'ironWill',
 };
 
 const SKILL_ART: Record<string, (x: Ctx, c: string) => void> = {

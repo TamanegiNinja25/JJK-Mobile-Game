@@ -1,5 +1,6 @@
 // Boss attack patterns. Each boss is a small move-set with telegraphs, phases
 // and, for the special grades, a domain expansion the player can clash with.
+import { voice, VOICES } from '../audio/Voice';
 import * as THREE from 'three';
 import type { Enemy } from './Enemy';
 import type { Actor } from './Actor';
@@ -63,6 +64,11 @@ abstract class BossBase implements BossScript {
       for (const m of avail) { r -= m.weight ?? 1; if (r <= 0) { mv = m; break; } }
       e.faceTowards(t.x, t.z, 1, 99);
       mv.run();
+      // human bosses shout on their bigger moves, in the voice their dialogue uses
+      if (mv.cd >= 4 && Math.random() < 0.55) {
+        const vk = String(e.d.model ?? '').replace(/^char:/, '');
+        if (VOICES[vk]) voice.bark('boss' + e.id, VOICES[vk], 'kiai', 0.9);
+      }
       this.busy = mv.dur;
       this.cds[mv.id] = mv.cd;
       e.atkCd = 0.35 / e.enrage;
@@ -636,6 +642,29 @@ class Eso extends BossBase {
 // ---------------------------------------------------------------------------
 // Perfect Preparation
 // ---------------------------------------------------------------------------
+
+/** Yuji Itadori, when the player is the executioner Yuta: fists, Divergent Fist and a Black Flash he can't call on cue. */
+class YujiRival extends BossBase {
+  moves(): Move[] {
+    const e = this.e;
+    return [
+      { id: 'punches', cd: 1.4, dur: 1.1, max: 3, weight: 3, run: () => this.combo(3, 1.0, 0.28, ['punch1', 'punch2', 'kick'], 'punch', 2.6, 1.8) },
+      { id: 'divergent', cd: 4.5, dur: 1.1, max: 6, weight: 2.5, run: () => {
+        this.strike('punch2', 0.45);
+        this.w.game.toast('"Divergent Fist!"', 'boss', 0.9);
+        this.slam(e.x + Math.sin(e.facing) * 1.6, e.z + Math.cos(e.facing) * 1.6, 2.4, 1.5, 0.45, 0x6ab8ff, 'divergent', { knock: 2.5 });
+      } },
+      { id: 'leap', cd: 6, dur: 1.2, min: 4, weight: 1.5, run: () => this.charge(14, 0.5, 1.3, 0.4) },
+      { id: 'bf', cd: 10, dur: 1.4, max: 4, phase: 1, weight: 1.5, run: () => {
+        this.strike('uppercut', 0.8);
+        this.w.sfx('charge', e.x, e.z);
+        this.slam(e.x + Math.sin(e.facing) * 1.4, e.z + Math.cos(e.facing) * 1.4, 2.2, 2.6, 0.8, 0xff2a3a, 'blackflash', { knock: 4 });
+        this.w.schedule(0.8, () => { if (e.alive) this.w.fx.blackFlash(e.x + Math.sin(e.facing) * 1.4, 1.2, e.z + Math.cos(e.facing) * 1.4); });
+      } },
+    ];
+  }
+  phases() { return [{ at: 0.5, id: 'bf', run: () => { this.w.game.toast('"I\'m not done yet!"', 'boss'); this.e.enrage = 1.15; } }]; }
+}
 
 /** Yuta Okkotsu: katana, Rika's hands, borrowed Cursed Speech, a copy of your own technique and Pure Love. */
 class Yuta extends BossBase {
@@ -1372,7 +1401,7 @@ class GojoMemory extends BossBase {
   }
   incomingMult(opts: DamageOpts, bf?: boolean) {
     if (this.w.time > this.infinity) return 1;
-    if (opts.kind === 'domain' || bf) return 1;
+    if (opts.kind === 'domain' || bf || opts.nullify) return 1;
     return 0.12;
   }
   phases() {
@@ -1410,6 +1439,7 @@ export function createBoss(id: string, e: Enemy): BossScript | null {
     case 'kechizu': return new Kechizu(e);
     case 'eso': return new Eso(e);
     case 'yuta': return new Yuta(e);
+    case 'yujiRival': return new YujiRival(e);
     case 'naoya': return new Naoya(e);
     case 'higuruma': return new Higuruma(e);
     case 'kashimo': return new Kashimo(e);

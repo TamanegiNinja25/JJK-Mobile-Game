@@ -11,6 +11,7 @@ import { expToNext, CLASSES, LEVEL_CAP } from '../rpg/classes';
 import { GRADE_NAME } from '../rpg/enemies';
 import { NPC_SHORT } from '../data/story';
 import { Action } from '../core/Input';
+import type { Hint } from '../rpg/Hints';
 
 /** Status effects bosses put on the player: glyph and tooltip. */
 const DEBUFFS: Record<string, [string, string]> = { confiscated: ['没', 'Confiscation: techniques sealed'] };
@@ -89,8 +90,60 @@ export class Hud {
     v.append(this.portrait, bars);
     // the quest tracker sits under the vitals, clear of the skill buttons on every screen size
     const left = el('div', 'top-left');
-    left.append(v, this.buildTracker());
+    this.hintEl = el('div', 'hint-card hidden');
+    left.append(v, this.buildTracker(), this.hintEl);
     this.root.appendChild(left);
+    this.hintEl.addEventListener('click', (e) => this.onHint(e));
+  }
+
+  // ---- quest hints (see rpg/Hints) ----
+  private hintEl!: HTMLDivElement;
+  private hint: Hint | null = null;
+  private hintT = 0;
+
+  showHint(h: Hint) {
+    this.hint = h;
+    this.hintT = h.level >= 2 ? 30 : 16;
+    const acts = [
+      h.level >= 2 ? '<button data-h="map">Open map</button>' : '',
+      h.level >= 3 && (h.travel || h.spot) ? `<button data-h="go" class="go">Take me there</button>` : '',
+      '<button data-h="x" class="x" aria-label="Close">✕</button>',
+    ].join('');
+    this.hintEl.innerHTML = `<div class="hint-port" style="background-image:url(${this.game.portraits.get(h.who)})"></div>
+      <div class="hint-body"><div class="hint-who"><span class="hint-k">助言</span>${escapeHtml(NPC_SHORT[h.who] ?? h.who)} · ${escapeHtml(h.title)}</div>
+      ${h.lines.map(l => `<div class="hint-line">${escapeHtml(l)}</div>`).join('')}
+      <div class="hint-acts">${acts}</div></div>`;
+    this.hintEl.classList.remove('hidden');
+    this.hintEl.classList.remove('pop'); void this.hintEl.offsetWidth; this.hintEl.classList.add('pop');
+    audio.play('dialog', { pitch: 0.8 });
+  }
+
+  hideHint(now = false) {
+    if (!this.hint && now) return;
+    this.hint = null;
+    this.hintEl.classList.add('hidden');
+  }
+
+  private onHint(e: Event) {
+    const b = (e.target as HTMLElement).closest('[data-h]') as HTMLElement | null;
+    if (!b || !this.hint) return;
+    e.stopPropagation();
+    const h = this.hint, g = this.game;
+    audio.play('click');
+    if (b.dataset.h === 'map') { this.hideHint(); g.ui.openMenu('map'); return; }
+    if (b.dataset.h === 'go') {
+      this.hideHint();
+      const w = g.world;
+      if (h.spot && (!h.travel || w.guideMaps.includes(g.ps!.d.map))) {
+        // stop a couple of metres short, on the side we came from
+        const dx = w.player.x - h.spot.x, dz = w.player.z - h.spot.z, d = Math.hypot(dx, dz) || 1;
+        w.player.place(h.spot.x + dx / d * 1.8, h.spot.z + dz / d * 1.8);
+        audio.play('teleport');
+        g.world.refreshGuide();
+      } else if (h.travel) void g.travel(h.travel);
+      return;
+    }
+    this.hideHint();
   }
 
   private buildTracker() {
@@ -461,6 +514,7 @@ export class Hud {
     const ps = g.ps;
     const w = g.world;
     if (!ps || !w.player) return;
+    if (this.hint && (this.hintT -= dt) <= 0) this.hideHint();
     const st = ps.stats;
     const d = ps.d;
     this.updateBuffs();
@@ -472,7 +526,9 @@ export class Hud {
     this.hpText.textContent = `${Math.ceil(d.hp)} / ${st.maxHp}`;
     this.root.classList.toggle('low-hp', hpK < 0.25);
     this.ceFill.style.width = (Math.max(0, d.ce / st.maxCe) * 100).toFixed(1) + '%';
-    this.ceText.textContent = `${Math.floor(d.ce)} / ${st.maxCe}`;
+    const sta = CLASSES[d.cls].resource === 'stamina';
+    this.ceText.textContent = `${sta ? 'STAMINA ' : ''}${Math.floor(d.ce)} / ${st.maxCe}`;
+    this.ceFill.parentElement!.classList.toggle('sta', sta);
     this.domFill.style.width = d.domain.toFixed(1) + '%';
     this.domWrap.classList.toggle('full', d.domain >= 100);
     const need = expToNext(d.level);

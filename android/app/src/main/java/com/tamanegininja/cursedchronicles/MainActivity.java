@@ -251,7 +251,16 @@ public class MainActivity extends Activity {
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            // Keep all navigation inside the game.
+            // Keep all navigation inside the game; the game's own release page opens in the browser.
+            String url = request.getUrl().toString();
+            if (GameBridge.isRepoPage(url)) {
+                try {
+                    view.getContext().startActivity(new Intent(Intent.ACTION_VIEW, request.getUrl()));
+                } catch (ActivityNotFoundException e) {
+                    // no browser: stay in the game
+                }
+                return true;
+            }
             return !HOST.equals(request.getUrl().getHost());
         }
     }

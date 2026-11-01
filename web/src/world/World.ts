@@ -1,5 +1,6 @@
 // The live game world: map loading, entity simulation, combat resolution,
 // bosses, domains, loot and quest hooks.
+import { voice, voiceFor } from '../audio/Voice';
 import * as THREE from 'three';
 import type { Game } from '../Game';
 import { Renderer } from '../render/Renderer';
@@ -7,6 +8,7 @@ import { Effects } from '../render/Effects';
 import { Overlay2D } from '../ui/Overlay2D';
 import { CollisionWorld } from './Collision';
 import { MapBuilder, MapRuntime, MapDef, BossDef, SpawnerDef, buildTerrain } from './MapBuilder';
+import type { NpcDef } from '../entities/NPC';
 import { MAPS } from './maps';
 import { SplatPainter } from '../render/textures';
 import { clearWaterMaterials, tickWater } from '../render/models/buildings';
@@ -18,7 +20,7 @@ import { NPC } from '../entities/NPC';
 import { Projectile } from '../entities/Projectile';
 import { Loot, Pickup, Portal } from '../entities/Loot';
 import { ENEMIES, GRADE_NAME } from '../rpg/enemies';
-import { LEVEL_CAP, expToNext } from '../rpg/classes';
+import { CLASSES, LEVEL_CAP, expToNext } from '../rpg/classes';
 import { getAtlas, AtlasEntry } from './atlas';
 import { npcName, type PlayerState } from '../rpg/PlayerState';
 import { ITEMS, makeItem, randomGear, rollRarity, uniquesForLevel } from '../rpg/items';
@@ -143,7 +145,7 @@ export class World implements WorldAPI {
     ps.d.map = id;
     ps.d.x = sx; ps.d.z = sz;
 
-    for (const n of this.map.npcs) if (!n.cond || n.cond(ps)) this.npcs.push(new NPC(this, n));
+    for (const n of this.map.npcs) if (this.npcHere(n)) this.npcs.push(new NPC(this, n));
     for (const p of this.map.portals) this.portals.push(new Portal(this, p));
     // arriving on top of a travel gate shouldn't pop its menu open
     for (const po of this.portals) po.occupied = Math.hypot(sx - po.d.x, sz - po.d.z) <= po.d.r;
@@ -289,11 +291,17 @@ export class World implements WorldAPI {
     return n;
   }
 
-  refreshNpcs() {
+  /** Is this NPC around right now? Never the one the player is playing as (Yuta, Toji). */
+  npcHere(def: NpcDef) {
     const ps = this.game.ps!;
+    if (def.id === CLASSES[ps.d.cls]?.self) return false;
+    return !def.cond || def.cond(ps);
+  }
+
+  refreshNpcs() {
     for (const def of this.map.npcs) {
       const present = this.npcs.find(n => n.d === def);
-      const ok = !def.cond || def.cond(ps);
+      const ok = this.npcHere(def);
       if (ok && !present) this.npcs.push(new NPC(this, def));
       if (!ok && present) { present.dispose(); this.npcs = this.npcs.filter(n => n !== present); }
     }
@@ -372,10 +380,10 @@ export class World implements WorldAPI {
     }
   }
 
-  /** Once the main story is over, curses everywhere rise to meet the player so Lv 51-100 stays reachable. */
+  /** Once the main story is over, or during a rerun, curses everywhere rise to meet the player so Lv 51-100 stays reachable. */
   private scaledLevel(base: number) {
     const ps = this.game.ps!;
-    if (ps.questState('m14')?.state !== 'done' || ps.d.level <= base) return base;
+    if ((ps.questState('m14')?.state !== 'done' && !ps.d.reruns?.active) || ps.d.level <= base) return base;
     return clamp(ps.d.level + randInt(-3, 1), base, LEVEL_CAP);
   }
 
@@ -456,7 +464,7 @@ export class World implements WorldAPI {
         const st = ps.questState(b.quest);
         if (!st || st.state === 'done') continue;
         const q = QUEST_BY_ID[b.quest];
-        const oi = q.objectives.findIndex(o => o.type === 'boss' && o.target === b.id);
+        const oi = q.objectives.findIndex(o => o.type === 'boss' && o.target === (b.as ?? b.id));
         if (oi < 0 || ps.objectiveDone(q, oi)) continue;
         // earlier objectives must be complete
         let ok = true;
@@ -489,8 +497,9 @@ export class World implements WorldAPI {
       this.fx.smoke(b.x, b.z, 0x1a0a1a, 30);
       this.sfx('roar', b.x, b.z);
       this.fx.shake(0.5, 0.6);
-      // open-world bosses rise to meet the player
-      const lvl = b.world ? clamp(Math.max(b.level ?? def.level, this.game.ps!.d.level), 1, LEVEL_CAP) : b.level ?? def.level;
+      // open-world bosses rise to meet the player, as do the bosses of a rerun
+      const rise = b.world || (!!b.quest && this.game.ps!.inRerunLine(b.quest));
+      const lvl = rise ? clamp(Math.max(b.level ?? def.level, this.game.ps!.d.level), 1, LEVEL_CAP) : b.level ?? def.level;
       const e = this.spawnEnemy(b.id, b.x, b.z, lvl, false);
       e.aggro = true;
       e.target = this.player;
@@ -559,7 +568,9 @@ export class World implements WorldAPI {
       bd.tick = 0.5;
       const p = this.player;
       if (Math.hypot(p.x - bd.x, p.z - bd.z) < bd.r) {
-        this.applyDamageRaw(bd.enemy, p, p.maxHp * bd.dps * 0.5, { kind: 'domain', noBF: true, quiet: true, color: '#ff4a6a' });
+        // a body with no cursed energy at all (Toji) barely registers to a sure-hit
+        const blind = this.game.ps!.cls.resource === 'stamina' ? 0.3 : 1;
+        this.applyDamageRaw(bd.enemy, p, p.maxHp * bd.dps * 0.5 * blind, { kind: 'domain', noBF: true, quiet: true, color: '#ff4a6a' });
         this.fx.slash(p.x, p.z, rand(0, Math.PI * 2), 1.2, 0xff4a6a, 0.8, rand(-1, 1));
       }
     }
@@ -636,6 +647,8 @@ export class World implements WorldAPI {
   private guideT = 0;
   /** recompute guidance on the next frame (the tracked quest changed) */
   refreshGuide() { this.guideT = 0; }
+  /** Recompute the guidance right now (a hint built this frame must not read last second's target). */
+  ensureGuide() { if (this.map && this.game.ps) this.updateGuide(); }
   private guideArrow: THREE.Mesh | null = null;
 
   private updateGuide() {
@@ -657,9 +670,10 @@ export class World implements WorldAPI {
         break;
       }
       case 'boss': {
-        const b = this.map.bosses.find(b => b.id === g.boss && (!b.quest || b.quest === g.quest));
-        if (b) at = { x: b.x, z: b.z, hint: ENEMIES[g.boss]?.name ?? g.boss };
-        maps = mapsWhere(e => e.bosses.some(b => b.id === g.boss && (!b.quest || b.quest === g.quest)));
+        const fits = (b: BossDef) => (b.as ?? b.id) === g.boss && (!b.quest || b.quest === g.quest) && (!b.cond || b.cond(ps));
+        const b = this.map.bosses.find(fits);
+        if (b) at = { x: b.x, z: b.z, hint: ENEMIES[b.id]?.name ?? g.boss };
+        maps = mapsWhere(e => e.bosses.some(fits));
         break;
       }
       case 'reach': maps = [g.map]; break;
@@ -937,6 +951,7 @@ export class World implements WorldAPI {
       this.player.alive = false;
       this.player.model?.die();
       audio.play('playerDie');
+      voice.bark('player', voiceFor(this.game.ps!.cls.model), 'die');
       this.game.onPlayerDeath();
       return;
     }
@@ -969,7 +984,8 @@ export class World implements WorldAPI {
     this.overlay.add(e.x, 2.6, e.z, `+${Math.round(e.st.exp * (1 + ps.stats.expBonus))} EXP`, '#b0ffb0', 13);
     ps.questProgress('kill', d.id, 1, this.mapDef.id);
     if (e.isBoss) {
-      ps.questProgress('boss', d.id, 1);
+      const as = this.bossActive?.enemy === e ? this.bossActive.def.as ?? d.id : d.id;
+      ps.questProgress('boss', as, 1);
       if (this.bossActive?.enemy === e) {
         const wb = this.bossActive.def.world;
         if (wb) { ps.d.flags['wb_' + d.id] = ps.d.playTime + wb; this.game.toast(`${d.name} will rise again in about ${Math.round(wb / 60)} minutes.`, 'info', 3.5); }
@@ -977,7 +993,7 @@ export class World implements WorldAPI {
         this.bossDom = null;
         this.game.ui.hud?.setBoss(null);
         this.game.ui.banner('EXORCISED', d.name, '#ffd23a');
-        this.game.bossOutro(d.id);
+        this.game.bossOutro(as);
         if (this.mapDef.id === 'dailyArena' && dailyPick?.id === d.id) this.dailyWin(e, dailyPick);
         this.fx.flash('#ffffff', 0.6, 0.6);
         this.fx.shake(0.8, 0.6);
@@ -1146,7 +1162,7 @@ export class World implements WorldAPI {
       this.domainOwner = 'player';
       this.domainUntil = this.time + dur;
       this.domainInfo = { kind, name, start: this.time, dur, enemy: false };
-      if (this.game.settings.cutscenes === 'off') this.game.ui.banner('DOMAIN EXPANSION', name, kind === 'shadow' ? '#8a8aff' : kind === 'home' ? '#ffb07a' : '#ff2a3a');
+      if (this.game.settings.cutscenes === 'off') this.game.ui.banner('DOMAIN EXPANSION', name, kind === 'shadow' ? '#8a8aff' : kind === 'home' ? '#ffb07a' : kind === 'love' ? '#ffb0e0' : '#ff2a3a');
       this.updateMusic();
     };
     // the world holds still for the cut-in; skill timers resume with it, so the domain opens on cue

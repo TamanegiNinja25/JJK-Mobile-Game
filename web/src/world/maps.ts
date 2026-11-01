@@ -495,7 +495,8 @@ const zenin: MapDef = {
     b.spawner({ enemies: [{ id: 'heiCaster' }, { id: 'heiCaptain' }], x: 20, z: -2, w: 14, d: 14, count: 5, respawn: 12, level: [41, 45] });
     b.spawner({ enemies: [{ id: 'heiCaptain' }, { id: 'heiGuard', w: 2 }], x: 0, z: -18, w: 26, d: 8, count: 4, respawn: 13, level: [43, 46] });
     b.boss({ id: 'naoya', x: 0, z: -12, r: 10, quest: 'm17', intro: [
-      { who: 'naoya', text: 'Maki. You came crawling home. And you brought a stray from Tokyo with you.' },
+      { who: 'naoya', text: 'Maki. You came crawling home. And you brought a stray from Tokyo with you.', not: ['megumi'] },
+      { who: 'naoya', text: 'Maki. You came crawling home. And you brought the so-called heir. Saves me the trip to Tokyo.', only: ['megumi'] },
       { who: 'naoya', text: 'Projection Sorcery divides one second into twenty-four frames. I\'ve already seen how this ends. You lose. Try to make it interesting anyway.' },
       { who: 'maki', text: 'Talk all you want. You\'re slow where it counts.' },
     ] });
@@ -577,7 +578,14 @@ const shibuya: MapDef = {
       { who: 'todo', text: 'Brother! Remember: when I clap, nothing stays where it was. Not even you.', emote: 'clap' },
       { who: 'mahito', text: 'Souls, bodies, it\'s all clay. Let\'s find out whose shape is better.' },
     ] });
-    b.boss({ id: 'yuta', x: 0, z: 20, r: 9, quest: 'm15', intro: [
+    // playing as Yuta, the order was his: the one waiting in the ruins is Yuji
+    b.boss({ id: 'yujiRival', as: 'yuta', x: 0, z: 20, r: 9, quest: 'm15', cond: (ps) => ps.d.cls === 'yuta', intro: [
+      { who: 'narrator', text: 'In the ruins at the heart of Shibuya, a boy with pink hair stands alone among the craters. He has been waiting for you.' },
+      { who: 'yuji', text: 'So you\'re the one they sent. Okkotsu-senpai, right? Fushiguro told me about you.' },
+      { who: 'yuji', text: 'I\'m not going to run. But I\'m not going to just stand here and let you do it, either.' },
+      { who: 'player', text: 'I\'m sorry. Come at me with everything you have. This has to look real.' },
+    ] });
+    b.boss({ id: 'yuta', x: 0, z: 20, r: 9, quest: 'm15', cond: (ps) => ps.d.cls !== 'yuta', intro: [
       { who: 'narrator', text: 'In the ruins at the heart of Shibuya, a young man in a white uniform waits with a katana across his knees. He looks exhausted.' },
       { who: 'yuta', text: 'Sorry. I was given an order, and I said I would carry it out.' },
       { who: 'yuta', text: 'Rika. Let\'s go.' },
