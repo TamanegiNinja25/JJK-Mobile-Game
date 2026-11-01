@@ -48,7 +48,7 @@ previous one and keeps your saves.
 - Modulo Yuji's domain was announced as "Unlimited Void". It now has its own name.
 
 ### Daily exorcisms
-- **Akari Nitta**, beside Ijichi's car at Jujutsu High from Chapter 2, posts three bosses a
+- **Akari Nitta**, by the front gate of Jujutsu High from Chapter 2, posts three bosses a
   day out of ten. The list refreshes at midnight on your phone, and each boss can be beaten
   once a day. Only bosses you have already met in the story appear.
 - You fight in the new **Curtain Arena**, at your own level.
