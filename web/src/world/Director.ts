@@ -92,6 +92,19 @@ export class Director {
     r.t = r.dur;
   }
 
+  /**
+   * End the cutscene on screen right away. A map change mid-cutscene must call this: the scene would
+   * otherwise stay "running" while the game plays on, and everything queued behind it (dialogues,
+   * boss intros and outros, reports) would wait forever.
+   */
+  finishNow() {
+    const r = this.run;
+    if (!r) return;
+    r.t = r.dur;
+    try { r.update(r.t, 0); } catch { /* a scene that can't draw its last frame still ends */ }
+    this.stop();
+  }
+
   /** Called every frame while a cutscene holds the game (state 'cutscene'). */
   update(dt: number) {
     const r = this.run;
