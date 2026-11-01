@@ -17,7 +17,7 @@
 
 ### [⬇ Download CursedChronicles.apk](https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases/latest/download/CursedChronicles.apk)
 
-<sub>Latest release · Android 7.0+ · about 1.6 MB · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a> · <a href="CHANGELOG.md">changelog</a></sub>
+<sub>Latest release · Android 7.0+ · about 1.8 MB · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a> · <a href="CHANGELOG.md">changelog</a></sub>
 
 </div>
 
@@ -29,11 +29,15 @@ sorcerers. Combat is real-time with combos, skills, dodges and Black Flashes, wr
 classic Zenonia-style RPG loop: quests, loot, stat points, skill trees, gear upgrades and
 boss fights. Past the east gate of Jujutsu High, an open region of forest, villages,
 lakes and ruins connects on foot to the city. Schools, cinemas and stations can be
-entered, and their halls are laid out fresh every time you walk in.
+entered, and their halls are laid out fresh every time you walk in. Conversations play
+like a visual novel, with both speakers in large character art and a voice of their own.
+Domain expansions, boss entrances, chapter clears and the big story moments are staged
+as cutscenes. Every day, three bosses return for farming, each with drops of its own.
 
-Every model, building, texture, icon, portrait, music track and sound effect is
+Every model, building, texture, icon, portrait, music track, sound effect and voice is
 generated in code. The game ships no art or audio files, so the APK is under 2 MB
-and runs without an internet connection.
+and runs without an internet connection. If you want, you can add pictures and sounds
+from your own phone; they stay on the phone.
 
 > [!NOTE]
 > This is an unofficial, non-commercial fan game. It is not affiliated with or
@@ -55,6 +59,18 @@ and runs without an internet connection.
 
 <table>
   <tr>
+    <td width="50%"><img src="docs/screenshots/vn-dialogue.jpg" alt="Visual-novel dialogue"><br><sub><b>Conversations like a visual novel</b>: both speakers in large art, each with their own voice</sub></td>
+    <td width="50%"><img src="docs/screenshots/domain-cutin.jpg" alt="Domain Expansion cut-in"><br><sub><b>Domain Expansion cut-in</b>: 領域展開, then the domain's name</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/shrine-meter.jpg" alt="Inside Malevolent Shrine"><br><sub><b>Inside Malevolent Shrine</b>: slashes never stop, and the meter counts down in 5% steps</sub></td>
+    <td><img src="docs/screenshots/story-scene.jpg" alt="The Shibuya Incident title"><br><sub><b>Story cutscenes</b>: title shots and a moving camera for the big moments</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/chapter-clear.jpg" alt="Chapter clear"><br><sub><b>Chapter clears</b>: 第三章 完, with the camera turning around you</sub></td>
+    <td><img src="docs/screenshots/daily.jpg" alt="Daily exorcisms"><br><sub><b>Daily exorcisms</b>: three bosses a day from Akari Nitta, each with drops of its own</sub></td>
+  </tr>
+  <tr>
     <td width="50%"><img src="docs/screenshots/class-select.jpg" alt="Class select"><br><sub><b>Choose your sorcerer</b>: three first-years and four unlockable sorcerers, each with its own skill tree</sub></td>
     <td width="50%"><img src="docs/screenshots/jujutsu-high.jpg" alt="Jujutsu High"><br><sub><b>Tokyo Jujutsu High</b>: the hub, with shops, quests and fast travel</sub></td>
   </tr>
@@ -68,7 +84,7 @@ and runs without an internet connection.
   </tr>
   <tr>
     <td><img src="docs/screenshots/kyoto.jpg" alt="Kyoto forest"><br><sub><b>Kyoto Goodwill Event</b>: the forest where Hanami hides</sub></td>
-    <td><img src="docs/screenshots/dialogue.jpg" alt="Dialogue"><br><sub><b>Story dialogue</b> with portraits, voice blips and choices</sub></td>
+    <td><img src="docs/screenshots/boss-cutin.jpg" alt="Boss entrance"><br><sub><b>Boss entrances</b>: each boss rises on camera with its grade and name</sub></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/boss.jpg" alt="Sukuna boss fight"><br><sub><b>Boss fights</b> with telegraphed attacks and phases</sub></td>
@@ -118,7 +134,7 @@ and runs without an internet connection.
    open the APK.
 
 **Updating:** from v1.2.0 on, every release is signed with the same key, so a new APK
-(such as 1.4.0 over 1.3.1) installs straight over the old one and keeps your saves. What
+(such as 1.5.0 over 1.4.0) installs straight over the old one and keeps your saves. What
 changed in each version is in [CHANGELOG.md](CHANGELOG.md). Versions 1.0.0 and 1.1.0 were
 each signed with a one-off key, so moving from those needs one uninstall first. Before
 uninstalling anything, you can keep your progress with **System → Copy Save Code** (from
@@ -126,8 +142,9 @@ uninstalling anything, you can keep your progress with **System → Copy Save Co
 
 Requirements: Android 7.0 (API 24) or newer with OpenGL ES 3.0. The game plays in
 landscape. If the frame rate stays low, it lowers the graphics quality automatically;
-you can also set it under **System**, along with camera distance and screen shake
-(Off / Light / Full).
+you can also set it under **System**, along with camera distance, screen shake
+(Off / Light / Full), dialogue voices (character voices, spoken with your phone's
+text-to-speech, or blips), text speed and cutscenes (Full / Short / Off).
 
 ## Features
 
@@ -195,6 +212,48 @@ Sovereign (Lv 80) gear starts dropping.
 - **Cheats tab:** god mode, infinite cursed energy, one-hit kills, no cooldowns, extra
   speed, double EXP, all areas unlocked, plus one-tap level-ups, gear, items and quest
   completion. Toggles are saved per slot.
+
+### Conversations and cutscenes
+
+- **Visual-novel conversations.** The player stands on the left in large character art
+  and whoever they are talking to on the right, both drawn from their 3D models. The
+  speaker is lit and moves their mouth, and faces show five moods. Name plates carry
+  the Japanese names. **AUTO** and **SKIP** work like any dating sim.
+- **A voice for everyone.** Each character speaks in a generated voice with their own
+  pitch, pace and tone, and curses growl and echo. Pick **Spoken** in System to have
+  lines read aloud by your phone's text-to-speech instead. Characters in the world blink
+  and move their mouths while they talk.
+- **Sukuna speaks as Sukuna.** When you replay the story as one of the Sukunas, his
+  lines are his own, not Yuji's or Megumi's.
+- **Domain Expansion cut-ins** for you and for bosses: a close-up on the hand sign,
+  領域展開, then the domain's name in Japanese and English.
+- **Boss entrances**, **chapter clears** (第三章 完) and **chapter titles**.
+- **Staged story moments** with title shots and a moving camera: Sukuna's awakening,
+  the Shibuya Incident, the Prison Realm, the Culling Game, Gojo's return, the Shinjuku
+  Showdown and more. A boss's last words play where it falls, and credits roll at the
+  end of the main story.
+
+### Daily exorcisms
+
+From Chapter 2, **Akari Nitta** stands beside Ijichi's car at Jujutsu High with the day's
+list: three bosses out of ten you have already met in the story. The list refreshes at
+midnight on your phone, and each can be beaten once a day. You fight in the Curtain
+Arena at your own level. Each boss drops its own materials (Grade 1 Cores, fragments,
+potions, Hei crests, Cursed Ash) and Special Grade Seals. There is also a 30% chance of its
+**signature piece**, one of eight unique accessories found nowhere else. Twelve seals buy
+any signature piece outright.
+
+### Your own pictures and sounds
+
+**System → Your Pictures & Sounds** lets you choose files on your phone for your own copy:
+
+- a picture for any of 35 characters (portrait and dialogue art)
+- sounds for seven big moments, such as Domain Expansion and Black Flash
+- songs for five kinds of place: the title screen, Jujutsu High, missions, boss fights and
+  domains
+
+They are kept on the phone, never shared, and can be reset to the built-in ones at any
+time.
 
 ### The open world
 
@@ -268,7 +327,10 @@ chapter as done.
 28 bosses, each with its own move set, telegraphs, HP phases and summons. Mahito,
 Dagon, Jogo, Sukuna, Kenjaku, Naoya's cursed spirit and Gojo expand their **domains**: everyone inside takes sure-hit
 damage. Survive it, or cast your ultimate inside it to start a **domain clash** and break
-it. A boss expanding its domain also charges your gauge.
+it. A boss expanding its domain also charges your gauge. While any domain is up, a meter
+shows its name and counts down from 100% in 5% steps. Every domain keeps moving: inside
+Malevolent Shrine the slashes never stop, Unlimited Void streams information, and Coffin of
+the Iron Mountain erupts.
 
 Some of the later bosses play by their own rules:
 
@@ -321,6 +383,7 @@ the Cheats tab is in the main menu. Walk into a lit doorway to enter or leave a 
 | <kbd>Q</kbd> / <kbd>E</kbd> | HP / CE potion |
 | <kbd>F</kbd> / <kbd>Enter</kbd> | Talk, advance dialogue |
 | <kbd>1</kbd>–<kbd>9</kbd> in dialogue | Pick a choice |
+| <kbd>A</kbd> / <kbd>Esc</kbd> in dialogue | Auto / skip |
 | <kbd>I</kbd> <kbd>K</kbd> <kbd>L</kbd> <kbd>M</kbd> <kbd>C</kbd> | Bag, skills, quests, map, status |
 | <kbd>Esc</kbd> | Close menu / open the system menu |
 
@@ -367,7 +430,9 @@ The game is a TypeScript and [three.js](https://threejs.org) app, bundled by esb
 into one script. A small Java app shows it in a full-screen `WebView`. It serves the
 files from the APK's assets over a virtual `https://appassets.androidplatform.net`
 origin, so WebGL, Web Audio and `localStorage` saves behave as in a normal browser,
-offline. There are no third-party Android dependencies.
+offline. There are no third-party Android dependencies. A small bridge lets the game use
+the phone's text-to-speech engine for spoken dialogue, and the host opens the phone's file
+picker when you choose your own pictures or sounds.
 
 **Procedural art**
 - Characters and curses are built from primitives by `RigBuilder`. Each becomes one
@@ -384,10 +449,17 @@ offline. There are no third-party Android dependencies.
 - Buildings and props are merged or instanced meshes. Terrain blends four canvas
   textures with a painted splat map. Skill icons, item icons and portraits are drawn
   at runtime.
+- Dialogue art is rendered from the same models: a three-quarter bust with an inked
+  silhouette, in five moods, each with the mouth shut and open. Faces have eye, brow and
+  mouth bones for expressions, blinking and talking.
+- Cutscenes (`src/world/Director.ts`) take the camera, freeze play and script shots,
+  title cards and letterboxing; story conversations can be staged with a moving camera.
 
 **Procedural audio:** sound effects are synthesized with Web Audio (noise bursts, FM
 and a Karplus-Strong koto). Each area's music is a step sequencer that composes
-phrases on the fly, layered over ambience loops and a convolution reverb.
+phrases on the fly, layered over ambience loops and a convolution reverb. Voices are
+syllables of a buzzing source through two vowel formants, per character, timed to the
+text as it types.
 
 **Performance:** there are three quality tiers that set resolution, shadows and bloom,
 and the game drops a tier automatically when the frame rate stays low. A fixed pool
@@ -401,16 +473,16 @@ painted once in idle time before menus need them.
 
 ```
 web/                    the game (TypeScript + three.js)
-  src/core/             input, math, noise
+  src/core/             input, math, noise, your own pictures and sounds (IndexedDB)
   src/render/           renderer, toon shaders, rigs, models, effects, weather, textures
-  src/audio/            synthesized SFX, music sequencer, ambience
-  src/rpg/              stats, classes, skills (and the unlockable sorcerers'), items, enemies, unlocks, player state
-  src/world/            maps (story areas, open regions, interiors), map builder, collision, world simulation
+  src/audio/            synthesized SFX, music sequencer, ambience, character voices
+  src/rpg/              stats, classes, skills (and the unlockable sorcerers'), items, enemies, unlocks, daily exorcisms, player state
+  src/world/            maps (story areas, open regions, interiors, the daily arena), map builder, collision, world simulation, cutscenes
   src/entities/         player, enemies, bosses, summons, projectiles, NPCs
-  src/ui/               HUD, menus, dialogue, icons, portraits
-  src/data/story.ts     quests and dialogue
+  src/ui/               HUD, menus, visual-novel dialogue, dialogue art, icons, portraits
+  src/data/             quests, dialogue and Sukuna's own lines
   static/               index.html and the UI stylesheet
-android/                WebView host app (Java)
+android/                WebView host app (Java), text-to-speech bridge
 docs/                   icon and screenshots for this README
 .github/workflows/      APK build and release
 ```

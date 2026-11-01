@@ -163,6 +163,15 @@ reg(
   A('heavenBand', 'Heavenly Restriction Band', 'ring', 86, { atk: 130, crit: 0.05 }, 60000, 'bracelet', '#1a1a1e', '#8a6aa0', { unique: [{ k: 'atkPct', v: 0.18 }, { k: 'critDmg', v: 0.4 }, { k: 'moveSpd', v: 0.06 }, { k: 'str', v: 24 }], desc: 'No cursed energy at all, and every drop of it paid back in body. Toji never needed a technique.' }),
   A('getoKesa', 'Geto\'s Kesa', 'outfit', 92, { def: 140, maxHp: 1600, evasion: 0.03 }, 70000, 'uniform', '#1a1a1e', '#9a7a3a', { unique: [{ k: 'summonPow', v: 0.3 }, { k: 'skillPow', v: 0.15 }, { k: 'cePct', v: 0.2 }, { k: 'ce', v: 20 }], desc: 'He wore it to the end of the Night Parade. His best friend was the last one to see it.' }),
   A('infinityEcho', 'Echo of Infinity', 'charm', 98, { maxCe: 420, skillPow: 0.16 }, 99000, 'eye', '#7fdcff', '#ffffff', { unique: [{ k: 'cdr', v: 0.18 }, { k: 'dmgReduce', v: 0.08 }, { k: 'evasion', v: 0.06 }, { k: 'ce', v: 24 }], desc: '"Throughout heaven and earth..." It is quiet now, but it still keeps a little distance between you and everything else.' }),
+  // signature pieces of the daily exorcisms (Akari Nitta's board)
+  A('wombCharm', 'Withered Womb Charm', 'charm', 12, { maxHp: 160, atk: 10 }, 9000, 'charm', '#4a2a2a', '#ff6a5a', { unique: [{ k: 'lifesteal', v: 0.02 }, { k: 'hpPct', v: 0.08 }, { k: 'vit', v: 8 }], desc: 'Cut from the womb at Eishu before it could ripen a second time. Still warm.' }),
+  A('stitchRing', 'Patchwork Stitch Ring', 'ring', 16, { atk: 22 }, 11000, 'ring', '#8a9aa8', '#7ac0dc', { unique: [{ k: 'lifesteal', v: 0.04 }, { k: 'atkPct', v: 0.08 }, { k: 'str', v: 8 }], desc: 'A loop of Mahito\'s stitches. Wounds close a little faster around it, and you try not to think about how.' }),
+  A('flowerBand', 'Flower Field Bracelet', 'ring', 20, { atk: 18, maxHp: 120 }, 13000, 'bracelet', '#3a6a2a', '#ffb0d8', { unique: [{ k: 'hpRegen', v: 12 }, { k: 'dmgReduce', v: 0.06 }, { k: 'vit', v: 10 }], desc: 'Hanami\'s buds, braided. It smells like a forest that grew overnight.' }),
+  A('bloodVial', 'Piercing Blood Vial', 'charm', 24, { maxCe: 80, crit: 0.03 }, 15000, 'crystal', '#5a0a14', '#ff3a4a', { unique: [{ k: 'crit', v: 0.08 }, { k: 'critDmg', v: 0.3 }, { k: 'dex', v: 10 }], desc: 'Choso\'s blood, compressed to a needle. Handle it like it might fire.' }),
+  A('skandhaPearl', 'Skandha Pearl', 'charm', 26, { maxCe: 140, ceRegen: 1 }, 16000, 'eye', '#2a6a9a', '#ffd0a0', { unique: [{ k: 'ceRegen', v: 3 }, { k: 'cdr', v: 0.1 }, { k: 'ce', v: 10 }], desc: 'From Dagon\'s sea. Hold it to your ear and you hear the horizon.' }),
+  A('volcanoEmber', 'Volcano Head Ember', 'charm', 30, { atk: 30, maxCe: 60 }, 18000, 'crystal', '#2a1a14', '#ff7a2a', { unique: [{ k: 'skillPow', v: 0.15 }, { k: 'crit', v: 0.05 }, { k: 'ce', v: 12 }], desc: 'An ember from Jogo\'s head that never cooled. The curses that are "real humans" still burn.' }),
+  A('gavelCharm', 'Executioner\'s Gavel', 'charm', 50, { atk: 60, maxHp: 260 }, 30000, 'charm', '#2a2418', '#ffd23a', { unique: [{ k: 'atkPct', v: 0.14 }, { k: 'critDmg', v: 0.25 }, { k: 'str', v: 12 }], desc: 'Higuruma\'s gavel, shrunk to a charm. Guilty, it says, every time it swings.' }),
+  A('frostCharm', 'Frost Calm Charm', 'charm', 70, { maxCe: 260, ceRegen: 2 }, 48000, 'crystal', '#bfe4ff', '#ffffff', { unique: [{ k: 'cdr', v: 0.14 }, { k: 'skillPow', v: 0.14 }, { k: 'evasion', v: 0.05 }], desc: 'Ice from Uraume\'s Frost Calm. It never melts, and neither does the cold in your hands.' }),
 );
 
 // ---- Post-story tiers (Lv 55 and Lv 80) ----
@@ -210,6 +219,7 @@ reg(
   { id: 'patientTag', name: 'Patient Wristband', kind: 'quest', req: 1, price: 0, icon: { shape: 'nametag', c1: '#f0f0f0', c2: '#3a8ad8' }, questItem: true, stack: 99, desc: 'From the old Tamagawa Hospital. The names have faded; the curses that wear them have not.' },
   { id: 'volcanicGlass', name: 'Volcanic Glass', kind: 'quest', req: 1, price: 0, icon: { shape: 'crystal', c1: '#1a1a22', c2: '#ff6a2a' }, questItem: true, stack: 99, desc: 'Black glass from Sakurajima\'s slopes, still warm. Cursed energy pools in the cracks.' },
   { id: 'memoryShard', name: 'Barrier Memory Shard', kind: 'quest', req: 1, price: 0, icon: { shape: 'crystal', c1: '#e8e0c8', c2: '#b07aff' }, questItem: true, stack: 99, desc: 'A sliver of Tengen\'s barrier. Hold it up to the light and you can see someone else\'s past.' },
+  { id: 'seal', name: 'Special Grade Seal', kind: 'material', req: 1, price: 0, icon: { shape: 'charm', c1: '#1a0a1e', c2: '#ff4aa8' }, stack: 999, desc: 'Paid for each daily exorcism. Akari Nitta trades twelve for any daily boss\'s signature piece.' },
   { id: 'heiCrest', name: 'Hei Corps Crest', kind: 'material', req: 1, price: 220, icon: { shape: 'charm', c1: '#1e1e26', c2: '#8a2a2a' }, stack: 999, desc: 'Worn by the Zen\'in clan\'s Hei. Sells well to collectors who never met one.' },
   { id: 'shinjukuAsh', name: 'Cursed Ash', kind: 'material', req: 1, price: 520, icon: { shape: 'crystal', c1: '#3a2a4a', c2: '#ff8aa8' }, stack: 999, desc: 'What is left of Kenjaku\'s curses. Mei Mei pays well for it. Do not ask why.' },
 );
@@ -410,6 +420,9 @@ export function rollRarity(bonus = 0): 0 | 1 | 2 {
   return 0;
 }
 
+/** Signature pieces of the daily exorcisms: only those bosses (or their seals) give them. */
+export const DAILY_SIGS = new Set(['wombCharm', 'stitchRing', 'flowerBand', 'bloodVial', 'skandhaPearl', 'volcanoEmber', 'gavelCharm', 'frostCharm']);
+
 export function uniquesForLevel(level: number) {
-  return Object.values(ITEMS).filter(b => b.unique && b.req <= level + 3);
+  return Object.values(ITEMS).filter(b => b.unique && b.req <= level + 3 && !DAILY_SIGS.has(b.id));
 }

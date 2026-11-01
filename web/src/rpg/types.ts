@@ -97,6 +97,8 @@ export interface SaveData {
   cheats?: CheatFlags;
   /** progress of the other sorcerers played in this save (the active one lives in the fields above) */
   roster?: Partial<Record<ClassId, RosterEntry>>;
+  /** daily exorcisms beaten today (the list resets when the date changes) */
+  daily?: { date: string; cleared: string[] };
 }
 
 /** One sorcerer's own progress inside a save. Armour, items, yen and quests are shared; weapons are not. */

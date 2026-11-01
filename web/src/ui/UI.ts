@@ -246,7 +246,7 @@ export class UI {
       const bars = (['hp', 'ce', 'atk', 'def'] as const).map(k => `<div class="cbar"><span>${k.toUpperCase()}</span><div><i style="width:${Math.round(v[k] / top[k] * 100)}%;background:${c.color}"></i></div></div>`).join('');
       t.innerHTML = `<div class="class-select"><div class="panel-title big">Choose your sorcerer</div><div class="cs-row">${chips}</div>
         <div class="cs-detail ${locked ? 'locked' : ''}" style="--c:${c.color}">
-          <div class="cportrait" style="background-image:url(${this.game.portraits.get(c.model)})"></div>
+          <div class="cportrait art" style="background-image:url(${this.game.busts.url(c.model)}), radial-gradient(circle at 50% 45%, ${c.color}aa, #0c0a14 75%)"></div>
           <div class="cs-info"><div class="cname">${escapeHtml(c.name)}</div><div class="ctitle">${escapeHtml(c.title)}</div>
             ${locked ? `<div class="cs-lock">🔒 ${escapeHtml(c.unlock ?? '')}</div>` : c.unlock ? '<div class="cs-lock open">Unlocked</div>' : ''}
             <div class="cdesc">${escapeHtml(c.desc)}</div>${bars}</div>

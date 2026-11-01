@@ -1,5 +1,6 @@
 // Quests and dialogue. All lines are original writing for this fan game.
 import { BaseClassId, ClassId } from '../rpg/types';
+import type { PlayerState } from '../rpg/PlayerState';
 
 export interface Line {
   who: string;            // npc id, 'player', 'narrator', 'sukuna'
@@ -8,9 +9,32 @@ export interface Line {
   not?: BaseClassId[];    // hidden for these story voices
   emote?: string;         // animation for the speaker
   sfx?: string;
+  mood?: 'neutral' | 'happy' | 'angry' | 'surprised' | 'sad';  // expression in the dialogue art (guessed from the text if unset)
 }
 
 export interface Choice { text: string; reply: Line[]; flag?: string }
+
+/** How a story conversation is staged as a cutscene (see world/Director). */
+export interface SceneSpec {
+  /** small line above the title (a date, a place) */
+  kicker?: string;
+  title?: string;
+  jp?: string;
+  /** camera: a slow orbit, a low angle looking up, or close on the player */
+  cam?: 'orbit' | 'low' | 'close';
+  /** colour wash over the scene */
+  tint?: 'red' | 'blue' | 'purple' | 'cyan' | 'gold';
+  shake?: number;
+  /** only for these story voices (a scene about Yuji's body makes no sense for Nobara) */
+  only?: BaseClassId[];
+}
+
+/** The story's chapters, for title cards and chapter clears. */
+export const CHAPTERS: Record<number, { name: string }> = {
+  1: { name: 'The Cursed Finger' }, 2: { name: 'Cursed Womb' }, 3: { name: 'Idle Transfiguration' },
+  4: { name: 'Kyoto Goodwill Event' }, 5: { name: 'The Shibuya Incident' }, 6: { name: 'Perfect Preparation' },
+  7: { name: 'The Culling Game' }, 8: { name: 'The Shinjuku Showdown' }, 9: { name: 'Memories in the Barrier' },
+};
 
 export type Objective =
   | { type: 'kill'; target: string[] | 'any'; count: number; map?: string; label: string }
@@ -39,7 +63,17 @@ export interface QuestDef {
   rewards: { exp: number; gold: number; items?: { id: string; qty?: number; rarity?: 0 | 1 | 2 }[]; classItems?: Partial<Record<ClassId, string>>; fingers?: number };
   unlock?: string[];
   autoAccept?: boolean;
+  /** big story moments are staged as cutscenes: the offer, the part of the ending where the boss falls, the report */
+  cine?: { offer?: SceneSpec; outro?: SceneSpec; complete?: SceneSpec };
+  /** who takes the quest over while its giver or turn-in NPC is away from the story (see NPC_AWAY) */
+  stand?: { npc: string; offer: Line[]; progress?: Line[]; complete: Line[] };
 }
+
+const isDone = (ps: PlayerState, id: string) => ps.questState(id)?.state === 'done';
+/** Gojo is sealed from the night Shibuya begins until the Prison Realm is opened, and gone after Shinjuku. */
+export const gojoAround = (ps: PlayerState) => !ps.questState('m11') || (!!ps.questState('m22') && !isDone(ps, 'm23'));
+/** People who leave the story for a while. Their quests pass to the quest's `stand` NPC meanwhile. */
+export const NPC_AWAY: Record<string, (ps: PlayerState) => boolean> = { gojo: ps => !gojoAround(ps) };
 
 export const NPC_NAMES: Record<string, string> = {
   gojo: 'Satoru Gojo', yaga: 'Masamichi Yaga', shoko: 'Shoko Ieiri', maki: 'Maki Zen\'in', panda: 'Panda', inumaki: 'Toge Inumaki',
@@ -51,6 +85,20 @@ export const NPC_NAMES: Record<string, string> = {
   kashimo: 'Hajime Kashimo', ishigori: 'Ryu Ishigori', uro: 'Takako Uro', uraume: 'Uraume',
   tengen: 'Tengen', kamo: 'Noritoshi Kamo', monk: 'Village Monk', farmer: 'Farmer', toji: 'Toji Fushiguro', geto: 'Suguru Geto',
   kuchisake: 'Kuchisake-onna', smallpox: 'Smallpox Deity', rainbowDragon: 'Rainbow Dragon', naoyaCurse: 'Naoya (Cursed Spirit)', gojoMemory: 'Satoru Gojo',
+  nitta: 'Akari Nitta', fingerBearer: 'Finger Bearer',
+};
+
+/** Names in Japanese for the dialogue name plates. */
+export const NPC_JP: Record<string, string> = {
+  gojo: '五条悟', gojoMemory: '五条悟', yaga: '夜蛾正道', shoko: '家入硝子', maki: '禪院真希', panda: 'パンダ', inumaki: '狗巻棘',
+  ijichi: '伊地知潔高', nanami: '七海建人', junpei: '吉野順平', todo: '東堂葵', miwa: '三輪霞', meimei: '冥冥',
+  yuji: '虎杖悠仁', moduloYuji: '虎杖悠仁', megumi: '伏黒恵', nobara: '釘崎野薔薇', sukuna: '両面宿儺', sukunaYuji: '両面宿儺',
+  sukunaMegumi: '両面宿儺', heianSukuna: '両面宿儺', mahito: '真人', hanami: '花御', jogo: '漏瑚', dagon: '陀艮',
+  mechamaru: '究極メカ丸', choso: '脹相', kenjaku: '羂索', grandpa: '虎杖倭助', kechizu: '血塗', eso: '壊相', yuta: '乙骨憂太',
+  mai: '禪院真依', naoya: '禪院直哉', naoyaCurse: '禪院直哉', hakari: '秤金次', higuruma: '日車寛見', kashimo: '鹿紫雲一',
+  ishigori: '石流龍', uro: '烏鷺亨子', uraume: '裏梅', tengen: '天元', kamo: '加茂憲紀', toji: '伏黒甚爾', geto: '夏油傑',
+  kuchisake: '口裂け女', smallpox: '疱瘡神', rainbowDragon: '虹龍', mahoraga: '魔虚羅', monk: '僧侶', farmer: '農家',
+  sasaki: '佐々木', iguchi: '井口', nitta: '新田明', fingerBearer: '指持ち',
 };
 
 /** How the UI refers to people in tight spaces (map labels, quest log). */
@@ -59,12 +107,14 @@ export const NPC_SHORT: Record<string, string> = {
   junpei: 'Junpei', todo: 'Todo', miwa: 'Miwa', meimei: 'Mei Mei', sasaki: 'Sasaki', iguchi: 'Iguchi', yuji: 'Yuji', megumi: 'Megumi', nobara: 'Nobara',
   mechamaru: 'Mechamaru', yuta: 'Yuta', hakari: 'Hakari', higuruma: 'Higuruma', ishigori: 'Ishigori', choso: 'Choso',
   tengen: 'Tengen', kamo: 'Kamo', monk: 'Monk', farmer: 'Farmer',
+  nitta: 'Nitta',
 };
 
 export const QUESTS: QuestDef[] = [
   // ===================== Chapter 1: The Cursed Finger =====================
   {
     id: 'm1', name: 'Midnight at Sugisawa', type: 'main', chapter: 1, giver: 'gojo', autoAccept: true,
+    cine: { offer: { kicker: 'Sendai, Miyagi Prefecture — midnight', title: 'Cursed Chronicles', jp: '呪術年代記', cam: 'orbit' } },
     summary: 'Exorcise the curses swarming the courtyard of Sugisawa Third High.',
     objectives: [{ type: 'kill', target: 'any', count: 8, map: 'sugisawa', label: 'Exorcise curses' }],
     offer: [
@@ -116,6 +166,7 @@ export const QUESTS: QuestDef[] = [
   },
   {
     id: 'm2', name: 'The Rooftop Hunger', type: 'main', chapter: 1, giver: 'sasaki', turnIn: 'gojo', prereq: ['m1c'], autoAccept: true,
+    cine: { outro: { kicker: 'The King of Curses awakens', title: 'Ryomen Sukuna', jp: '両面宿儺', cam: 'close', tint: 'red', shake: 0.6, only: ['yuji'] } },
     summary: 'Defeat the Grade 2 curse devouring the sports field and recover the cursed finger.',
     objectives: [{ type: 'boss', target: 'glutton', label: 'Defeat the Gluttonous Curse' }],
     offer: [
@@ -164,6 +215,15 @@ export const QUESTS: QuestDef[] = [
     ],
     progress: [{ who: 'gojo', text: 'They\'re squishy. You can do it.' }],
     complete: [{ who: 'gojo', text: 'Perfect! I\'ll tell him they "fought bravely."' }],
+    stand: {
+      npc: 'yaga',
+      offer: [
+        { who: 'yaga', text: 'Satoru asked me to keep training you while he is... unavailable. My corpses are on the sand training ground.' },
+        { who: 'yaga', text: 'Break three of them. Use your techniques. I will be watching your form, not the wreckage.' },
+      ],
+      progress: [{ who: 'yaga', text: 'The sand training ground. Three corpses.' }],
+      complete: [{ who: 'yaga', text: '...Adequate. Satoru would have made a speech about it. I will simply say: again tomorrow.' }],
+    },
     rewards: { exp: 150, gold: 200, items: [{ id: 'hpS', qty: 5 }, { id: 'fragment', qty: 3 }] },
   },
   {
@@ -210,6 +270,7 @@ export const QUESTS: QuestDef[] = [
   },
   {
     id: 'm5', name: 'Finger Bearer', type: 'main', chapter: 2, giver: 'ijichi', prereq: ['m4'], autoAccept: true,
+    cine: { outro: { kicker: 'Eishu Juvenile Detention Center', title: 'Lend Me That Body', jp: '宿儺', cam: 'low', tint: 'red', only: ['yuji'] } },
     summary: 'Defeat the Special Grade curse born from the womb inside the inner block.',
     objectives: [{ type: 'boss', target: 'fingerBearer', label: 'Defeat the Finger Bearer' }],
     offer: [{ who: 'ijichi', text: 'Inside that block is a Special Grade. If you can\'t win, run. Please. Running is allowed.' }],
@@ -274,7 +335,7 @@ export const QUESTS: QuestDef[] = [
 
   // ===================== Chapter 3: Idle Transfiguration =====================
   {
-    id: 'm6', name: 'Overtime in Kawasaki', type: 'main', chapter: 3, giver: 'gojo', prereq: ['m5'], level: 11,
+    id: 'm6', name: 'Overtime in Kawasaki', type: 'main', chapter: 3, giver: 'gojo', turnIn: 'nanami', prereq: ['m5'], level: 11,
     summary: 'Meet Kento Nanami in Kawasaki and gather evidence from the transfigured victims.',
     objectives: [
       { type: 'talk', npc: 'nanami', label: 'Meet Nanami in Kawasaki' },
@@ -312,6 +373,7 @@ export const QUESTS: QuestDef[] = [
   },
   {
     id: 'm8', name: 'Idle Transfiguration', type: 'main', chapter: 3, giver: 'junpei', turnIn: 'nanami', prereq: ['m7'], autoAccept: true,
+    cine: { outro: { cam: 'low', tint: 'blue' } },
     summary: 'Descend into the Kawasaki sewers and defeat the curse Mahito.',
     objectives: [{ type: 'boss', target: 'mahito', label: 'Defeat Mahito' }],
     offer: [{ who: 'junpei', text: 'The sewer entrance is at the south end of the canal. Please... be careful. He\'s smiling all the time.' }],
@@ -360,6 +422,15 @@ export const QUESTS: QuestDef[] = [
     ],
     progress: [{ who: 'gojo', text: 'Steady energy! Like a calm river. A calm river that punches dolls.' }],
     complete: [{ who: 'gojo', text: 'Look at that, barely any bruises! The principal will be thrilled. Or devastated. It\'s hard to tell with those sunglasses.' }],
+    stand: {
+      npc: 'yaga',
+      offer: [
+        { who: 'yaga', text: 'Satoru had a ridiculous way of training his students: a bad film, a sofa, and one of my cursed dolls. It works. I hate that it works.' },
+        { who: 'yaga', text: 'The dolls are in a room in the first-year dorm. Keep your cursed energy steady and break three of them. Gently.' },
+      ],
+      progress: [{ who: 'yaga', text: 'The first-year dorm. Steady energy, or the doll hits back.' }],
+      complete: [{ who: 'yaga', text: 'You broke them. ...I will make more. Satoru would want you to keep watching terrible films.' }],
+    },
     rewards: { exp: 900, gold: 500, items: [{ id: 'ceM', qty: 4 }, { id: 'fragment', qty: 4 }] },
   },
 
@@ -498,7 +569,8 @@ export const QUESTS: QuestDef[] = [
 
   // ===================== Chapter 5: Shibuya Incident =====================
   {
-    id: 'm11', name: 'October 31st', type: 'main', chapter: 5, giver: 'yaga', prereq: ['m10e'], level: 25,
+    id: 'm11', name: 'October 31st', type: 'main', chapter: 5, giver: 'yaga', turnIn: 'ijichi', prereq: ['m10e'], level: 25,
+    cine: { offer: { kicker: 'October 31st, 2018 — 8:14 PM', title: 'The Shibuya Incident', jp: '渋谷事変', cam: 'orbit', tint: 'red' } },
     summary: 'A veil has fallen over Shibuya. Break its anchors and fight through the curses.',
     objectives: [
       { type: 'reach', map: 'shibuya', label: 'Enter Shibuya' },
@@ -515,13 +587,14 @@ export const QUESTS: QuestDef[] = [
     ],
     progress: [{ who: 'ijichi', text: 'The anchors are marked with purple talismans. Please, please hurry.' }],
     complete: [
-      { who: 'ijichi', text: 'The outer veil is breaking! But the station... something is flooding the platforms with water. And fish?' },
+      { who: 'ijichi', text: 'The outer veil is breaking! But Mei Mei\'s crows found something far below the station. Please — you need to hear this.' },
     ],
     rewards: { exp: 12000, gold: 8000, items: [{ id: 'hpL', qty: 4 }, { id: 'ceL', qty: 3 }] },
     unlock: ['shibuya'],
   },
   {
     id: 'm11p', name: 'Prison Realm', type: 'main', chapter: 5, giver: 'ijichi', prereq: ['m11'], autoAccept: true,
+    cine: { complete: { kicker: 'Fukutoshin Line platform, B5F', title: 'Prison Realm', jp: '獄門疆', cam: 'low', tint: 'purple' } },
     summary: 'Gojo was sealed five floors beneath Shibuya Station. Fight down to B5F and break through whoever guards the platform.',
     objectives: [
       { type: 'reach', map: 'stationIn', label: 'Descend to B5F' },
@@ -562,11 +635,13 @@ export const QUESTS: QuestDef[] = [
       { who: 'jogo', text: 'Impossible... We were supposed to be the real humans... the ones who...' },
       { who: 'narrator', text: 'Jogo crumbles to cinders. In the ash, a finger glows red — and then, every finger you carry begins to pulse at once.' },
       { who: 'sukuna', text: 'Enough fingers in one place, and I don\'t need a vessel\'s permission. Come to the hill, sorcerer.' },
+      { who: 'ijichi', text: 'You beat Jogo? I saw the fire go out from here. But every warning talisman in the car just burned up at once. Something is very wrong.' },
     ],
     rewards: { exp: 18000, gold: 10000, fingers: 1, items: [{ id: 'core', qty: 4 }, { id: 'sixEyes' }] },
   },
   {
-    id: 'm14', name: 'King of Curses', type: 'main', chapter: 5, giver: 'ijichi', prereq: ['m13'], autoAccept: true,
+    id: 'm14', name: 'King of Curses', type: 'main', chapter: 5, giver: 'ijichi', turnIn: 'yaga', prereq: ['m13'], autoAccept: true,
+    cine: { outro: { kicker: 'Dogenzaka', title: 'King of Curses', jp: '呪いの王', cam: 'low', tint: 'red', shake: 0.8 } },
     summary: 'Ryomen Sukuna has manifested at Dogenzaka. Stop him.',
     objectives: [{ type: 'boss', target: 'sukuna', label: 'Defeat Ryomen Sukuna' }],
     offer: [
@@ -576,7 +651,7 @@ export const QUESTS: QuestDef[] = [
     complete: [
       { who: 'sukuna', text: 'Hah... Hahaha! So this is the strength of this era. You\'ve earned a moment of my attention. Only a moment.' },
       { who: 'narrator', text: 'The manifestation scatters into black smoke, and the fingers fall silent. Above Shibuya, the veil cracks open to the night sky.' },
-      { who: 'yaga', text: 'You did what grown sorcerers could not. Rest now. Satoru\'s seal will take time to break — but we have time, thanks to you.' },
+      { who: 'yaga', text: 'You came back. Good. You did what grown sorcerers could not. Rest now. Satoru\'s seal will take time to break — but we have time, thanks to you.' },
       { who: 'narrator', text: 'The Shibuya Incident is over. But the higher-ups are already deciding who to blame, and somewhere a man with Geto\'s face is smiling.' },
       { who: 'narrator', text: 'From now on, the curses of Japan grow stronger as you do. Principal Yaga will send for you soon.' },
     ],
@@ -628,6 +703,7 @@ export const QUESTS: QuestDef[] = [
   // ===================== Chapter 6: Perfect Preparation =====================
   {
     id: 'm15', name: 'The Executioner', type: 'main', chapter: 6, giver: 'yaga', turnIn: 'yuta', prereq: ['m14'], level: 36,
+    cine: { complete: { cam: 'orbit', tint: 'gold' } },
     summary: 'The higher-ups have ordered an execution, and sent a special grade sorcerer to carry it out. Yuta Okkotsu waits in the ruins of Shibuya.',
     objectives: [{ type: 'boss', target: 'yuta', label: 'Face Yuta Okkotsu in Shibuya' }],
     offer: [
@@ -639,7 +715,7 @@ export const QUESTS: QuestDef[] = [
       { who: 'player', text: 'Okkotsu-senpai wouldn\'t take an order like that without a reason. I\'m going.', only: ['megumi'] },
       { who: 'player', text: 'Execute Yuji? Over my dead body. Which is probably what they\'re hoping for.', only: ['nobara'] },
     ],
-    progress: [{ who: 'yaga', text: 'He waits at the centre of Shibuya. Be careful. He is the strongest of your generation.' }],
+    progress: [{ who: 'yuta', text: 'You came. Then let\'s not keep the higher-ups waiting.' }],
     complete: [
       { who: 'yuta', text: '...You can stop now. I was never going to kill you.' },
       { who: 'yuta', text: 'I made a binding vow with the higher-ups so they would give the job to me. That way, nobody else could take it.' },
@@ -695,6 +771,7 @@ export const QUESTS: QuestDef[] = [
   // ===================== Chapter 7: The Culling Game =====================
   {
     id: 'm18', name: 'The Culling Game', type: 'main', chapter: 7, giver: 'yuta', turnIn: 'hakari', prereq: ['m17'], level: 46,
+    cine: { offer: { kicker: 'December 2018', title: 'The Culling Game', jp: '死滅回游', cam: 'orbit', tint: 'purple' } },
     summary: 'Enter Tokyo Colony No. 1, survive as a player, and meet Kinji Hakari inside the barrier.',
     objectives: [
       { type: 'reach', map: 'colony1', label: 'Enter Tokyo Colony No. 1' },
@@ -814,6 +891,7 @@ export const QUESTS: QuestDef[] = [
   // ===================== Chapter 8: Shinjuku Showdown =====================
   {
     id: 'm22', name: 'The Strongest Returns', type: 'main', chapter: 8, giver: 'yaga', turnIn: 'gojo', prereq: ['m21'], level: 66,
+    cine: { complete: { kicker: 'Tokyo Jujutsu High', title: 'The Strongest Returns', jp: '最強', cam: 'orbit', tint: 'cyan' } },
     summary: 'The Prison Realm has been opened. Gojo is free. Go and see him.',
     objectives: [{ type: 'talk', npc: 'gojo', label: 'Talk to Gojo at Jujutsu High' }],
     offer: [
@@ -832,6 +910,7 @@ export const QUESTS: QuestDef[] = [
   },
   {
     id: 'm23', name: 'Shinjuku Showdown', type: 'main', chapter: 8, giver: 'gojo', turnIn: 'yuta', prereq: ['m22'], autoAccept: true,
+    cine: { offer: { kicker: 'December 24th, 2018', title: 'Shinjuku Showdown', jp: '新宿決戦', cam: 'orbit', tint: 'cyan' }, complete: { cam: 'low', tint: 'red', shake: 0.5 } },
     summary: 'Gojo faces Sukuna one on one. Keep Kenjaku\'s curses off the streets of Shinjuku and report to Yuta.',
     objectives: [
       { type: 'reach', map: 'shinjuku', label: 'Go to Shinjuku' },
@@ -883,6 +962,7 @@ export const QUESTS: QuestDef[] = [
   },
   {
     id: 'm26', name: 'The King of Curses', type: 'main', chapter: 8, giver: 'yuta', prereq: ['m25'], autoAccept: true, level: 78,
+    cine: { outro: { kicker: 'December 24th — Shinjuku', title: 'The King Falls', jp: '王の終焉', cam: 'low', tint: 'red' } },
     summary: 'Ryomen Sukuna waits in the crater at the heart of Shinjuku, in his true Heian form. This is the last fight.',
     objectives: [{ type: 'boss', target: 'sukunaTrue', label: 'Defeat Ryomen Sukuna' }],
     offer: [
@@ -931,7 +1011,7 @@ export const QUESTS: QuestDef[] = [
       { who: 'panda', text: 'The monk out there used to send us rice crackers. He stopped. Now there are curses on the road. I\'m worried. Also hungry.' },
       { who: 'panda', text: 'It\'s a big place out there. Look around. People say there are old caches sealed in the woods.' },
     ],
-    progress: [{ who: 'panda', text: 'East gate. Follow the road. Bring crackers back if you can.' }],
+    progress: [{ who: 'monk', text: 'You came from the school? The road behind you is still crawling with curses. Clear it, and then we can talk properly.' }],
     complete: [
       { who: 'monk', text: 'A sorcerer from the school! Thank the gods. The curses have been creeping down from the hills since summer.' },
       { who: 'monk', text: 'The further you go from the village, the worse they are. The lake, the old hospital, and that tree... stay away from the tree for now.' },
@@ -1019,7 +1099,7 @@ export const QUESTS: QuestDef[] = [
       { who: 'maki', text: 'My mother stabbed him in the storehouse. He died hating me so much that he came back as a curse.' },
       { who: 'maki', text: 'That\'s my mess. But I want someone watching my back when I clean it up. Ijichi can get you there.' },
     ],
-    progress: [{ who: 'maki', text: 'Sakurajima. Kamo is waiting at the harbour.' }],
+    progress: [{ who: 'kamo', text: 'You made it to the colony. Good. Stay close to the harbour until we have talked.' }],
     complete: [
       { who: 'kamo', text: 'You came. Good. I am Noritoshi Kamo, from the Kyoto school. I fought him once already. He was faster than anything I have seen.' },
       { who: 'kamo', text: 'The players here are terrified, and the curses are worse. Clear a path to the crater. He waits at the rim.' },
@@ -1104,6 +1184,7 @@ export const QUESTS: QuestDef[] = [
   },
   {
     id: 'm30', name: 'The Strongest\'s Last Lesson', type: 'main', chapter: 9, giver: 'tengen', turnIn: 'tengen', prereq: ['m29'], autoAccept: true, level: 92,
+    cine: { outro: { kicker: 'Inside Tengen\'s barrier', title: 'The Strongest\'s Last Lesson', jp: '最強の最後の授業', cam: 'close', tint: 'cyan' } },
     summary: 'Gojo left one last lesson in Tengen\'s barrier. Enter Unlimited Void and beat the strongest.',
     objectives: [
       { type: 'reach', map: 'lastLesson', label: 'Enter the memory through the right gate' },
@@ -1142,6 +1223,7 @@ export const IDLE: Record<string, Line[][]> = {
   panda: [[{ who: 'panda', text: 'I\'m a mutated cursed corpse with three cores. So yeah, I contain multitudes.' }], [{ who: 'panda', text: 'Toge says "salmon." That means hi. Probably.' }]],
   inumaki: [[{ who: 'inumaki', text: 'Salmon.' }], [{ who: 'inumaki', text: 'Mustard leaf.' }], [{ who: 'inumaki', text: 'Bonito flakes!' }]],
   ijichi: [[{ who: 'ijichi', text: 'W-where would you like to go? I can drive you anywhere the higher-ups have cleared.' }]],
+  nitta: [[{ who: 'nitta', text: 'Akari Nitta, auxiliary manager! The windows report new curses every morning. Here is today\'s list.' }]],
   nanami: [[{ who: 'nanami', text: 'Labor is crap.' }], [{ who: 'nanami', text: 'My technique creates a weak point at a 7:3 ratio. Yours seems to be "hit it until it stops."' }]],
   junpei: [[{ who: 'junpei', text: 'Do you think... people can change? Like, actually change?' }]],
   mechamaru: [[{ who: 'mechamaru', text: 'Kokichi Muta, operating remotely. Bring me gear infused to +10 and I will tune it further. Up to +30.' }], [{ who: 'mechamaru', text: 'Each reforge calibrates one property. Past +20 the margins are thin. Do not complain when it overloads.' }]],
@@ -1172,5 +1254,6 @@ export const SHOP_LINES: Record<string, string> = {
   yaga: 'Workshop — cursed energy infusion',
   meimei: 'Mei Mei\'s Exchange — rare goods, rare prices',
   ijichi: 'Travel — where to?',
+  nitta: 'Today\'s exorcisms',
   mechamaru: "Mechamaru's Reforge — +11 to +30",
 };

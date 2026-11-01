@@ -20,10 +20,12 @@ import { Loot, Pickup, Portal } from '../entities/Loot';
 import { ENEMIES, GRADE_NAME } from '../rpg/enemies';
 import { LEVEL_CAP, expToNext } from '../rpg/classes';
 import { getAtlas, AtlasEntry } from './atlas';
-import { npcName } from '../rpg/PlayerState';
+import { npcName, type PlayerState } from '../rpg/PlayerState';
 import { ITEMS, makeItem, randomGear, rollRarity, uniquesForLevel } from '../rpg/items';
 import { warmIcons } from '../ui/Icons';
-import { QUEST_BY_ID } from '../data/story';
+import { QUEST_BY_ID, NPC_JP } from '../data/story';
+import { DOMAIN_NAMES } from './Director';
+import { DailyBoss, SIG_CHANCE, dailyPick, markDailyCleared } from '../rpg/Daily';
 import { triggerReactions } from '../rpg/skills';
 import { Caster, DamageOpts, DamageSource, DomainKind, ProjectileSpec, Target, WorldAPI } from './api';
 import { audio, Surface } from '../audio/Audio';
@@ -41,6 +43,13 @@ interface SpawnerState { def: SpawnerDef; alive: Set<Enemy>; timers: number[] }
 const FINAL_BOSSES = new Set(['sukuna', 'mahoraga', 'kenjaku', 'sukunaTrue', 'geto', 'gojoMemory']);
 const _projScreen = new THREE.Matrix4();
 const _sphere = new THREE.Sphere();
+/** A portal's `cond` names a quest that must be finished; "+id" only needs it accepted. */
+export function portalOpen(ps: PlayerState, cond?: string) {
+  if (!cond) return true;
+  if (cond.startsWith('+')) return !!ps.questState(cond.slice(1));
+  return ps.questState(cond)?.state === 'done' || (cond === 'm7' && !!ps.questState('m8'));
+}
+
 export class World implements WorldAPI {
   game: Game;
   r: Renderer;
@@ -82,6 +91,7 @@ export class World implements WorldAPI {
     this.fx = new Effects(r);
     this.fx.onText = (x, y, z, t, c, s) => overlay.add(x, y, z, t, c, s, true);
     this.fx.onHitstop = (t) => { this.hitstopT = Math.max(this.hitstopT, t); };
+    this.fx.onSound = (name, x, z, vol) => this.sfx(name, x, z, vol);
     this.weather = new Weather(r);
     r.scene.add(this.root);
     // indoors the walls are cut away, so the camera never needs to swing overhead
@@ -488,7 +498,9 @@ export class World implements WorldAPI {
       this.bossActive = { def: b, enemy: e };
       this.updateMusic();
       this.game.ui.hud?.setBoss(e);
-      this.game.ui.banner(GRADE_NAME[def.grade].toUpperCase(), def.name, '#ff3a4a');
+      // the boss rises on camera (respawning open-world bosses skip it after the first time)
+      if (this.game.settings.cutscenes === 'off' || seen) this.game.ui.banner(GRADE_NAME[def.grade].toUpperCase(), def.name, '#ff3a4a');
+      else this.game.director.bossCutIn(e, GRADE_NAME[def.grade].toUpperCase(), def.name, NPC_JP[b.id] ?? '', () => {});
     };
     const q = b.quest ? QUEST_BY_ID[b.quest] : null;
     // an open-world boss introduces itself once; after that it just rises
@@ -520,16 +532,21 @@ export class World implements WorldAPI {
       this.game.ui.banner('DOMAIN CLASH', 'Your domain holds — theirs collapses!', '#9adfff');
       return;
     }
-    this.fx.domain(kind, e.x, e.z, r, dur);
-    this.bossDom = { enemy: e, until: this.time + dur, dps: dpsPct, r, x: e.x, z: e.z, tick: 1.2 };
-    this.domainOwner = 'enemy';
-    this.domainUntil = this.time + dur;
-    this.sfx('domain', e.x, e.z);
-    this.game.ui.banner('DOMAIN EXPANSION', banner.replace('Domain Expansion: ', ''), '#ff2a4a');
-    // the threat stirs the player's cursed energy, bringing a counter-domain within reach
-    const ps = this.game.ps!;
-    ps.d.domain = Math.min(100, ps.d.domain + 25);
-    this.game.toast('Sure-hit domain! Survive it — or use your Ultimate to clash!', 'boss', 3);
+    const open = () => {
+      if (!e.alive) return;
+      this.fx.domain(kind, e.x, e.z, r, dur);
+      this.bossDom = { enemy: e, until: this.time + dur, dps: dpsPct, r, x: e.x, z: e.z, tick: 1.2 };
+      this.domainOwner = 'enemy';
+      this.domainUntil = this.time + dur;
+      this.domainInfo = { kind, name: banner.replace('Domain Expansion: ', ''), start: this.time, dur, enemy: true };
+      this.sfx('domain', e.x, e.z);
+      if (this.game.settings.cutscenes === 'off') this.game.ui.banner('DOMAIN EXPANSION', banner.replace('Domain Expansion: ', ''), '#ff2a4a');
+      // the threat stirs the player's cursed energy, bringing a counter-domain within reach
+      const ps = this.game.ps!;
+      ps.d.domain = Math.min(100, ps.d.domain + 25);
+      this.game.toast('Sure-hit domain! Survive it — or use your Ultimate to clash!', 'boss', 3);
+    };
+    this.game.director.domainCutIn(e, kind, true, open);
   }
 
   private tickDomain(dt: number) {
@@ -593,7 +610,7 @@ export class World implements WorldAPI {
       }
       if (!inside) continue;
       const ps = this.game.ps!;
-      if (d.cond && ps.questState(d.cond)?.state !== 'done' && !(d.cond === 'm7' && ps.questState('m8'))) {
+      if (!portalOpen(ps, d.cond)) {
         this.game.toast(d.condText ?? 'The way is sealed.', 'warn', 2);
         this.portalCooldown = 2.5;
         const dx = p.x - d.x, dz = p.z - d.z, dd = Math.hypot(dx, dz) || 1;
@@ -680,6 +697,8 @@ export class World implements WorldAPI {
     const gate = this.portals.find(x => x.d.style === 'travel')?.d ?? this.npcs.find(n => n.id === 'ijichi');
     if (gate) this.guide = { x: gate.x, z: gate.z, hint: `Travel to ${dest.name}` };
   }
+
+  hideGuideArrow() { if (this.guideArrow) this.guideArrow.visible = false; }
 
   /** A soft gold arrow on the ground beside the player, pointing at the guide target. */
   private updateGuideArrow() {
@@ -958,12 +977,27 @@ export class World implements WorldAPI {
         this.bossDom = null;
         this.game.ui.hud?.setBoss(null);
         this.game.ui.banner('EXORCISED', d.name, '#ffd23a');
+        this.game.bossOutro(d.id);
+        if (this.mapDef.id === 'dailyArena' && dailyPick?.id === d.id) this.dailyWin(e, dailyPick);
         this.fx.flash('#ffffff', 0.6, 0.6);
         this.fx.shake(0.8, 0.6);
         this.fx.hitstop(0.25);
       }
     }
     if (!e.noLoot) this.dropLoot(e);
+  }
+
+  /** A daily exorcism falls: its own drops, seals, sometimes its signature piece; done for today. */
+  private dailyWin(e: Enemy, b: DailyBoss) {
+    const ps = this.game.ps!;
+    markDailyCleared(ps, b.id);
+    const drop = (id: string, qty: number, rarity: 0 | 1 | 2 | 3 = 0) => this.loot.push(new Loot(this, e.x + rand(-1.2, 1.2), e.z + rand(-1.2, 1.2), 0, makeItem(id, rarity, qty)));
+    for (const dr of b.drops) if (chance(dr.chance)) drop(dr.id, randInt(dr.qty[0], dr.qty[1]));
+    drop('seal', randInt(b.seals[0], b.seals[1]));
+    const sig = chance(SIG_CHANCE);
+    if (sig) { drop(b.sig, 1, 3); this.fx.pillar(e.x, e.z, 1, 6, 0xff9a3a, 1.4); }
+    this.game.toast(sig ? `Signature drop: ${ITEMS[b.sig].name}!` : 'Daily exorcism cleared. Nitta will have a new list tomorrow.', sig ? 'good' : 'quest', 3.5);
+    this.game.save(false);
   }
 
   /** Sealed caches in interiors: always yen and a consumable, usually a piece of gear. */
@@ -1106,12 +1140,21 @@ export class World implements WorldAPI {
   }
 
   domain(kind: DomainKind, x: number, z: number, r: number, dur: number) {
-    this.fx.domain(kind, x, z, r, dur);
-    this.domainOwner = 'player';
-    this.domainUntil = this.time + dur;
-    this.game.ui.banner('DOMAIN EXPANSION', kind === 'shrine' ? 'Malevolent Shrine' : kind === 'shadow' ? 'Chimera Shadow Garden' : kind === 'nails' ? 'Resonance: Thousand Nails' : 'Unlimited Void', kind === 'shadow' ? '#8a8aff' : '#ff2a3a');
-    this.updateMusic();
+    const name = DOMAIN_NAMES[kind]?.[1] ?? 'Domain Expansion';
+    const open = () => {
+      this.fx.domain(kind, x, z, r, dur);
+      this.domainOwner = 'player';
+      this.domainUntil = this.time + dur;
+      this.domainInfo = { kind, name, start: this.time, dur, enemy: false };
+      if (this.game.settings.cutscenes === 'off') this.game.ui.banner('DOMAIN EXPANSION', name, kind === 'shadow' ? '#8a8aff' : kind === 'home' ? '#ffb07a' : '#ff2a3a');
+      this.updateMusic();
+    };
+    // the world holds still for the cut-in; skill timers resume with it, so the domain opens on cue
+    this.game.director.domainCutIn(this.player, kind, false, open);
   }
+
+  /** The domain on the field right now, for the HUD's countdown. */
+  domainInfo: { kind: string; name: string; start: number; dur: number; enemy: boolean } | null = null;
 
   /**
    * The soundtrack follows what is happening right now: your domain, else a boss fight, else the

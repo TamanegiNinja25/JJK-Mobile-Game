@@ -54,6 +54,10 @@ export const SPECS: Record<string, HumanoidSpec> = {
     skin: 0xd8a882, hair: 0x2c201a, hairStyle: 'todo', eyes: 0x3a2a20, outfit: 'tank',
     top: 0xf0f0ea, bottom: 0x2c2c3a, accent: 0x2c2c3a, shoes: 0x16161a, height: 1.16, bulk: 1.5, extras: ['facescar'],
   },
+  nitta: {
+    skin: 0xf2d8c4, hair: 0x3a281e, hairStyle: 'nobara', eyes: 0x4a3426, outfit: 'suit',
+    top: 0x24242c, bottom: 0x24242c, accent: 0x24242c, shoes: 0x141418, inner: 0xeeeeea, height: 0.95, bulk: 0.85,
+  },
   meimei: {
     skin: 0xf4dccb, hair: 0xe4e0db, hairStyle: 'meimei', eyes: 0x6a6a7a, outfit: 'robe',
     top: 0x15151b, bottom: 0x15151b, accent: 0x15151b, shoes: 0x0f0f12, height: 1.06,

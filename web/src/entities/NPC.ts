@@ -12,7 +12,7 @@ export interface NpcDef {
   x: number;
   z: number;
   facing?: number;
-  shop?: 'potions' | 'armory' | 'workshop' | 'exchange' | 'travel' | 'reforge';
+  shop?: 'potions' | 'armory' | 'workshop' | 'exchange' | 'travel' | 'reforge' | 'daily';
   cond?: (ps: PlayerState) => boolean;
   name?: string;
   pose?: string;

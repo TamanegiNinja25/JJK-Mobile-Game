@@ -24,6 +24,8 @@ export interface ModelHandle {
   onStep?: (() => void) | null;
   /** fraction of an attack animation at which the blow connects */
   impactFrac?: number;
+  /** the mouth moves while true (humanoids) */
+  talking?: boolean;
 }
 
 export function wrapHumanoid(h: Humanoid): ModelHandle {
@@ -48,6 +50,8 @@ export function wrapHumanoid(h: Humanoid): ModelHandle {
     impactFrac: ACTION_TIMING.impact,
     get onStep() { return a.onStep; },
     set onStep(f: (() => void) | null) { a.onStep = f; },
+    get talking() { return a.talking; },
+    set talking(v: boolean) { a.talking = v; },
   };
   return handle;
 }

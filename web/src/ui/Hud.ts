@@ -2,7 +2,8 @@
 import type { Game } from '../Game';
 import type { Enemy } from '../entities/Enemy';
 import { audio } from '../audio/Audio';
-import { el, formatNum } from '../core/util';
+import { el, formatNum, escapeHtml } from '../core/util';
+import { DOMAIN_NAMES } from '../world/Director';
 import { skillIcon, itemIcon } from './Icons';
 import { SKILLS } from '../rpg/skills';
 import { ITEMS } from '../rpg/items';
@@ -43,6 +44,9 @@ export class Hud {
   private lastTrack = '';
   private lastPortrait = '';
   private mmTimer = 0;
+  private domMeter!: HTMLDivElement; private domName!: HTMLDivElement; private domPct!: HTMLDivElement;
+  private domSegs: HTMLElement[] = [];
+  private lastDomPct = -1;
 
   constructor(private game: Game, parent: HTMLElement) {
     this.root = el('div', 'hud');
@@ -50,6 +54,7 @@ export class Hud {
     this.buildVitals();
     this.buildTopRight();
     this.buildBoss();
+    this.buildDomainMeter();
     this.buildControls();
     const exp = el('div', 'exp-bar');
     this.expFill = el('div', 'exp-fill');
@@ -82,7 +87,29 @@ export class Hud {
     this.buffRow = el('div', 'buff-row');
     bars.append(this.nameEl, hp, ce, this.domWrap, this.buffRow);
     v.append(this.portrait, bars);
-    this.root.appendChild(v);
+    // the quest tracker sits under the vitals, clear of the skill buttons on every screen size
+    const left = el('div', 'top-left');
+    left.append(v, this.buildTracker());
+    this.root.appendChild(left);
+  }
+
+  private buildTracker() {
+    this.tracker = el('div', 'tracker');
+    this.trackerName = el('div', 'tracker-name');
+    this.trackerText = el('div', 'tracker-text');
+    this.trackerGuide = el('div', 'tracker-guide');
+    this.guideArrow = el('span', 'tg-arrow', '➤');
+    this.guideText = el('span', 'tg-text');
+    this.trackerGuide.append(this.guideArrow, this.guideText);
+    const cycle = el('div', 'tracker-cycle', '⇄ tap to switch quest');
+    this.tracker.append(this.trackerName, this.trackerText, this.trackerGuide, cycle);
+    // tapping the tracker switches which active quest it follows
+    this.tracker.addEventListener('click', () => {
+      const q = this.game.ps!.cycleTracked();
+      if (q) { audio.play('tab'); this.game.world.refreshGuide(); this.game.toast(`Tracking: ${q.name}`, 'quest', 1.4); }
+      else this.game.ui.openMenu('quests');
+    });
+    return this.tracker;
   }
 
   /** Active buffs as icons with a draining ring; built-in buffs map to the skill that grants them. */
@@ -123,22 +150,7 @@ export class Hud {
     mmWrap.appendChild(this.mm);
     mmWrap.addEventListener('click', () => this.game.ui.openMenu('map'));
     this.gold = el('div', 'gold', '¥0');
-    this.tracker = el('div', 'tracker');
-    this.trackerName = el('div', 'tracker-name');
-    this.trackerText = el('div', 'tracker-text');
-    this.trackerGuide = el('div', 'tracker-guide');
-    this.guideArrow = el('span', 'tg-arrow', '➤');
-    this.guideText = el('span', 'tg-text');
-    this.trackerGuide.append(this.guideArrow, this.guideText);
-    const cycle = el('div', 'tracker-cycle', '⇄ tap to switch quest');
-    this.tracker.append(this.trackerName, this.trackerText, this.trackerGuide, cycle);
-    // tapping the tracker switches which active quest it follows
-    this.tracker.addEventListener('click', () => {
-      const q = this.game.ps!.cycleTracked();
-      if (q) { audio.play('tab'); this.game.world.refreshGuide(); this.game.toast(`Tracking: ${q.name}`, 'quest', 1.4); }
-      else this.game.ui.openMenu('quests');
-    });
-    tr.append(row, mmWrap, this.gold, this.tracker);
+    tr.append(row, mmWrap, this.gold);
     this.root.appendChild(tr);
   }
 
@@ -203,9 +215,54 @@ export class Hud {
     this.root.appendChild(cluster);
   }
 
+  /** A domain on the field counts down from 100% in 5% steps. */
+  private buildDomainMeter() {
+    this.domMeter = el('div', 'dom-meter hidden');
+    this.domName = el('div', 'dm-name');
+    const bar = el('div', 'dm-bar');
+    for (let i = 0; i < 20; i++) { const sg = el('i'); bar.appendChild(sg); this.domSegs.push(sg); }
+    this.domPct = el('div', 'dm-pct');
+    this.domMeter.append(this.domName, bar, this.domPct);
+    this.root.appendChild(this.domMeter);
+  }
+
+  private updateDomain() {
+    const w = this.game.world, info = w.domainInfo;
+    let pct = -1;
+    if (info) {
+      const live = info.enemy ? !!w.bossDom : w.domainOwner === 'player';
+      const left = info.start + info.dur - w.time;
+      if (!live || left <= 0) w.domainInfo = null;
+      else pct = Math.max(5, Math.ceil(left / info.dur * 20 - 1e-6) * 5);
+    }
+    if (pct === this.lastDomPct) return;
+    if (pct < 0) {
+      this.domMeter.classList.add('hidden');
+      this.root.classList.remove('dom-on');
+    } else {
+      if (this.lastDomPct < 0) {
+        const [jp, en] = DOMAIN_NAMES[info!.kind] ?? ['領域展開', info!.name];
+        this.domName.innerHTML = `${escapeHtml(jp)}<small>${escapeHtml(info!.enemy ? info!.name : en)}</small>`;
+        this.domMeter.classList.toggle('enemy', info!.enemy);
+        this.domMeter.classList.remove('hidden');
+        this.root.classList.add('dom-on');
+      }
+      this.domPct.textContent = pct + '%';
+      this.domSegs.forEach((sg, i) => sg.classList.toggle('on', i < pct / 5));
+      this.domMeter.classList.remove('tick');
+      void this.domMeter.offsetWidth;
+      this.domMeter.classList.add('tick');
+    }
+    this.lastDomPct = pct;
+  }
+
+  /** Repaint the portrait (the player picked a new picture). */
+  refreshPortrait() { this.lastPortrait = ''; }
+
   setBoss(e: Enemy | null) {
     this.boss = e;
     this.bossWrap.classList.toggle('hidden', !e);
+    this.root.classList.toggle('boss-on', !!e);
     if (e) {
       this.bossName.innerHTML = `<span class="grade" style="color:${e.gradeColor}">${GRADE_NAME[e.d.grade]}</span> ${e.d.name} <span class="lv">Lv ${e.level}</span>`;
       this.bossLagV = 1;
@@ -407,6 +464,7 @@ export class Hud {
     const st = ps.stats;
     const d = ps.d;
     this.updateBuffs();
+    this.updateDomain();
     const hpK = Math.max(0, d.hp / st.maxHp);
     this.hpFill.style.width = (hpK * 100).toFixed(1) + '%';
     this.hpLagV = this.hpLagV > hpK ? Math.max(hpK, this.hpLagV - dt * 0.6) : hpK;

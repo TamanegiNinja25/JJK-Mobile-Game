@@ -2,6 +2,7 @@
 // taiko, synth layers) plus looping ambience beds. All synthesised live.
 import { audio, AudioSys } from './Audio';
 import { Rng } from '../core/util';
+import { media, musicSlot } from '../core/CustomMedia';
 
 const SCALES = {
   insen: [0, 1, 5, 7, 10],
@@ -365,14 +366,47 @@ class MusicPlayer {
 
   play(name: string, fade = 1.5) {
     if (!audio.ctx) { this.current = name; return; }
-    if (name === this.current && this.seq && !this.seq.stopped) return;
+    const ownKey = 'music:' + musicSlot(name);
+    const own = media.buffer(ownKey);
+    if (name === this.current && (own ? this.own?.key === ownKey : this.seq && !this.seq.stopped)) return;
     const th = T[name];
     if (!th) return;
     this.seq?.stop(fade);
-    this.seq = new Sequencer(audio, name, th, fade);
+    this.seq = null;
     this.current = name;
+    // a song the player picked for this kind of place plays instead of the generated theme
+    if (own) {
+      if (this.own?.key !== ownKey) { this.stopOwn(fade); this.startOwn(ownKey, own, fade); }
+      return;
+    }
+    this.stopOwn(fade);
+    this.seq = new Sequencer(audio, name, th, fade);
     if (!this.timer) this.timer = window.setInterval(() => this.seq?.tick(), 25);
   }
+
+  private own: { key: string; src: AudioBufferSourceNode; gain: GainNode } | null = null;
+  private startOwn(key: string, buf: AudioBuffer, fade: number) {
+    const ctx = audio.ctx!, t = ctx.currentTime;
+    const src = ctx.createBufferSource(), gain = ctx.createGain();
+    src.buffer = buf; src.loop = true;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.9, t + Math.max(0.1, fade));
+    src.connect(gain); gain.connect(audio.musicBus);
+    src.start(t);
+    this.own = { key, src, gain };
+  }
+  private stopOwn(fade: number) {
+    const o = this.own;
+    if (!o) return;
+    this.own = null;
+    const t = audio.ctx!.currentTime;
+    o.gain.gain.cancelScheduledValues(t);
+    o.gain.gain.setValueAtTime(Math.max(0.0001, o.gain.gain.value), t);
+    o.gain.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.1, fade));
+    o.src.stop(t + Math.max(0.1, fade) + 0.05);
+  }
+  /** The player changed their songs: replay the current place with the new choice. */
+  refresh() { const c = this.current; this.current = ''; this.stopOwn(0.4); if (c) this.play(c, 0.6); }
 
   push(name: string) { this.stack.push(this.current); this.play(name, 0.6); }
   pop() { const n = this.stack.pop(); if (n) this.play(n, 1.2); }
@@ -394,7 +428,7 @@ class MusicPlayer {
     if (this.pendingAmb) { const p = this.pendingAmb; this.pendingAmb = null; this.ambience(p); }
   }
 
-  stop() { this.seq?.stop(1); this.seq = null; this.current = ''; }
+  stop() { this.seq?.stop(1); this.seq = null; this.stopOwn(1); this.current = ''; }
 }
 
 export const music = new MusicPlayer();

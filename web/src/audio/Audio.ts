@@ -1,6 +1,7 @@
 // Procedural audio engine: every sound effect is synthesised at runtime with
 // WebAudio, so there are no audio files to ship.
 import { clamp } from '../core/util';
+import { media } from '../core/CustomMedia';
 
 export type Surface = 'grass' | 'stone' | 'wood' | 'water' | 'concrete' | 'metal' | 'flesh' | 'dirt';
 
@@ -56,6 +57,7 @@ export class AudioSys {
       this.noise = this.makeNoise(2, false);
       this.pink = this.makeNoise(2, true);
       this.applyVolumes();
+      void media.attach(ctx);
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
   }
@@ -248,8 +250,23 @@ export class AudioSys {
     this.recent.push(ms);
     const t = this.now + (o.delay ?? 0);
     const p = o.pitch ?? 1;
+    // a sound the player picked from their phone replaces the generated one
+    const own = media.buffer('sfx:' + name);
+    if (own) { this.playOwn(name, own, t, o); return; }
     const fn = (SFX as any)[name] as ((a: AudioSys, t: number, p: number, o: SfxOpts) => void) | undefined;
     if (fn) fn(this, t, p, o);
+  }
+
+  private ownPlaying = new Map<string, AudioBufferSourceNode>();
+  /** Custom clips don't stack: a long voice line isn't restarted while it is still playing. */
+  private playOwn(name: string, buf: AudioBuffer, t: number, o: SfxOpts) {
+    if (this.ownPlaying.has(name)) return;
+    const src = this.ctx!.createBufferSource();
+    src.buffer = buf;
+    src.connect(this.out({ ...o, vol: Math.min(1, (o.vol ?? 1) * 1.1) }));
+    src.onended = () => { if (this.ownPlaying.get(name) === src) this.ownPlaying.delete(name); };
+    this.ownPlaying.set(name, src);
+    src.start(t);
   }
 
   step(surface: Surface, o: SfxOpts = {}) {

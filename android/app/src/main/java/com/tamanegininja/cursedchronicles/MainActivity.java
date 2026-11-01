@@ -2,6 +2,8 @@ package com.tamanegininja.cursedchronicles;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.content.res.AssetManager;
 import android.graphics.Color;
 import android.net.Uri;
@@ -14,6 +16,7 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -37,7 +40,12 @@ public class MainActivity extends Activity {
     private static final String HOST = "appassets.androidplatform.net";
     private static final String START_URL = "https://" + HOST + "/www/index.html";
 
+    private static final int REQ_FILE = 41;
+
     private WebView webView;
+    private GameBridge bridge;
+    /** pending <input type=file> request (custom portraits and sounds picked from the phone) */
+    private ValueCallback<Uri[]> fileCallback;
     private long lastBackPress = 0;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -64,7 +72,8 @@ public class MainActivity extends Activity {
         s.setDatabaseEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setAllowFileAccess(false);
-        s.setAllowContentAccess(false);
+        // files the player picks for custom portraits and sounds arrive as content:// URIs
+        s.setAllowContentAccess(true);
         s.setSupportZoom(false);
         s.setBuiltInZoomControls(false);
         s.setDisplayZoomControls(false);
@@ -80,7 +89,22 @@ public class MainActivity extends Activity {
                 android.util.Log.d("CursedChronicles", m.message() + " @" + m.lineNumber());
                 return true;
             }
+
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (fileCallback != null) fileCallback.onReceiveValue(null);
+                fileCallback = callback;
+                try {
+                    startActivityForResult(params.createIntent(), REQ_FILE);
+                } catch (ActivityNotFoundException e) {
+                    fileCallback = null;
+                    return false;
+                }
+                return true;
+            }
         });
+        bridge = new GameBridge(this, webView);
+        webView.addJavascriptInterface(bridge, "CCAndroid");
 
         hideSystemUi();
         if (savedInstanceState != null) {
@@ -141,7 +165,21 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQ_FILE) {
+            if (fileCallback != null) fileCallback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
+            fileCallback = null;
+            return;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
     protected void onDestroy() {
+        if (bridge != null) {
+            bridge.shutdown();
+            bridge = null;
+        }
         if (webView != null) {
             webView.destroy();
             webView = null;
