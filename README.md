@@ -235,7 +235,7 @@ Sovereign (Lv 80) gear starts dropping.
 
 ### Daily exorcisms
 
-From Chapter 2, **Akari Nitta** stands beside Ijichi's car at Jujutsu High with the day's
+From Chapter 2, **Akari Nitta** stands by the front gate of Jujutsu High with the day's
 list: three bosses out of ten you have already met in the story. The list refreshes at
 midnight on your phone, and each can be beaten once a day. You fight in the Curtain
 Arena at your own level. Each boss drops its own materials (Grade 1 Cores, fragments,
