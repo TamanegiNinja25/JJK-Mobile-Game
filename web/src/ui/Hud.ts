@@ -129,6 +129,8 @@ export class Hud {
     if (!b || !this.hint) return;
     e.stopPropagation();
     const h = this.hint, g = this.game;
+    // the card can sit on screen while a conversation or cutscene plays; it only acts during play
+    if (g.state !== 'play' && b.dataset.h !== 'x') return;
     audio.play('click');
     if (b.dataset.h === 'map') { this.hideHint(); g.ui.openMenu('map'); return; }
     if (b.dataset.h === 'go') {

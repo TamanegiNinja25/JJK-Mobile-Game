@@ -429,6 +429,8 @@ export class Game {
 
   async travel(map: string, x?: number, z?: number, facing?: number) {
     if (this.state === 'loading') return;
+    // never leave a cutscene stranded behind a map change (see Director.finishNow)
+    if (this.director.busy) this.director.finishNow();
     const prev = this.state;
     this.state = 'loading';
     this.input.enabled = false;

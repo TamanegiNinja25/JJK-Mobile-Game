@@ -89,6 +89,10 @@ previous one and keeps your saves.
   were never located. Now they are.
 
 ### Stability
+- Changing area while a cutscene was still playing left the cutscene "running" behind the
+  game. Every conversation, boss intro and report after that waited for it forever, so the
+  story could stall. Travel now finishes the cutscene first, and the hint's **Take me there**
+  only works during play.
 - A domain's set pieces (the shrine, nails, court and swords) are freed when it ends. Each
   cast used to leave them in memory.
 - A dialog that is closing no longer catches taps meant for the next one.
