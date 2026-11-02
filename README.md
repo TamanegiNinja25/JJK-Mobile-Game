@@ -64,8 +64,12 @@ game's own animations and stay on the phone.
 
 <table>
   <tr>
+    <td width="50%"><img src="docs/screenshots/quest-ring.jpg" alt="A quest giver's ring and the tracker's location line"><br><sub><b>Where to go</b>: quest givers stand in a glowing ring, and under the compass the tracker says where the objective is</sub></td>
+    <td width="50%"><img src="docs/screenshots/settings.jpg" alt="Settings on the title screen"><br><sub><b>Settings on the title screen</b>: sound, graphics, your own pictures, sounds and models, and the update check</sub></td>
+  </tr>
+  <tr>
     <td width="50%"><img src="docs/screenshots/custom-model.jpg" alt="Your own 3D model in play"><br><sub><b>Your own 3D models</b>: a CC0 robot (RobotExpressive by Tomás Laulhé) worn by Yuji, throwing the game's own uppercut</sub></td>
-    <td width="50%"><img src="docs/screenshots/models-panel.jpg" alt="The 3D model menu"><br><sub><b>Pick a model on your phone</b>: GLB, glTF, VRM or FBX, and the menu says what it recognised</sub></td>
+    <td width="50%"><img src="docs/screenshots/models-panel.jpg" alt="The 3D model menu"><br><sub><b>Pick a model on your phone</b> in Settings on the title screen: GLB, glTF, VRM or FBX, and the menu says what it recognised</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/yuta-domain.jpg" alt="Yuta's Authentic Mutual Love"><br><sub><b>Yuta Okkotsu</b> opens Authentic Mutual Love, a field of katanas, with Rika at his side</sub></td>
