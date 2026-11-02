@@ -3,6 +3,74 @@
 All notable changes to Cursed Chronicles. Every release since 1.2.0 installs over the
 previous one and keeps your saves.
 
+## 1.7.0 — Your own 3D models, recorded sounds and a new map
+
+### Your own 3D character models
+- **System → Your Pictures, Sounds & Models → 3D character models**: pick a model file on
+  your phone for any of 34 characters. It replaces how that character looks everywhere:
+  as your sorcerer, as an NPC, as a boss, in the HUD portrait and in dialogue art.
+- **Formats**: GLB and glTF (a glTF with its separate `.bin` and textures can be picked
+  together, or as the `.zip` most model sites give you), **VRM** (VRoid and other VTuber
+  models) and **FBX**.
+- **The game's own animation moves it.** The built-in body still plays every move, unseen,
+  and each frame its pose is copied onto the model's skeleton, so every attack, skill,
+  dodge, hit and fall works with your model. The copy happens in character space with a
+  per-limb rest alignment: a T-posed Mixamo or VRoid model stands arms-down like the
+  game's characters, whatever its proportions or bone axes. Rigs are recognised by their
+  bone names (Mixamo, VRM, Unity, Blender Rigify and metarig, MMD in Japanese or English,
+  Daz, Character Creator and 3ds Max Biped), and a rig with meaningless names is matched
+  by the shape of its skeleton.
+- **Mixamo animations**: a model's own idle, walk and run clips play while the character
+  stands or moves, blending into the game's moves for everything else. Pick a Mixamo
+  character together with its Idle, Walking and Running files (FBX or GLB) and they are
+  used by their file names.
+- Weapons sit in the model's own hands, and it gets the game's cel shading and ink
+  outline. A model that turns out to face backwards, lie on its side or use centimetres
+  is turned upright, faced forward and sized to the character automatically. A showcase
+  scene's lights, camera and pedestal are left out.
+- **Faces**: a model's mouth-open and blink shapes (VRoid, MMD and most anime models have
+  them) follow the game's face, so it blinks, talks in conversations and squints when happy
+  in its dialogue art.
+- A model without a skeleton, or one that isn't a person (a fox, a helmet), is shown as
+  a statue that sways and falls with the body.
+- The menu says what it found ("GLB · Mixamo rig · 17/17 joints moved by the game · its
+  own idle, walk, run · 49k triangles") and warns when a model is heavy for a phone.
+  Up to 48 MB; textures are shrunk to 1024 px to spare the phone's memory. VRM spring
+  bones (swinging hair) aren't simulated; twist and sleeve helper bones turn with the arm
+  or leg they belong to.
+- Models stay on your phone and are never shared. Only use files you have the right to use.
+
+### Recorded sound effects
+- About a hundred recorded clips from **Kenney's free CC0 packs** (Impact Sounds, RPG
+  Audio, Interface Sounds): punches, kicks and blows, blade slashes, swings, blocks,
+  landings, footsteps that change with the ground (grass, dirt, stone, wood), coins,
+  doors, equipment and menu taps. Blows layer the recording over a quieter copy of the
+  synthesised sound, so they keep their weight and gain a real smack. Each sound has
+  several takes, never the same one twice running, re-pitched a touch every time.
+- Cursed techniques, domains, music and voices stay synthesised.
+- **System → Audio → Sound effects** switches between **Recorded** and **Synthesised**.
+- Fixed: most synthesised sounds ignored the volume they were played at, so a fight
+  across the street was as loud as your own punches. Sounds now fade with distance.
+- **32 sounds can be swapped for your own** (was 7), grouped as big moments, combat, and
+  world and menus: punches, kicks, slashes, swings, dodges, blocks, getting hurt,
+  footsteps, doors, coins, menu taps and more. Short clips of your own (a punch, a step)
+  can play over each other; longer ones (a shout, a jingle) aren't cut off by the next.
+
+### Map
+- **Only the list of names scrolls.** The map and the card under it stay where they are.
+- **Tap a name to see that area**: its streets, buildings, water and walls, the ⛩ travel
+  gate, ▣ doors you can enter, ➜ roads to other areas, people with a quest for you (! and
+  ?), the bosses you can still fight, the landmarks you have found and ◆ where your
+  tracked quest leads. The area you are in is drawn live, with you on it.
+- **Travel here** under the map takes you to the area shown. Tapping an area on the Japan
+  map shows it too and brings its name into view in the list.
+- The map is drawn at your screen's own resolution with text sized to stay readable, so
+  it is sharp on a phone instead of a shrunken picture. On short screens the list and the
+  card are slimmer to give the map more room.
+
+### Android
+- The file picker accepts 3D model files, and several files at once.
+
 ## 1.6.0 — Yuta, Toji, reruns and hints
 
 ### Two new sorcerers

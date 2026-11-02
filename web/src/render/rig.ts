@@ -11,6 +11,8 @@ export interface RigModel {
   bones: Record<string, THREE.Bone>;
   rest: Record<string, { pos: THREE.Vector3; rot: THREE.Euler }>;
   height: number;
+  /** hit flash for models drawn with their own materials (a character wearing an imported model) */
+  flash?: (amount: number, color: number) => void;
 }
 
 /** Merged geometry of models built inside RigBuilder.cached(), shared by every later copy. */
@@ -120,6 +122,7 @@ export function resetPose(m: RigModel) {
 
 /** Tint flash (hit feedback) by tweaking the shared glow via a per-model material clone. */
 export function setModelFlash(m: RigModel, amount: number, color = 0xffffff) {
+  if (m.flash) { m.flash(amount, color); return; }
   const mat = m.mesh.material as THREE.MeshToonMaterial;
   if (amount > 0.001) {
     if (!(m.mesh.userData.flashMat)) {

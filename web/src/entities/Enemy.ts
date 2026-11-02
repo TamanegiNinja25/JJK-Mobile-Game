@@ -6,6 +6,7 @@ import { EnemyDef, enemyStats, GRADE_COLOR } from '../rpg/enemies';
 import { buildCreature, CreatureKind } from '../render/models/creatures';
 import { buildCharacter } from '../render/models/characters';
 import { wrapHumanoid, ModelHandle } from '../render/models/model';
+import { withCustomModel } from '../render/models/imported';
 import { getProp } from '../render/models/props';
 import { toonMaterial, outlineMaterial } from '../render/toon';
 import { RigBuilder } from '../render/rig';
@@ -39,7 +40,10 @@ function staticModel(propName: string): ModelHandle {
 }
 
 export function buildEnemyModel(def: EnemyDef): ModelHandle {
-  return RigBuilder.cached('enemy:' + def.model, () => buildEnemyModelFresh(def));
+  const base = RigBuilder.cached('enemy:' + def.model, () => buildEnemyModelFresh(def));
+  if (def.model.startsWith('static:')) return base;
+  // the player's own 3D model for this character, if they picked one
+  return withCustomModel(def.model.startsWith('char:') ? def.model.slice(5) : def.model, base);
 }
 
 function buildEnemyModelFresh(def: EnemyDef): ModelHandle {

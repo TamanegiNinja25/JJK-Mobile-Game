@@ -4,6 +4,7 @@ import { Renderer } from '../render/Renderer';
 import { buildCharacter } from '../render/models/characters';
 import { buildCreature, CreatureKind } from '../render/models/creatures';
 import { wrapHumanoid, ModelHandle } from '../render/models/model';
+import { withCustomModel, customModels } from '../render/models/imported';
 import { occlusion } from '../render/toon';
 import { media } from '../core/CustomMedia';
 
@@ -39,14 +40,18 @@ export class Portraits {
     this.scene.add(key, rim, new THREE.HemisphereLight(0xffffff, 0x404050, 1.4));
   }
 
+  private modelsSeen = 0;
+
   get(id: string): string {
     const own = media.images.get(id);
     if (own) return own;
+    // a 3D model the player added or removed changes how characters are drawn
+    if (this.modelsSeen !== customModels.version) { this.modelsSeen = customModels.version; this.cache.clear(); }
     const hit = this.cache.get(id);
     if (hit) return hit;
     let model: ModelHandle;
     try {
-      model = CREATURE_IDS.has(id) ? buildCreature(id as CreatureKind) : wrapHumanoid(buildCharacter(id === 'civilian' ? 'civilianA' : id === 'student' ? 'student' : id));
+      model = withCustomModel(id, CREATURE_IDS.has(id) ? buildCreature(id as CreatureKind) : wrapHumanoid(buildCharacter(id === 'civilian' ? 'civilianA' : id === 'student' ? 'student' : id)));
     } catch {
       return '';
     }

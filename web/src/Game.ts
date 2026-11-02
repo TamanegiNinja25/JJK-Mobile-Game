@@ -72,6 +72,8 @@ export class Game {
     hints: 'on' as 'on' | 'off',
     /** shouts, grunts and cries in combat, in each character's voice */
     barks: 'on' as 'on' | 'off',
+    /** sound effects: recorded takes (Kenney's CC0 packs) over the synth, or synthesised only */
+    sfxStyle: 'recorded' as 'recorded' | 'synth',
   };
   hints = new QuestHints(this);
   private last = performance.now();
@@ -104,6 +106,12 @@ export class Game {
       const tabs: Record<string, string> = { KeyI: 'bag', KeyK: 'skills', KeyL: 'quests', KeyM: 'map', Escape: 'system', KeyC: 'status' };
       if (tabs[e.code]) { e.preventDefault(); this.ui.openMenu(tabs[e.code]); }
     });
+  }
+
+  /** The player's stored 3D models have been read (at start-up): characters already on screen put theirs on. */
+  onCustomModels() {
+    if (this.ps && this.world.player) this.world.refreshModels();
+    this.ui.hud?.refreshPortrait();
   }
 
   start() {
@@ -247,6 +255,7 @@ export class Game {
     audio.volumes.music = s.music;
     audio.volumes.sfx = s.sfx;
     audio.volumes.amb = s.amb;
+    audio.recorded = s.sfxStyle !== 'synth';
     audio.applyVolumes();
     if (this.r.quality !== s.quality) {
       this.r.setQuality(s.quality);

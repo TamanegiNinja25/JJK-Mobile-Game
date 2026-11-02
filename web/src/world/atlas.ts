@@ -9,7 +9,7 @@ import { MAPS } from './maps';
 export interface AtlasEntry {
   npcs: NpcDef[];
   bosses: BossDef[];
-  pickups: { item: string; quest: string }[];
+  pickups: { item: string; quest: string; x: number; z: number }[];
   portals: PortalDef[];
   enemies: Set<string>;
 }
@@ -21,7 +21,7 @@ function record(def: MapDef): AtlasEntry {
   const calls: Record<string, (...a: any[]) => void> = {
     npc: (d: NpcDef) => e.npcs.push(d),
     boss: (d: BossDef) => e.bosses.push(d),
-    pickup: (item: string, _x: number, _z: number, quest: string) => e.pickups.push({ item, quest }),
+    pickup: (item: string, x: number, z: number, quest: string) => e.pickups.push({ item, quest, x, z }),
     portal: (p: PortalDef) => e.portals.push(p),
     spawner: (s: SpawnerDef) => { for (const x of s.enemies) e.enemies.add(x.id); },
     // training corpses count as enemies for "break the training corpses" (they used to be invisible to guidance)

@@ -3,6 +3,7 @@
 import { confirmDialog } from './Confirm';
 import { APP_VERSION, ago, updates } from '../core/Updates';
 import { LINES, LINE_BY_ID, QuestLine, RERUN_GOAL, lineReward, masteryReward } from '../rpg/Reruns';
+import { drawAreaPreview, mapTextScale } from './AreaPreview';
 import type { Game } from '../Game';
 import { copyText, el, escapeHtml, formatNum } from '../core/util';
 import { itemIcon, skillIcon } from './Icons';
@@ -23,6 +24,7 @@ import { voice, voiceFor } from '../audio/Voice';
 import { media, ART_SLOTS, SOUND_SLOTS, MUSIC_SLOTS } from '../core/CustomMedia';
 import { DAILY_BOSSES, SIG_CHANCE, SIG_SEALS, dailyCleared, dailyLevel, dailyRoster, msToReset, setDailyPick } from '../rpg/Daily';
 import { CHEAT_TOGGLES, CHEAT_ACTIONS, cheatOn, toggleCheat, runCheat } from '../rpg/Cheats';
+import { customModels, MODEL_MAX_BYTES } from '../render/models/imported';
 
 const TABS: [string, string, string][] = [['status', '状', 'Status'], ['bag', '袋', 'Bag'], ['skills', '術', 'Skills'], ['quests', '任', 'Quests'], ['map', '図', 'Map'], ['cheats', '秘', 'Cheats'], ['system', '設', 'System']];
 /** Placeholder glyphs shown in empty equipment slots. */
@@ -73,6 +75,8 @@ export class Menus {
   }
 
   show(tab: string) {
+    // the Map tab opens on the area you are in
+    if (tab === 'map') { this.mapSel = null; this.mapView = 'world'; }
     this.shop = null;
     this.tab = tab;
     this.open = true;
@@ -106,7 +110,7 @@ export class Menus {
   refresh() { if (this.open) this.render(); }
 
   /** Scrollable regions whose position survives a re-render (every tap rebuilds the panel). */
-  private static SCROLLERS = ['.menu-body', '.grid', '.sk-grid', '.filters', '.bag-left', '.status-left', '.status-right', '.skills-right', '.quests-left', '.quests-right', '.shop-list', '.ws-body', '.map-side'];
+  private static SCROLLERS = ['.menu-body', '.grid', '.sk-grid', '.filters', '.bag-left', '.status-left', '.status-right', '.skills-right', '.quests-left', '.quests-right', '.shop-list', '.ws-body', '.map-side', '.map-list'];
 
   private render() {
     const saved = new Map<string, [number, number]>();
@@ -117,7 +121,7 @@ export class Menus {
     }
     this.renderView();
     // the big two-column screens scroll per column (see .menu-body.split in the stylesheet)
-    this.body.classList.toggle('split', !this.shop && ['status', 'bag', 'skills', 'quests'].includes(this.tab));
+    this.body.classList.toggle('split', !this.shop && ['status', 'bag', 'skills', 'quests', 'map'].includes(this.tab));
     for (const sel of Menus.SCROLLERS) {
       const nodes = sel === '.menu-body' ? [this.body] : Array.from(this.body.querySelectorAll(sel)) as HTMLElement[];
       nodes.forEach((n, i) => { const v = saved.get(sel + i); n.scrollTop = v ? v[0] : 0; n.scrollLeft = v ? v[1] : 0; });
@@ -494,41 +498,93 @@ export class Menus {
   private renderMap() {
     const ps = this.game.ps!;
     const here = this.areaOf(ps.d.map);
+    if (!this.mapSel || !MAPS[this.mapSel]) this.mapSel = here;
+    const sel = this.mapSel;
     const A = getAtlas();
     const goal = new Set(this.game.world.guideMaps.map(m => this.areaOf(m)));
-    const list = TRAVEL_LIST.map(t => {
+    // the list only names the areas; picking one shows it on the map, with Travel underneath
+    const rows = TRAVEL_LIST.map(t => {
       const ok = travelUnlocked(ps, t.id);
       const m = MAPS[t.id];
-      const doors = A[t.id]?.portals.filter(p => p.style === 'door').map(p => p.label) ?? [];
+      const doors = A[t.id]?.portals.filter(p => p.style === 'door').length ?? 0;
       const tags = [
-        A[t.id]?.portals.some(p => p.style === 'travel') ? '<i class="mk travel" title="Travel point">⛩</i>' : '',
-        doors.length ? `<i class="mk door" title="${escapeHtml(doors.join(', '))}">▣ ${doors.length}</i>` : '',
-        goal.has(t.id) ? '<i class="mk goal" title="Tracked objective">◆ Objective</i>' : '',
+        doors ? `<i class="mk door" title="Enterable buildings">▣ ${doors}</i>` : '',
+        goal.has(t.id) ? '<i class="mk goal" title="Tracked objective">◆</i>' : '',
       ].join('');
-      const need = t.need ? QUEST_BY_ID[t.need] : null;
-      return `<div class="map-row ${ok ? '' : 'locked'} ${t.id === here ? 'here' : ''}" ${ok && t.id !== here ? `data-act="maptravel" data-id="${t.id}"` : ''}>
-        <div class="mr-main"><b>${m.name}</b><small>${m.jp} · ${t.level}</small><div class="mr-tags">${tags}</div>
-        ${doors.length ? `<small class="mr-doors">Enterable: ${escapeHtml(doors.join(', '))}</small>` : ''}</div>
-        ${t.id === here ? '<span class="here-tag">HERE</span>' : ok ? '<button class="btn small primary">Travel</button>' : `<small class="mr-lock">🔒 ${need ? escapeHtml(need.name) : 'Locked'}</small>`}</div>`;
+      return `<div class="map-row ${ok ? '' : 'locked'} ${t.id === here ? 'here' : ''} ${t.id === sel ? 'sel' : ''}" data-act="mapsel" data-id="${t.id}">
+        <div class="mr-main"><b>${escapeHtml(m.name)}</b><small>${escapeHtml(m.jp)} · ${t.level}</small></div>
+        <div class="mr-tags">${tags}${t.id === here ? '<span class="here-tag">HERE</span>' : ok ? '' : '<small class="mr-lock">🔒</small>'}</div></div>`;
     }).join('');
+    const st = TRAVEL_LIST.find(t => t.id === sel);
+    const okSel = travelUnlocked(ps, sel);
+    const need = st?.need ? QUEST_BY_ID[st.need] : null;
+    const doors = A[sel]?.portals.filter(p => p.style === 'door').map(p => p.label) ?? [];
+    const action = sel === here ? '<span class="here-tag">You are here</span>'
+      : !st ? ''
+      : okSel ? `<button class="btn primary" data-act="maptravel" data-id="${sel}">Travel here</button>`
+      : `<small class="mr-lock">🔒 Opens with "${escapeHtml(need?.name ?? 'the story')}"</small>`;
+    const card = `<div class="map-card"><div class="mc-info"><b>${escapeHtml(MAPS[sel].name)}</b><small>${escapeHtml(MAPS[sel].jp)}${st ? ' · ' + st.level : ''}${goal.has(sel) ? ' · <span class="mk goal">◆ your quest</span>' : ''}</small>${doors.length ? `<small class="mr-doors">▣ ${escapeHtml(doors.join(' · '))}</small>` : ''}</div>${action}</div>`;
     const view = (v: string, l: string) => `<button class="chip ${this.mapView === v ? 'on' : ''}" data-act="mapview" data-v="${v}">${l}</button>`;
-    return `<div class="mapview"><div class="map-canvas-wrap"><div class="chips map-views">${view('world', 'Japan')}${view('area', 'This Area')}</div><canvas class="world-map" width="640" height="440"></canvas></div><div class="map-side"><div class="panel-title">${MAPS[ps.d.map].name}</div><div class="id-sub">${MAPS[ps.d.map].jp}</div>${list}<div class="hint">Tap an area on the map or in the list to travel there. ⛩ marks each area's travel point, ▣ its enterable buildings, ◆ where your tracked quest leads.</div></div></div>`;
+    const open = TRAVEL_LIST.filter(t => travelUnlocked(ps, t.id)).length;
+    return `<div class="mapview"><div class="map-canvas-wrap"><div class="chips map-views">${view('world', 'Japan')}${view('area', escapeHtml(MAPS[sel].name))}</div><canvas class="world-map" width="640" height="440"></canvas>${card}</div>
+      <div class="map-side"><div class="panel-title">Areas <small class="map-count">${open}/${TRAVEL_LIST.length} open</small></div><div class="map-list">${rows}</div>
+      <div class="hint">Tap a name to see the area. ▣ enterable buildings · ◆ where your tracked quest leads.</div></div></div>`;
+  }
+
+  /** the area shown on the Map tab (the current one until another is picked) */
+  private mapSel: string | null = null;
+
+  /** Where the tracked quest leads inside area `id`, for its preview. */
+  private goalIn(id: string): { x: number; z: number; label: string } | null {
+    const ps = this.game.ps!, g = ps.trackGoal(), E = getAtlas()[id];
+    if (!g || !E) return null;
+    if (g.kind === 'talk') { const n = E.npcs.find(n => n.id === g.npc && (!n.cond || n.cond(ps))); return n ? { x: n.x, z: n.z, label: this.npcName(g.npc) } : null; }
+    if (g.kind === 'boss') { const b = E.bosses.find(b => (b.as ?? b.id) === g.boss && (!b.quest || b.quest === g.quest) && (!b.cond || b.cond(ps))); return b ? { x: b.x, z: b.z, label: ENEMIES[b.id]?.name ?? g.boss } : null; }
+    if (g.kind === 'collect') { const p = E.pickups.find(p => p.item === g.item && p.quest === g.quest); return p ? { x: p.x, z: p.z, label: ITEMS[g.item]?.name ?? g.item } : null; }
+    return null;
   }
 
   private mapView: 'world' | 'area' = 'world';
 
+  /**
+   * Sizes the map canvas to the box it is shown in, at the screen's pixel density, so the map stays sharp
+   * on a phone instead of being a shrunken picture; drawing is then in CSS pixels.
+   */
+  private fitMapCanvas(c: HTMLCanvasElement) {
+    const u = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
+    // the layout size (unaffected by the menu's opening animation); a canvas not laid out yet keeps 640x440
+    const w = Math.max(160, c.clientWidth || 640), h = Math.max(110, c.clientHeight || 440);
+    c.width = Math.round(w * u); c.height = Math.round(h * u);
+    const x = c.getContext('2d')!;
+    x.setTransform(u, 0, 0, u, 0, 0);
+    return { x, w, h, u };
+  }
+
   private drawWorldMap() {
     const c = this.body.querySelector('.world-map') as HTMLCanvasElement;
     if (!c) return;
-    if (this.mapView === 'area') { c.onclick = null; this.game.ui.hud?.drawAreaMap(c); return; }
-    const x = c.getContext('2d')!;
+    const ps0 = this.game.ps!, sel = this.mapSel ?? this.areaOf(ps0.d.map);
+    const { x, w: cw, h: ch, u } = this.fitMapCanvas(c);
+    if (this.mapView === 'area') {
+      c.onclick = null;
+      const f = mapTextScale(cw, ch);
+      // the area you are standing in is drawn live (your arrow, what's around); any other from its plan
+      if (sel === ps0.d.map) this.game.ui.hud?.drawAreaMap(c, { w: cw, h: ch }, f);
+      else drawAreaPreview(c, sel, ps0, this.goalIn(sel), this.game.world.guideMaps.some(m => this.areaOf(m) === sel), { w: cw, h: ch }, f);
+      return;
+    }
     const ps = this.game.ps!;
     const A = getAtlas();
     const here = this.areaOf(ps.d.map);
     const goal = new Set(this.game.world.guideMaps.map(m => this.areaOf(m)));
-    const g = x.createLinearGradient(0, 0, 0, c.height);
+    const g = x.createLinearGradient(0, 0, 0, ch);
     g.addColorStop(0, '#0c1428'); g.addColorStop(1, '#05070e');
-    x.fillStyle = g; x.fillRect(0, 0, c.width, c.height);
+    x.fillStyle = g; x.fillRect(0, 0, cw, ch);
+    // Japan is drawn in its own 640x440 space, scaled to fit the box and centred; on a small screen the
+    // names are drawn larger than the scale would make them (fs), so they can still be read
+    const s = Math.min(cw / 640, ch / 440), mox = (cw - 640 * s) / 2, moy = (ch - 440 * s) / 2;
+    const fs = Math.min(1.8, Math.max(1, 10 / (15 * s)));
+    x.setTransform(u * s, 0, 0, u * s, u * mox, u * moy);
     // stylised Honshu coastline
     x.fillStyle = '#1a2a24';
     x.strokeStyle = '#3a5a4a'; x.lineWidth = 3;
@@ -551,6 +607,7 @@ export class Menus {
       // travel indicator: the same cyan ring and inward chevrons as the gate in each area
       x.save(); x.translate(nx, ny);
       x.globalAlpha = ok ? 1 : 0.4;
+      if (id === sel) { x.fillStyle = 'rgba(255,255,255,0.14)'; x.beginPath(); x.arc(0, 0, 26, 0, Math.PI * 2); x.fill(); x.strokeStyle = '#ffffff'; x.lineWidth = 2; x.beginPath(); x.arc(0, 0, 26, 0, Math.PI * 2); x.stroke(); }
       x.strokeStyle = id === here ? '#ffd23a' : '#6adfff'; x.lineWidth = 3;
       x.shadowColor = x.strokeStyle; x.shadowBlur = ok ? 10 : 0;
       x.beginPath(); x.arc(0, 0, 12, 0, Math.PI * 2); x.stroke();
@@ -568,16 +625,28 @@ export class Menus {
       if (goal.has(id)) { x.save(); x.translate(15, -14); x.rotate(Math.PI / 4); x.fillStyle = '#ffd23a'; x.strokeStyle = '#000'; x.lineWidth = 2; x.fillRect(-6, -6, 12, 12); x.strokeRect(-6, -6, 12, 12); x.restore(); }
       x.restore();
       const [lx, ly, al] = labelOff[id] ?? [0, -22, 'center'];
-      x.fillStyle = ok ? '#fff' : '#777'; x.font = 'bold 15px sans-serif'; x.textAlign = al;
-      x.fillText((Menus.NODE_LABEL[id] ?? MAPS[id].name) + (ok ? '' : ' 🔒'), nx + lx, ny + ly);
+      x.fillStyle = ok ? '#fff' : '#777'; x.font = `bold ${Math.round(15 * fs)}px sans-serif`; x.textAlign = al;
+      x.lineWidth = 3; x.strokeStyle = 'rgba(0,0,0,.7)';
+      const name = (Menus.NODE_LABEL[id] ?? MAPS[id].name) + (ok ? '' : ' 🔒');
+      // a name under its node moves down as it grows; one above or beside it grows away by itself
+      const ty = ny + (ly > 0 ? ly * fs : ly);
+      x.strokeText(name, nx + lx, ty); x.fillText(name, nx + lx, ty);
     }
-    x.fillStyle = 'rgba(255,255,255,0.5)'; x.font = '13px serif'; x.textAlign = 'left';
-    x.fillText('呪術地図 — tap an area to travel', 16, 26);
+    x.setTransform(u, 0, 0, u, 0, 0);
+    x.fillStyle = 'rgba(255,255,255,0.5)'; x.font = `${cw < 560 ? 11 : 13}px serif`; x.textAlign = 'left';
+    x.fillText('呪術地図 — tap an area to see it', 12, cw < 560 ? 16 : 24);
     c.onclick = (e) => {
+      // from the tap to Japan's 640x440 space (the rect also covers the menu's opening animation)
       const r = c.getBoundingClientRect();
-      const px = (e.clientX - r.left) * c.width / r.width, py = (e.clientY - r.top) * c.height / r.height;
+      const k = r.width ? cw / r.width : 1;
+      const px = ((e.clientX - r.left) * k - mox) / s, py = ((e.clientY - r.top) * k - moy) / s;
       const hit = Object.entries(nodes).map(([id, [nx, ny]]) => ({ id, d: Math.hypot(nx - px, ny - py) })).sort((a, b) => a.d - b.d)[0];
-      if (hit && hit.d < 34) this.mapTravel(hit.id);
+      if (hit && hit.d < 34 * Math.max(1, fs * 0.8)) {
+        this.mapSel = hit.id; this.mapView = 'area'; audio.play('click'); this.render();
+        // bring its name into view in the list
+        const list = this.body.querySelector('.map-list') as HTMLElement | null, row = list?.querySelector('.map-row.sel') as HTMLElement | null;
+        if (list && row && (row.offsetTop < list.scrollTop || row.offsetTop + row.offsetHeight > list.scrollTop + list.clientHeight)) list.scrollTop = Math.max(0, row.offsetTop - list.clientHeight / 2 + row.offsetHeight / 2);
+      }
     };
   }
 
@@ -600,14 +669,14 @@ export class Menus {
     const q = (v: string, l: string) => `<button class="chip ${s.quality === v ? 'on' : ''}" data-act="quality" data-q="${v}">${l}</button>`;
     const z = (v: number, l: string) => `<button class="chip ${s.zoom === v ? 'on' : ''}" data-act="zoom" data-z="${v}">${l}</button>`;
     const sh = (v: number, l: string) => `<button class="chip ${s.shake === v ? 'on' : ''}" data-act="shake" data-v="${v}">${l}</button>`;
-    const ch = (key: 'voice' | 'textSpeed' | 'cutscenes' | 'hints' | 'barks', v: string | number, l: string) => `<button class="chip ${(s as any)[key] === v ? 'on' : ''}" data-act="setchip" data-k="${key}" data-v="${v}">${l}</button>`;
+    const ch = (key: 'voice' | 'textSpeed' | 'cutscenes' | 'hints' | 'barks' | 'sfxStyle', v: string | number, l: string) => `<button class="chip ${(s as any)[key] === v ? 'on' : ''}" data-act="setchip" data-k="${key}" data-v="${v}">${l}</button>`;
     return `<div class="system">
       <div class="sys-col">
         <div class="panel-title">Game</div>
         <button class="btn primary wide" data-act="save">Save Game</button>
         <button class="btn wide" data-act="title">Save &amp; Return to Title</button>
         <button class="btn wide" data-act="exportsave">Copy Save Code</button>
-        <button class="btn wide" data-act="openmedia">Your Pictures &amp; Sounds</button>
+        <button class="btn wide" data-act="openmedia">Your Pictures, Sounds &amp; Models</button>
         <div class="help">The save code keeps your progress if you reinstall or change phones. Paste it under <b>Transfer Save</b> on the title screen.</div>
         <div class="panel-title">Updates</div>
         ${this.updateRow()}
@@ -617,6 +686,9 @@ export class Menus {
       <div class="sys-col">
         <div class="panel-title">Audio</div>
         ${sl('music', 'Music', s.music)}${sl('sfx', 'Effects', s.sfx)}${sl('amb', 'Ambience', s.amb)}
+        <div class="set-label">Sound effects</div>
+        <div class="chips">${ch('sfxStyle', 'recorded', 'Recorded')}${ch('sfxStyle', 'synth', 'Synthesised')}</div>
+        <div class="help">Recorded: real hits, footsteps, blades, coins and menu clicks (Kenney's free CC0 sound packs) layered with the game's own synthesised sounds. Cursed techniques are always synthesised. Any sound can be swapped for your own under <b>Your Pictures, Sounds &amp; Models</b>.</div>
         <div class="panel-title">Graphics</div>
         <div class="chips">${q('low', 'Low')}${q('medium', 'Medium')}${q('high', 'High')}</div>
         <div class="panel-title">Camera</div>
@@ -636,7 +708,7 @@ export class Menus {
         <div class="set-label">Quest hints</div>
         <div class="chips">${ch('hints', 'on', 'When I\'m stuck')}${ch('hints', 'off', 'Off')}</div>
         <div class="help">Spoken voices use your phone's text-to-speech engine; if it isn't available the character voices are used. Tap AUTO in a conversation to let lines advance by themselves, or SKIP to fast-forward.</div>
-        <div class="credits">Cursed Chronicles is an unofficial, non-commercial fan game inspired by Jujutsu Kaisen and Zenonia. All models, sounds and music are procedurally generated. Jujutsu Kaisen © Gege Akutami / Shueisha.</div>
+        <div class="credits">Cursed Chronicles is an unofficial, non-commercial fan game inspired by Jujutsu Kaisen and Zenonia. Models, music and cursed-technique sounds are procedurally generated. Recorded sound effects: Kenney (www.kenney.nl), CC0. Jujutsu Kaisen © Gege Akutami / Shueisha.</div>
       </div>
     </div>`;
   }
@@ -831,6 +903,7 @@ export class Menus {
   }
 
   private mediaArt = 'yuji';
+  private mediaModel = 'yuji';
 
   /** The player's own pictures and sounds, picked from the phone and kept on it. */
   private renderMedia() {
@@ -842,15 +915,32 @@ export class Menus {
       <button class="btn small primary" data-pick="${key}" data-accept="audio/*">Choose…</button>
       ${media.has(key) ? `<button class="btn small" data-act="mediaclear" data-key="${key}">Reset</button>` : ''}</div>`;
     const off = !media.available ? '<div class="cheat-note">Storage for your own files isn\'t available on this device.</div>' : '';
-    return `<div class="shop media"><div class="shop-head"><div><div class="id-name">Your Pictures &amp; Sounds</div>
-      <div class="id-sub">Pick pictures and audio from your phone to use in your copy of the game. They stay on this phone and are never shared. Only use files you have the right to use.</div></div></div>${off}
+    // 3D models: any character with a humanoid body (Dagon's isn't)
+    const mid = this.mediaModel, mHas = media.has('model:' + mid);
+    const mopt = ART_SLOTS.filter(a => a.id !== 'dagon').map(a => `<option value="${a.id}" ${a.id === mid ? 'selected' : ''}>${escapeHtml(a.label)}${media.has('model:' + a.id) ? ' ★' : ''}</option>`).join('');
+    const mInfo = customModels.info(mid), mErr = customModels.errors.get(mid);
+    const mStatus = customModels.loading(mid) ? 'Reading the model…'
+      : mErr ? `<span class="warn">${escapeHtml(mErr)}</span>`
+      : mInfo ? escapeHtml(mInfo.summary) + (mInfo.triangles > 150000 ? '<br><span class="warn">That is a heavy model for a phone: the game may slow down where it appears.</span>' : '')
+      : 'Built-in model.';
+    const models = `<div class="panel-title">3D character models</div>
+        <div class="media-art"><div class="media-pic" style="background-image:url(${this.game.portraits.get(mid)})"></div>
+          <div class="media-art-ctrl"><select class="media-msel">${mopt}</select>
+          <div class="hint">${mStatus}</div>
+          <div><button class="btn small primary" data-pick="model:${mid}" data-accept=".glb,.gltf,.vrm,.fbx,.zip,.bin,.png,.jpg,.jpeg,.webp" data-multiple="1">Choose model…</button>${mHas ? `<button class="btn small" data-act="mediaclear" data-key="model:${mid}">Reset</button>` : ''}</div></div></div>
+        <div class="help">GLB / glTF, VRM or FBX, or the .zip a model download comes in (a glTF with separate textures can be picked together with them). A rigged humanoid (Mixamo, VRoid/VRM, Unity, Blender, MMD, Daz, Character Creator) moves with the game's own animations for every attack and skill, and its own idle, walk and run clips play when it has them. A model without a skeleton is shown as a statue. Up to ${Math.round(MODEL_MAX_BYTES / 1048576)} MB.</div>`;
+    return `<div class="shop media"><div class="shop-head"><div><div class="id-name">Your Pictures, Sounds &amp; Models</div>
+      <div class="id-sub">Pick pictures, audio and 3D models from your phone to use in your copy of the game. They stay on this phone and are never shared. Only use files you have the right to use.</div></div></div>${off}
       <div class="shop-list">
         <div class="panel-title">Character pictures</div>
         <div class="media-art"><div class="media-pic" style="background-image:url(${pic})"></div>
           <div class="media-art-ctrl"><select class="media-sel">${opt}</select>
           <div class="hint">Replaces this character's portrait and dialogue art.</div>
           <div><button class="btn small primary" data-pick="art:${this.mediaArt}" data-accept="image/*">Choose picture…</button>${has ? `<button class="btn small" data-act="mediaclear" data-key="art:${this.mediaArt}">Reset</button>` : ''}</div></div></div>
-        <div class="panel-title">Sound effects</div>${SOUND_SLOTS.map(sl => row('sfx:' + sl.id, sl.label, true)).join('')}
+        ${models}
+        <div class="panel-title">Sound effects</div>
+        <div class="help">Short clips (a punch, a step) can play over each other; longer ones (a shout, a jingle) aren't cut off by the next.</div>
+        ${(['Big moments', 'Combat', 'World and menus'] as const).map(gp => `<div class="set-label">${gp}</div>${SOUND_SLOTS.filter(sl => sl.group === gp).map(sl => row('sfx:' + sl.id, sl.label, true)).join('')}`).join('')}
         <div class="panel-title">Music</div>${MUSIC_SLOTS.map(sl => row('music:' + sl.id, sl.label, false)).join('')}
       </div></div>`;
   }
@@ -858,6 +948,8 @@ export class Menus {
   private bindMedia() {
     const sel = this.body.querySelector('.media-sel') as HTMLSelectElement | null;
     sel?.addEventListener('change', () => { this.mediaArt = sel.value; this.render(); });
+    const msel = this.body.querySelector('.media-msel') as HTMLSelectElement | null;
+    msel?.addEventListener('change', () => { this.mediaModel = msel.value; this.render(); });
     for (const b of Array.from(this.body.querySelectorAll('[data-pick]')) as HTMLElement[]) {
       b.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -865,20 +957,25 @@ export class Menus {
         const inp = document.createElement('input');
         inp.type = 'file';
         inp.accept = b.dataset.accept!;
+        inp.multiple = !!b.dataset.multiple;
         // kept in the page while the phone's picker is open (some WebViews ignore detached inputs)
         inp.style.cssText = 'position:fixed;left:-9999px;opacity:0';
         document.body.appendChild(inp);
         // a cancelled picker never fires change: tidy up once the game has focus again
         window.addEventListener('focus', () => setTimeout(() => inp.remove(), 2000), { once: true });
         inp.onchange = async () => {
-          const f = inp.files?.[0];
+          const files = Array.from(inp.files ?? []);
+          const f = files[0];
           inp.remove();
           if (!f) return;
           try {
-            if (key.startsWith('art:')) await media.setImage(key.slice(4), f);
-            else await media.setSound(key, f);
-            audio.play('equip');
-            this.game.toast('Saved on this phone', 'good', 1.6);
+            if (key.startsWith('model:')) await this.useModel(key.slice(6), files);
+            else {
+              if (key.startsWith('art:')) await media.setImage(key.slice(4), f);
+              else await media.setSound(key, f);
+              audio.play('equip');
+              this.game.toast('Saved on this phone', 'good', 1.6);
+            }
           } catch (err) {
             audio.play('error');
             this.game.toast((err as Error).message || 'That file could not be used', 'warn', 3);
@@ -888,6 +985,24 @@ export class Menus {
         inp.click();
       });
     }
+  }
+
+  /** Stores and reads a 3D model for character `id`, then puts it on whoever is that character right now. */
+  private async useModel(id: string, files: File[]) {
+    await media.setModel(id, files, MODEL_MAX_BYTES);
+    const job = customModels.load(id);
+    this.render();
+    const t = await job;
+    if (!t) {
+      const why = customModels.errors.get(id) ?? 'That model could not be read.';
+      await media.remove('model:' + id);
+      throw new Error(why);
+    }
+    this.game.world.refreshModels(id);
+    this.game.ui.hud?.refreshPortrait();
+    audio.play('equip');
+    const name = ART_SLOTS.find(a => a.id === id)?.label ?? id;
+    this.game.toast(t.rigged ? `${name} now wears your model` : `${name} now uses your model (no skeleton found, so it stands like a statue)`, 'good', 2.6);
   }
 
   /** Akari Nitta's board: today's exorcisms, what each drops, and seals traded for signature pieces. */
@@ -1043,11 +1158,12 @@ export class Menus {
       case 'zoom': this.game.settings.zoom = +t.dataset.z!; this.game.applySettings(); break;
       case 'shake': this.game.settings.shake = +t.dataset.v!; this.game.applySettings(); break;
       case 'setchip': {
-        const k = t.dataset.k as 'voice' | 'textSpeed' | 'cutscenes';
+        const k = t.dataset.k as 'voice' | 'textSpeed' | 'cutscenes' | 'hints' | 'barks' | 'sfxStyle';
         (this.game.settings as any)[k] = k === 'textSpeed' ? +t.dataset.v! : t.dataset.v;
         this.game.applySettings();
         if (k === 'voice' && t.dataset.v === 'tts' && !voice.ttsAvailable()) this.game.toast('This device has no text-to-speech voice; character voices will be used.', 'warn', 3);
         if (k === 'voice') { voice.syllable(voiceFor(this.game.ps ? CLASSES[this.game.ps.d.cls].model : 'gojo'), 0.09); }
+        if (k === 'sfxStyle') { audio.play('punch'); audio.play('click', { delay: 0.25 }); }
         this.refresh();
         break;
       }
@@ -1112,12 +1228,16 @@ export class Menus {
       case 'openmedia': this.openShop('media', 'gojo'); return;
       case 'mediaclear': {
         const key = t.dataset.key!;
-        void media.remove(key).then(() => { audio.play('tab'); this.render(); });
+        void media.remove(key).then(() => {
+          if (key.startsWith('model:')) { const id = key.slice(6); customModels.forget(id); this.game.world.refreshModels(id); this.game.ui.hud?.refreshPortrait(); }
+          audio.play('tab'); this.render();
+        });
         return;
       }
       case 'mediatest': {
         const name = t.dataset.key!;
-        if (name.startsWith('sfx:')) audio.play(name.slice(4));
+        if (name === 'sfx:step') audio.step('stone');
+        else if (name.startsWith('sfx:')) audio.play(name.slice(4));
         return;
       }
       case 'dailyfight': {
@@ -1141,6 +1261,7 @@ export class Menus {
         return;
       }
       case 'maptravel': this.mapTravel(t.dataset.id!); return;
+      case 'mapsel': this.mapSel = t.dataset.id!; this.mapView = 'area'; audio.play('click', { vol: 0.5 }); break;
       case 'mapview': this.mapView = t.dataset.v as 'world' | 'area'; audio.play('tab'); break;
     }
     this.render();

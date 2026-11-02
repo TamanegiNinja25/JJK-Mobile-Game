@@ -378,20 +378,30 @@ export class Hud {
   }
 
   /** The whole current area for the Map tab: doors, travel gates, NPCs, bosses and the tracked objective. */
-  drawAreaMap(c: HTMLCanvasElement) {
+  /**
+   * The current area for the Map tab, live: your arrow, the fog you haven't uncovered, who is around.
+   * Drawn in a `w` x `h` box (CSS pixels; the caller has scaled the canvas to the screen) with text and
+   * markers at scale `f`, so it stays readable when the map is small.
+   */
+  drawAreaMap(c: HTMLCanvasElement, box?: { w: number; h: number }, f = 1) {
     const w = this.game.world;
     if (!this.mmBg || !w.mapDef) return;
     const x = c.getContext('2d')!;
+    const cw = box?.w ?? c.width, ch = box?.h ?? c.height;
     const [W, D] = w.mapDef.size;
-    const k = Math.min((c.width - 20) / W, (c.height - 20) / D);
-    const ox = (c.width - W * k) / 2, oy = (c.height - D * k) / 2;
+    const k = Math.min((cw - 20) / W, (ch - 20) / D);
+    const ox = (cw - W * k) / 2, oy = (ch - D * k) / 2;
     const toM = (wx: number, wz: number): [number, number] => [ox + (wx + W / 2) * k, oy + (wz + D / 2) * k];
-    x.fillStyle = '#0a0812'; x.fillRect(0, 0, c.width, c.height);
+    x.fillStyle = '#0a0812'; x.fillRect(0, 0, cw, ch);
     x.drawImage(this.mmBg, ox, oy, W * k, D * k);
     if (this.mmFog) x.drawImage(this.mmFog, ox, oy, W * k, D * k);
     x.strokeStyle = 'rgba(200,180,255,0.5)'; x.lineWidth = 2; x.strokeRect(ox, oy, W * k, D * k);
-    const label = (t: string, mx: number, my: number, col: string) => {
-      x.font = 'bold 12px sans-serif'; x.textAlign = 'center';
+    // labels stay inside the box: one that would fall off the bottom goes above its marker (`above`)
+    const label = (t: string, mx: number, my: number, col: string, above?: number) => {
+      x.font = `bold ${Math.round(12 * f)}px sans-serif`; x.textAlign = 'center';
+      const hw = x.measureText(t).width / 2 + 3;
+      if (above !== undefined && my > ch - 4) my = above;
+      mx = Math.max(hw, Math.min(cw - hw, mx)); my = Math.max(12 * f, Math.min(ch - 4, my));
       x.lineWidth = 3; x.strokeStyle = 'rgba(0,0,0,.85)'; x.strokeText(t, mx, my); x.fillStyle = col; x.fillText(t, mx, my);
     };
     for (const b of w.map.bosses) { const [mx, my] = toM(b.x, b.z); x.strokeStyle = 'rgba(255,60,80,0.5)'; x.lineWidth = 2; x.beginPath(); x.arc(mx, my, b.r * k, 0, Math.PI * 2); x.stroke(); }
@@ -399,15 +409,16 @@ export class Hud {
       const [mx, my] = toM(n.x, n.z);
       const mk = w.npcMarker(n.id, n.d.shop);
       x.fillStyle = mk === '!' ? '#ffd23a' : mk === '?' ? '#7affb0' : '#e8e8ff';
-      x.beginPath(); x.arc(mx, my, 5, 0, Math.PI * 2); x.fill();
-      if (mk || n.d.shop) label((NPC_SHORT[n.id] ?? n.name.split(' (')[0]) + (mk ? ' ' + mk : ''), mx, my - 9, x.fillStyle as string);
+      x.beginPath(); x.arc(mx, my, 5 * f, 0, Math.PI * 2); x.fill();
+      if (mk || n.d.shop) label((NPC_SHORT[n.id] ?? n.name.split(' (')[0]) + (mk ? ' ' + mk : ''), mx, my - 9 * f, x.fillStyle as string);
     }
     for (const po of w.portals) {
       const [mx, my] = toM(po.d.x, po.d.z);
-      if (po.d.style === 'door') { x.fillStyle = '#ffd890'; x.fillRect(mx - 6, my - 6, 12, 12); x.strokeStyle = '#000'; x.lineWidth = 1.5; x.strokeRect(mx - 6, my - 6, 12, 12); label('▣ ' + po.d.label, mx, my + 20, '#ffd890'); }
-      else if (po.d.style === 'travel') { x.strokeStyle = '#6adfff'; x.lineWidth = 3; x.beginPath(); x.arc(mx, my, 8, 0, Math.PI * 2); x.stroke(); label('⛩ Travel', mx, my + 22, '#6adfff'); }
-      else if (po.d.style === 'road') { x.fillStyle = '#ffe08a'; x.beginPath(); x.arc(mx, my, 7, 0, Math.PI * 2); x.fill(); x.strokeStyle = '#000'; x.lineWidth = 1.5; x.stroke(); label('➜ ' + po.d.label, mx, my + 20, '#ffe08a'); }
-      else { x.fillStyle = '#b08aff'; x.beginPath(); x.arc(mx, my, 7, 0, Math.PI * 2); x.fill(); label(po.d.label, mx, my + 20, '#c8b0ff'); }
+      const r = 6 * f;
+      if (po.d.style === 'door') { x.fillStyle = '#ffd890'; x.fillRect(mx - r, my - r, r * 2, r * 2); x.strokeStyle = '#000'; x.lineWidth = 1.5; x.strokeRect(mx - r, my - r, r * 2, r * 2); label('▣ ' + po.d.label, mx, my + 20 * f, '#ffd890', my - 10 * f); }
+      else if (po.d.style === 'travel') { x.strokeStyle = '#6adfff'; x.lineWidth = 3 * f; x.beginPath(); x.arc(mx, my, 8 * f, 0, Math.PI * 2); x.stroke(); label('⛩ Travel', mx, my + 22 * f, '#6adfff', my - 12 * f); }
+      else if (po.d.style === 'road') { x.fillStyle = '#ffe08a'; x.beginPath(); x.arc(mx, my, 7 * f, 0, Math.PI * 2); x.fill(); x.strokeStyle = '#000'; x.lineWidth = 1.5; x.stroke(); label('➜ ' + po.d.label, mx, my + 20 * f, '#ffe08a', my - 11 * f); }
+      else { x.fillStyle = '#b08aff'; x.beginPath(); x.arc(mx, my, 7 * f, 0, Math.PI * 2); x.fill(); label(po.d.label, mx, my + 20 * f, '#c8b0ff', my - 10 * f); }
     }
     // landmarks: found ones by name, the rest as question marks to go and look for
     const flags = this.game.ps!.d.flags;
@@ -418,17 +429,18 @@ export class Hud {
     }
     if (w.map.caches.length || w.map.landmarks.length) {
       const fc = w.map.caches.filter(c => flags[c.flag]).length, fl = w.map.landmarks.filter(l => flags[l.flag]).length;
-      x.font = 'bold 12px sans-serif'; x.textAlign = 'left'; x.fillStyle = '#ffe08a';
-      x.fillText(`Landmarks ${fl}/${w.map.landmarks.length}   Sealed caches ${fc}/${w.map.caches.length}`, ox + 6, oy + 16);
+      x.font = `bold ${Math.round(12 * f)}px sans-serif`; x.textAlign = 'left'; x.fillStyle = '#ffe08a';
+      x.fillText(f < 1 ? `★ ${fl}/${w.map.landmarks.length}  ▤ ${fc}/${w.map.caches.length}` : `Landmarks ${fl}/${w.map.landmarks.length}   Sealed caches ${fc}/${w.map.caches.length}`, ox + 6, oy + 16 * f);
     }
     if (w.guide) {
       const [mx, my] = toM(w.guide.x, w.guide.z);
-      x.save(); x.translate(mx, my); x.rotate(Math.PI / 4); x.fillStyle = '#ffd23a'; x.strokeStyle = '#000'; x.lineWidth = 2; x.fillRect(-7, -7, 14, 14); x.strokeRect(-7, -7, 14, 14); x.restore();
-      label('◆ ' + w.guide.hint, mx, my - 13, '#ffd23a');
+      const r = 7 * f;
+      x.save(); x.translate(mx, my); x.rotate(Math.PI / 4); x.fillStyle = '#ffd23a'; x.strokeStyle = '#000'; x.lineWidth = 2; x.fillRect(-r, -r, r * 2, r * 2); x.strokeRect(-r, -r, r * 2, r * 2); x.restore();
+      label('◆ ' + w.guide.hint, mx, my - 13 * f, '#ffd23a');
     }
     const p = w.player;
     const [px, py] = toM(p.x, p.z);
-    x.save(); x.translate(px, py); x.rotate(-p.facing + Math.PI);
+    x.save(); x.translate(px, py); x.rotate(-p.facing + Math.PI); x.scale(f, f);
     x.fillStyle = '#fff'; x.strokeStyle = '#000'; x.lineWidth = 2;
     x.beginPath(); x.moveTo(0, -12); x.lineTo(9, 10); x.lineTo(0, 5); x.lineTo(-9, 10); x.closePath(); x.fill(); x.stroke();
     x.restore();

@@ -17,7 +17,7 @@
 
 ### [⬇ Download CursedChronicles.apk](https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases/latest/download/CursedChronicles.apk)
 
-<sub>Latest release · Android 7.0+ · about 1.8 MB · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a> · <a href="CHANGELOG.md">changelog</a></sub>
+<sub>Latest release · Android 7.0+ · about 2 MB · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a> · <a href="CHANGELOG.md">changelog</a></sub>
 
 </div>
 
@@ -36,11 +36,13 @@ as cutscenes. Every day, three bosses return for farming, each with drops of its
 every chapter you finish can be replayed for growing rewards. Stuck on a quest? After a
 few minutes, whoever gave it offers a hint.
 
-Every model, building, texture, icon, portrait, music track, sound effect and voice is
-generated in code. The game ships no art or audio files, so the APK is under 2 MB
-and runs without an internet connection; the only thing it ever asks the internet is
-whether a newer version is out. If you want, you can add pictures and sounds
-from your own phone; they stay on the phone.
+Every model, building, texture, icon, portrait, music track and voice is generated in
+code. The only files the game ships are about a hundred small recorded sound effects from
+[Kenney](https://kenney.nl)'s free CC0 packs, so the APK is about 2 MB and runs without an
+internet connection; the only thing it ever asks the internet is whether a newer version
+is out. If you want, you can add pictures, sounds and **3D character models** from your
+own phone (GLB, glTF, VRM or FBX, Mixamo animations included). They are moved by the
+game's own animations and stay on the phone.
 
 > [!NOTE]
 > This is an unofficial, non-commercial fan game. It is not affiliated with or
@@ -280,17 +282,42 @@ potions, Hei crests, Cursed Ash) and Special Grade Seals. There is also a 30% ch
 **signature piece**, one of eight unique accessories found nowhere else. Twelve seals buy
 any signature piece outright.
 
-### Your own pictures and sounds
+### Your own pictures, sounds and 3D models
 
-**System → Your Pictures & Sounds** lets you choose files on your phone for your own copy:
+**System → Your Pictures, Sounds & Models** lets you choose files on your phone for your own copy:
 
 - a picture for any of 35 characters (portrait and dialogue art)
-- sounds for seven big moments, such as Domain Expansion and Black Flash
+- **a 3D model for any of 34 characters**: GLB, glTF (with its textures, or the `.zip` a
+  model site gives you), VRM or FBX. It replaces the character everywhere: as your
+  sorcerer, as an NPC, as a boss, and in portraits and dialogue art.
+- 32 sound effects, from Domain Expansion and Black Flash to punches, footsteps and menu taps
 - songs for five kinds of place: the title screen, Jujutsu High, missions, boss fights and
   domains
 
-They are kept on the phone, never shared, and can be reset to the built-in ones at any
-time.
+A model doesn't need animations of its own: the game's built-in body plays every move
+unseen and its pose is copied onto the model's skeleton each frame, so every attack,
+skill and fall works. Mixamo, VRM/VRoid, Unity, Blender, MMD, Daz, Character Creator and
+3ds Max rigs are recognised by name, and other rigs by the shape of their skeleton. If the
+model brings idle, walk and run clips (pick a Mixamo character together with its Idle,
+Walking and Running files), those play while it stands or moves. Models without a
+skeleton are shown as statues. The menu tells you what it found, such as "GLB · Mixamo rig
+· 17/17 joints moved by the game · its own idle, walk, run".
+
+**Where to get them** (download on your phone, or copy from a computer):
+
+- **Sketchfab**: search for a rigged or animated character with *Downloadable* on, then
+  download **glTF** (a `.zip`) or **GLB** and pick that file. Check each model's licence.
+- **Mixamo** (a free Adobe account): pick or upload a character and download it as
+  **FBX** with skin. Download **Idle**, **Walking** and **Running** as FBX *without skin*
+  and with *In Place* ticked, then pick all four files together.
+- **VRoid Hub / VRoid Studio**: **VRM** anime characters, where the author allows downloads.
+- **CGTrader** and similar stores: rigged characters in FBX or GLB.
+- **Freesound**, **Pixabay** and **Kenney**: sound effects and music for the sound and song
+  slots (MP3, OGG or WAV).
+
+A phone handles models up to about 100k triangles well; big textures are shrunk for you.
+Everything is kept on the phone, never shared, and can be reset to the built-in look at
+any time. Only use files you have the right to use.
 
 ### The open world
 
@@ -399,9 +426,12 @@ Some of the later bosses play by their own rules:
 - Day and night lighting, dynamic lights and weather: rain, sakura, falling leaves, ash,
   embers, fireflies and snow.
 - Trees, roofs and walls fade out when they would hide your character.
-- Synthesized sound for every action, timed to the animation: footsteps land on each
-  foot plant and change with the surface, swings sound on the wind-up and hits on the
-  contact frame, for players, curses, shikigami and bosses alike.
+- Sound for every action, timed to the animation: footsteps land on each foot plant and
+  change with the ground, swings sound on the wind-up and hits on the contact frame, for
+  players, curses, shikigami and bosses alike. Blows, blades, footsteps, coins, doors and
+  menu taps use recorded takes from Kenney's CC0 packs layered with the game's
+  synthesised sounds; cursed techniques are synthesised. **System → Audio → Sound
+  effects** picks **Recorded** or **Synthesised**. Sounds fade with distance.
 - A music theme for each area and for bosses, layered over ambience such as rain,
   crickets, city noise and wind.
 
@@ -495,8 +525,21 @@ picker when you choose your own pictures or sounds.
 - Cutscenes (`src/world/Director.ts`) take the camera, freeze play and script shots,
   title cards and letterboxing; story conversations can be staged with a moving camera.
 
-**Procedural audio:** sound effects are synthesized with Web Audio (noise bursts, FM
-and a Karplus-Strong koto). Each area's music is a step sequencer that composes
+**Your own models** (`src/render/models/imported.ts`): a picked file is parsed with
+three.js's GLTF and FBX loaders (zips are opened with fflate, and a glTF's separate files
+are found by name). Its materials become toon materials, its textures are shrunk to
+1024 px, and it is turned upright, faced forward and sized to the character. Bones are
+matched to the game's 17 joints by VRM's own humanoid table, by name, or by the shape of
+the skeleton. Each frame the hidden procedural body animates and every matched bone takes
+`(joint now × joint at rest⁻¹) × alignment × bone at rest` in character space, where the
+alignment turns the file's rest pose (usually a T-pose) into the game's arms-down one.
+Hand and head sockets carry weapons and effects. A file's own idle, walk and run clips
+play through an `AnimationMixer` and blend into the copied pose for everything else.
+
+**Audio:** sound effects are synthesized with Web Audio (noise bursts, FM
+and a Karplus-Strong koto), and physical and menu sounds can play recorded takes instead
+(`src/audio/Samples.ts`: Kenney's CC0 clips as small Ogg Opus files, loudness-matched to
+the synthesised versions through a high-passed loudness measure). Each area's music is a step sequencer that composes
 phrases on the fly, layered over ambience loops and a convolution reverb. Voices are
 syllables of a buzzing source through two vowel formants, per character, timed to the
 text as it types.
@@ -514,14 +557,14 @@ painted once in idle time before menus need them.
 ```
 web/                    the game (TypeScript + three.js)
   src/core/             input, math, noise, your own pictures and sounds (IndexedDB), the update check
-  src/render/           renderer, toon shaders, rigs, models, effects, weather, textures
-  src/audio/            synthesized SFX, music sequencer, ambience, character voices
+  src/render/           renderer, toon shaders, rigs, models (and your own imported ones), effects, weather, textures
+  src/audio/            synthesized and recorded SFX, music sequencer, ambience, character voices
   src/rpg/              stats, classes, skills (and the unlockable sorcerers'), items, enemies, unlocks, daily exorcisms, reruns, quest hints, player state
   src/world/            maps (story areas, open regions, interiors, the daily arena), map builder, collision, world simulation, cutscenes
   src/entities/         player, enemies, bosses, summons, projectiles, NPCs
   src/ui/               HUD, menus, visual-novel dialogue, dialogue art, themed confirmations, icons, portraits
   src/data/             quests, dialogue, and the lines Sukuna, Yuta and Toji speak in their own voice
-  static/               index.html and the UI stylesheet
+  static/               index.html, the UI stylesheet, and sfx/ (Kenney's CC0 sound clips, with their credits)
 android/                WebView host app (Java), text-to-speech bridge, opening the release page
 docs/                   icon and screenshots for this README
 .github/workflows/      APK build and release
@@ -530,6 +573,8 @@ docs/                   icon and screenshots for this README
 ## License
 
 The game's source code is released into the public domain under the
-[Unlicense](LICENSE). Jujutsu Kaisen, its characters and its story belong to Gege
+[Unlicense](LICENSE). The recorded sound effects in `web/static/sfx` are by
+[Kenney](https://kenney.nl) (Impact Sounds, RPG Audio, Interface Sounds) and are CC0 as
+well; see `web/static/sfx/CREDITS.txt`. Jujutsu Kaisen, its characters and its story belong to Gege
 Akutami, Shueisha and MAPPA. That license covers only the original code in this
 repository, not the franchise.

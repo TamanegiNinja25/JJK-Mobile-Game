@@ -1,7 +1,7 @@
 // Bundles the game into a single script and copies static files into the
 // Android app's assets folder, so the APK works fully offline.
 import * as esbuild from 'esbuild';
-import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,6 +21,24 @@ if (apkVersion !== version) {
 
 mkdirSync(outDir, { recursive: true });
 for (const f of ['index.html', 'style.css']) copyFileSync(join(here, 'static', f), join(outDir, f));
+
+// Recorded sound effects (Kenney's CC0 packs): the folder is mirrored, and every clip src/audio/Samples.ts
+// names must be there, so a renamed or missing file fails the build instead of going quiet in the game.
+const sfxSrc = join(here, 'static', 'sfx'), sfxOut = join(outDir, 'sfx');
+rmSync(sfxOut, { recursive: true, force: true });
+mkdirSync(sfxOut, { recursive: true });
+const sfxHave = new Set(readdirSync(sfxSrc));
+for (const f of sfxHave) copyFileSync(join(sfxSrc, f), join(sfxOut, f));
+{
+  const src = readFileSync(join(here, 'src', 'audio', 'Samples.ts'), 'utf8');
+  const named = new Set();
+  for (const [, base, n, from = '0', pad = '3'] of src.matchAll(/takes\('([^']+)', (\d+)(?:, (\d+))?(?:, (\d+))?\)/g))
+    for (let i = 0; i < +n; i++) named.add(base + String(+from + i).padStart(+pad, '0'));
+  for (const [, list] of src.matchAll(/files: \[((?:'[^']+',? ?)+)\]/g)) for (const [, f] of list.matchAll(/'([^']+)'/g)) named.add(f);
+  const missing = [...named].filter(f => !sfxHave.has(f + '.ogg'));
+  if (missing.length) { console.error('Sound clips named in Samples.ts but missing from static/sfx: ' + missing.join(', ')); process.exit(1); }
+  console.log(`sfx: ${sfxHave.size - 1} clips, ${named.size} named in Samples.ts`);
+}
 
 const options = {
   entryPoints: [join(here, 'src', 'main.ts')],

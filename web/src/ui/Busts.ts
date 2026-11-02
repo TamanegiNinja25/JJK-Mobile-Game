@@ -5,6 +5,7 @@ import { Renderer } from '../render/Renderer';
 import { buildCharacter } from '../render/models/characters';
 import { buildCreature, CreatureKind } from '../render/models/creatures';
 import { wrapHumanoid, ModelHandle } from '../render/models/model';
+import { withCustomModel, customModels } from '../render/models/imported';
 import { occlusion, outlineMaterial } from '../render/toon';
 import { CREATURE_IDS } from './Portraits';
 import { media } from '../core/CustomMedia';
@@ -26,6 +27,7 @@ const FACE: Record<Mood, [number, number, number, number, number]> = {
 
 export class Busts {
   private cache = new Map<string, [HTMLCanvasElement, HTMLCanvasElement]>();
+  private modelsSeen = 0;
   private rt: THREE.WebGLRenderTarget;
   private scene = new THREE.Scene();
   private cam = new THREE.PerspectiveCamera(20, W / H, 0.1, 40);
@@ -60,12 +62,13 @@ export class Busts {
     if (NO_ART.has(id)) return null;
     const own = this.ownArt(id);
     if (own) return own;
+    if (this.modelsSeen !== customModels.version) { this.modelsSeen = customModels.version; this.cache.clear(); }
     const key = id + '|' + mood;
     const hit = this.cache.get(key);
     if (hit) { this.cache.delete(key); this.cache.set(key, hit); return hit; }
     let model: ModelHandle;
     try {
-      model = CREATURE_IDS.has(id) ? buildCreature(id as CreatureKind) : wrapHumanoid(buildCharacter(id === 'civilian' ? 'civilianA' : id === 'student' ? 'student' : id));
+      model = withCustomModel(id, CREATURE_IDS.has(id) ? buildCreature(id as CreatureKind) : wrapHumanoid(buildCharacter(id === 'civilian' ? 'civilianA' : id === 'student' ? 'student' : id)));
     } catch {
       return null;
     }

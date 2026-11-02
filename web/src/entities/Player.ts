@@ -6,6 +6,7 @@ import { PlayerState } from '../rpg/PlayerState';
 import { Input, Action } from '../core/Input';
 import { buildCharacter, SPECS } from '../render/models/characters';
 import { wrapHumanoid } from '../render/models/model';
+import { withCustomModel } from '../render/models/imported';
 import { ACTION_TIMING } from '../render/models/humanoid';
 import { weaponMesh } from '../render/models/weapons';
 import { ITEMS } from '../rpg/items';
@@ -42,9 +43,26 @@ export class Player extends Actor implements Caster {
     this.input = input;
     this.team = 'player';
     this.radius = 0.42;
-    const m = wrapHumanoid(buildCharacter(ps.cls.model));
-    this.setModel(m, 1);
+    this.buildModel();
+    ps.on((ev) => { if (ev === 'equip') this.refreshWeapon(); });
+  }
+
+  /**
+   * (Re)builds the body: the character's built-in model, or the 3D model the player picked for them
+   * (see render/models/imported.ts). Called again when such a model is added or removed mid-game.
+   */
+  buildModel() {
+    const ps = this.ps;
+    const old = this.model;
+    if (old) {
+      this.world.root.remove(old.root);
+      const seen = new Set<THREE.BufferGeometry>();
+      old.root.traverse(o => { const g = (o as THREE.Mesh).geometry; if ((o as THREE.Mesh).isMesh && !o.userData.shared && g && !seen.has(g)) { seen.add(g); g.dispose(); } });
+    }
+    const m = withCustomModel(ps.cls.model, wrapHumanoid(buildCharacter(ps.cls.model)));
+    this.setModel(m, this.scale || 1);
     m.setStance?.(ps.cls.stance);
+    if (old?.dead) m.die();
     // footsteps land exactly when a foot plants in the walk cycle, and carry the body's weight:
     // Toji and Heian Sukuna land low and heavy, Nobara light
     const sp = SPECS[ps.cls.model === 'heianSukuna' ? 'sukunaHeian' : ps.cls.model];
@@ -52,7 +70,6 @@ export class Player extends Actor implements Caster {
     const stepO = { vol: 0.8 * Math.min(1.25, Math.max(0.75, weight)), pitch: 1 / Math.sqrt(Math.max(0.6, weight)) };
     m.onStep = () => { if (!this.dashS) audio.step(this.world.surfaceAt(this.x, this.z), stepO); };
     this.refreshWeapon();
-    ps.on((ev) => { if (ev === 'equip') this.refreshWeapon(); });
   }
 
   get atk() { return this.ps.stats.atk; }
