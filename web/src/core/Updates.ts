@@ -131,6 +131,16 @@ export function openReleasePage(url = RELEASES_URL) {
   try { window.open(url, '_blank', 'noopener'); return true; } catch { return false; }
 }
 
+/** Where the update check stands, in one line for Settings (plain text). */
+export function updateStatus() {
+  const u = updates.latest;
+  return updates.status === 'checking' ? 'Checking…'
+    : u ? `Version ${u.version} is out.`
+    : updates.status === 'offline' ? 'Offline. The game checks again when you\'re connected.'
+    : updates.status === 'error' ? 'GitHub didn\'t answer. Try again later.'
+    : updates.checked ? `Up to date (checked ${ago(updates.checked)}).` : 'Not checked yet.';
+}
+
 /** How long ago something happened, for "checked 5 min ago". */
 export function ago(t: number) {
   const m = Math.floor((Date.now() - t) / 60000);

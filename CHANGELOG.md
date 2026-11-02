@@ -3,6 +3,54 @@
 All notable changes to Cursed Chronicles. Every release since 1.2.0 installs over the
 previous one and keeps your saves.
 
+## 1.7.9 — Settings on the title screen, quest rings and curses that need to see you
+
+### Settings on the title screen
+- **Your own files** (pictures, sounds and 3D models) and the **update check** moved out of
+  the in-game System tab into **Settings on the title screen**. In a game,
+  **System → Save & Return to Title** gets you there.
+- Settings shows your version, whether a newer one is out (with **Get the update**) and a
+  **Check for updates** button.
+- **Sound effects** (Recorded or Synthesised) can now be picked there too.
+- The Settings panel scrolls on short screens.
+
+### Dialogue
+- The **name plate** and the **AUTO / SKIP** buttons stay in one place whoever is talking.
+  They used to jump to the other side of the box. The plate's colour shows who is talking.
+
+### Quests
+- **Glowing rings under quest givers**: gold when they have a new quest for you (!),
+  green when you have something to report (?).
+- **Where to go, in words.** Under the compass in the objective tracker, a 📍 line says
+  roughly where the objective is: the area, which part of it and what it is near, such
+  as "Tokyo Outskirts · north-west, near ★ Mountain Shrine". When the objective is in
+  another area, it says "In <area> · …". It names travel gates, roads, doors and
+  landmarks you have already found.
+
+### Curses
+- **Curses have to see you.** A curse that hasn't noticed you keeps to itself until you
+  step into its view or come close enough to be heard (about 2.5 m). Its view is a cone
+  in front of it, as far as its sight range, and walls and buildings block it. Walk up
+  behind a curse and you get the first hit.
+- A red **!** over a curse's head means it has just spotted you.
+- Hitting a curse wakes it at once. Curses that join a boss fight come straight for you.
+  Bosses always know where you are.
+
+### Loot
+- **Drops are for the sorcerer you are playing**: their own weapons and gear anyone can
+  wear. Before, a quarter of weapon drops could be another sorcerer's. Shops, boss
+  signature pieces and daily rewards already worked this way.
+
+### Models and sounds from the web
+- No new outside files in this version.
+- The free Jujutsu Kaisen fan models on Sketchfab need a signed-in account to download.
+  They are also fan art of characters the game doesn't own, so they can't be shipped
+  inside a public APK.
+- The "JJK sound effects" offered for download are clips cut from the anime, and
+  Freesound and Pixabay don't allow automated downloads.
+- You can still use any of them in your own copy: **Settings → Your own files** takes a
+  model or sound file from your phone.
+
 ## 1.7.0 — Your own 3D models, recorded sounds and a new map
 
 ### Your own 3D character models

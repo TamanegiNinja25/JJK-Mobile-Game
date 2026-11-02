@@ -26,6 +26,8 @@ export class Hud {
   private gold!: HTMLDivElement;
   private tracker!: HTMLDivElement; private trackerName!: HTMLDivElement; private trackerText!: HTMLDivElement;
   private trackerGuide!: HTMLDivElement; private guideArrow!: HTMLSpanElement; private guideText!: HTMLSpanElement; private lastGuide = '';
+  /** under the compass: the general location of the objective (which area, which part of it, what's near) */
+  private trackerWhere!: HTMLDivElement;
   private mm!: HTMLCanvasElement; private mmCtx!: CanvasRenderingContext2D;
   private mmBg: HTMLCanvasElement | null = null;
   /** interiors start unexplored; the player's path clears this mask */
@@ -156,8 +158,9 @@ export class Hud {
     this.guideArrow = el('span', 'tg-arrow', '➤');
     this.guideText = el('span', 'tg-text');
     this.trackerGuide.append(this.guideArrow, this.guideText);
+    this.trackerWhere = el('div', 'tracker-where');
     const cycle = el('div', 'tracker-cycle', '⇄ tap to switch quest');
-    this.tracker.append(this.trackerName, this.trackerText, this.trackerGuide, cycle);
+    this.tracker.append(this.trackerName, this.trackerText, this.trackerGuide, this.trackerWhere, cycle);
     // tapping the tracker switches which active quest it follows
     this.tracker.addEventListener('click', () => {
       const q = this.game.ps!.cycleTracked();
@@ -565,7 +568,7 @@ export class Hud {
     const gd = w.guide;
     const gp = w.player;
     const dist = gd ? Math.hypot(gd.x - gp.x, gd.z - gp.z) : 0;
-    const gkey = gd ? gd.hint + Math.round(dist) + Math.round(Math.atan2(gd.z - gp.z, gd.x - gp.x) * 8) : '';
+    const gkey = gd ? gd.hint + Math.round(dist) + Math.round(Math.atan2(gd.z - gp.z, gd.x - gp.x) * 8) + (gd.where ?? '') : '';
     if (gkey !== this.lastGuide) {
       this.lastGuide = gkey;
       this.trackerGuide.style.display = gd && dist > 2 ? '' : 'none';
@@ -573,6 +576,9 @@ export class Hud {
         this.guideArrow.style.transform = `rotate(${Math.atan2(gd.z - gp.z, gd.x - gp.x)}rad)`;
         this.guideText.textContent = `${gd.hint} · ${Math.round(dist)}m`;
       }
+      const where = gd?.where ?? '';
+      this.trackerWhere.style.display = where ? '' : 'none';
+      this.trackerWhere.textContent = where ? '📍 ' + where : '';
     }
     // skills
     const p = w.player;

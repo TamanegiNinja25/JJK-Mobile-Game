@@ -1,7 +1,6 @@
 // Full-screen menus (status, bag, skills, quests, map, system) and the shop,
 // infusion workshop and travel windows.
 import { confirmDialog } from './Confirm';
-import { APP_VERSION, ago, updates } from '../core/Updates';
 import { LINES, LINE_BY_ID, QuestLine, RERUN_GOAL, lineReward, masteryReward } from '../rpg/Reruns';
 import { drawAreaPreview, mapTextScale } from './AreaPreview';
 import type { Game } from '../Game';
@@ -21,10 +20,8 @@ import { audio } from '../audio/Audio';
 import { music } from '../audio/Music';
 import { INV_SIZE, objCount, PlayerState } from '../rpg/PlayerState';
 import { voice, voiceFor } from '../audio/Voice';
-import { media, ART_SLOTS, SOUND_SLOTS, MUSIC_SLOTS } from '../core/CustomMedia';
 import { DAILY_BOSSES, SIG_CHANCE, SIG_SEALS, dailyCleared, dailyLevel, dailyRoster, msToReset, setDailyPick } from '../rpg/Daily';
 import { CHEAT_TOGGLES, CHEAT_ACTIONS, cheatOn, toggleCheat, runCheat } from '../rpg/Cheats';
-import { customModels, MODEL_MAX_BYTES } from '../render/models/imported';
 
 const TABS: [string, string, string][] = [['status', '状', 'Status'], ['bag', '袋', 'Bag'], ['skills', '術', 'Skills'], ['quests', '任', 'Quests'], ['map', '図', 'Map'], ['cheats', '秘', 'Cheats'], ['system', '設', 'System']];
 /** Placeholder glyphs shown in empty equipment slots. */
@@ -139,7 +136,6 @@ export class Menus {
       else if (this.shop.kind === 'reforge') this.body.innerHTML = this.renderReforge();
       else if (this.shop.kind === 'travel') this.body.innerHTML = this.renderTravel();
       else if (this.shop.kind === 'daily') this.body.innerHTML = this.renderDaily();
-      else if (this.shop.kind === 'media') { this.body.innerHTML = this.renderMedia(); this.bindMedia(); }
       else this.body.innerHTML = this.renderShop();
       return;
     }
@@ -676,10 +672,8 @@ export class Menus {
         <button class="btn primary wide" data-act="save">Save Game</button>
         <button class="btn wide" data-act="title">Save &amp; Return to Title</button>
         <button class="btn wide" data-act="exportsave">Copy Save Code</button>
-        <button class="btn wide" data-act="openmedia">Your Pictures, Sounds &amp; Models</button>
         <div class="help">The save code keeps your progress if you reinstall or change phones. Paste it under <b>Transfer Save</b> on the title screen.</div>
-        <div class="panel-title">Updates</div>
-        ${this.updateRow()}
+        <div class="help">Your own pictures, sounds and 3D models, and the update check, are in <b>Settings</b> on the title screen (<b>Save &amp; Return to Title</b>).</div>
         <div class="panel-title">Controls</div>
         <div class="help">Touch: drag the left half of the screen to move. Tap or hold <b>攻</b> to attack (it becomes <b>話</b> to talk). Skills sit around it, <b>回避</b> dodges, the gold-rimmed button is your Ultimate.<br>Keyboard: WASD move · J/Space attack · 1–5 skills · R ultimate · Shift dodge · Q/E potions · F talk · I/K/L/M menus · Esc close.</div>
       </div>
@@ -688,7 +682,7 @@ export class Menus {
         ${sl('music', 'Music', s.music)}${sl('sfx', 'Effects', s.sfx)}${sl('amb', 'Ambience', s.amb)}
         <div class="set-label">Sound effects</div>
         <div class="chips">${ch('sfxStyle', 'recorded', 'Recorded')}${ch('sfxStyle', 'synth', 'Synthesised')}</div>
-        <div class="help">Recorded: real hits, footsteps, blades, coins and menu clicks (Kenney's free CC0 sound packs) layered with the game's own synthesised sounds. Cursed techniques are always synthesised. Any sound can be swapped for your own under <b>Your Pictures, Sounds &amp; Models</b>.</div>
+        <div class="help">Recorded: real hits, footsteps, blades, coins and menu clicks (Kenney's free CC0 sound packs) layered with the game's own synthesised sounds. Cursed techniques are always synthesised. Any sound can be swapped for your own in <b>Settings</b> on the title screen.</div>
         <div class="panel-title">Graphics</div>
         <div class="chips">${q('low', 'Low')}${q('medium', 'Medium')}${q('high', 'High')}</div>
         <div class="panel-title">Camera</div>
@@ -711,18 +705,6 @@ export class Menus {
         <div class="credits">Cursed Chronicles is an unofficial, non-commercial fan game inspired by Jujutsu Kaisen and Zenonia. Models, music and cursed-technique sounds are procedurally generated. Recorded sound effects: Kenney (www.kenney.nl), CC0. Jujutsu Kaisen © Gege Akutami / Shueisha.</div>
       </div>
     </div>`;
-  }
-
-  private updateRow() {
-    const u = updates.latest;
-    const st = updates.status === 'checking' ? 'Checking…'
-      : u ? `<b class="upd-new">Version ${escapeHtml(u.version)} is out.</b>`
-      : updates.status === 'offline' ? 'Offline. The game checks again when you\'re connected.'
-      : updates.status === 'error' ? 'GitHub didn\'t answer. Try again later.'
-      : updates.checked ? `Up to date (checked ${ago(updates.checked)}).` : 'Not checked yet.';
-    return `<div class="upd-row"><div class="help">This is version <b>${escapeHtml(APP_VERSION)}</b>. ${st}</div>
-      ${u ? '<button class="btn primary wide" data-act="getupdate">Get the update</button>' : ''}
-      <button class="btn wide" data-act="checkupdate" ${updates.status === 'checking' ? 'disabled' : ''}>Check for updates</button></div>`;
   }
 
   private bindSystem() {
@@ -902,109 +884,6 @@ export class Menus {
     return `<div class="shop travel"><div class="shop-head"><div class="shop-portrait" style="background-image:url(${this.game.portraits.get('ijichi')})"></div><div><div class="id-name">Ijichi's Car</div><div class="id-sub">"P-please fasten your seatbelt."</div></div></div><div class="shop-list">${rows}</div></div>`;
   }
 
-  private mediaArt = 'yuji';
-  private mediaModel = 'yuji';
-
-  /** The player's own pictures and sounds, picked from the phone and kept on it. */
-  private renderMedia() {
-    const opt = ART_SLOTS.map(a => `<option value="${a.id}" ${a.id === this.mediaArt ? 'selected' : ''}>${escapeHtml(a.label)}${media.has('art:' + a.id) ? ' ★' : ''}</option>`).join('');
-    const pic = this.game.portraits.get(this.mediaArt);
-    const has = media.has('art:' + this.mediaArt);
-    const row = (key: string, label: string, test: boolean) => `<div class="shop-row"><div class="sr-info"><b>${escapeHtml(label)}</b><small>${media.has(key) ? 'Your file' : 'Built-in'}</small></div>
-      ${test && media.has(key) ? `<button class="btn small" data-act="mediatest" data-key="${key}">Play</button>` : ''}
-      <button class="btn small primary" data-pick="${key}" data-accept="audio/*">Choose…</button>
-      ${media.has(key) ? `<button class="btn small" data-act="mediaclear" data-key="${key}">Reset</button>` : ''}</div>`;
-    const off = !media.available ? '<div class="cheat-note">Storage for your own files isn\'t available on this device.</div>' : '';
-    // 3D models: any character with a humanoid body (Dagon's isn't)
-    const mid = this.mediaModel, mHas = media.has('model:' + mid);
-    const mopt = ART_SLOTS.filter(a => a.id !== 'dagon').map(a => `<option value="${a.id}" ${a.id === mid ? 'selected' : ''}>${escapeHtml(a.label)}${media.has('model:' + a.id) ? ' ★' : ''}</option>`).join('');
-    const mInfo = customModels.info(mid), mErr = customModels.errors.get(mid);
-    const mStatus = customModels.loading(mid) ? 'Reading the model…'
-      : mErr ? `<span class="warn">${escapeHtml(mErr)}</span>`
-      : mInfo ? escapeHtml(mInfo.summary) + (mInfo.triangles > 150000 ? '<br><span class="warn">That is a heavy model for a phone: the game may slow down where it appears.</span>' : '')
-      : 'Built-in model.';
-    const models = `<div class="panel-title">3D character models</div>
-        <div class="media-art"><div class="media-pic" style="background-image:url(${this.game.portraits.get(mid)})"></div>
-          <div class="media-art-ctrl"><select class="media-msel">${mopt}</select>
-          <div class="hint">${mStatus}</div>
-          <div><button class="btn small primary" data-pick="model:${mid}" data-accept=".glb,.gltf,.vrm,.fbx,.zip,.bin,.png,.jpg,.jpeg,.webp" data-multiple="1">Choose model…</button>${mHas ? `<button class="btn small" data-act="mediaclear" data-key="model:${mid}">Reset</button>` : ''}</div></div></div>
-        <div class="help">GLB / glTF, VRM or FBX, or the .zip a model download comes in (a glTF with separate textures can be picked together with them). A rigged humanoid (Mixamo, VRoid/VRM, Unity, Blender, MMD, Daz, Character Creator) moves with the game's own animations for every attack and skill, and its own idle, walk and run clips play when it has them. A model without a skeleton is shown as a statue. Up to ${Math.round(MODEL_MAX_BYTES / 1048576)} MB.</div>`;
-    return `<div class="shop media"><div class="shop-head"><div><div class="id-name">Your Pictures, Sounds &amp; Models</div>
-      <div class="id-sub">Pick pictures, audio and 3D models from your phone to use in your copy of the game. They stay on this phone and are never shared. Only use files you have the right to use.</div></div></div>${off}
-      <div class="shop-list">
-        <div class="panel-title">Character pictures</div>
-        <div class="media-art"><div class="media-pic" style="background-image:url(${pic})"></div>
-          <div class="media-art-ctrl"><select class="media-sel">${opt}</select>
-          <div class="hint">Replaces this character's portrait and dialogue art.</div>
-          <div><button class="btn small primary" data-pick="art:${this.mediaArt}" data-accept="image/*">Choose picture…</button>${has ? `<button class="btn small" data-act="mediaclear" data-key="art:${this.mediaArt}">Reset</button>` : ''}</div></div></div>
-        ${models}
-        <div class="panel-title">Sound effects</div>
-        <div class="help">Short clips (a punch, a step) can play over each other; longer ones (a shout, a jingle) aren't cut off by the next.</div>
-        ${(['Big moments', 'Combat', 'World and menus'] as const).map(gp => `<div class="set-label">${gp}</div>${SOUND_SLOTS.filter(sl => sl.group === gp).map(sl => row('sfx:' + sl.id, sl.label, true)).join('')}`).join('')}
-        <div class="panel-title">Music</div>${MUSIC_SLOTS.map(sl => row('music:' + sl.id, sl.label, false)).join('')}
-      </div></div>`;
-  }
-
-  private bindMedia() {
-    const sel = this.body.querySelector('.media-sel') as HTMLSelectElement | null;
-    sel?.addEventListener('change', () => { this.mediaArt = sel.value; this.render(); });
-    const msel = this.body.querySelector('.media-msel') as HTMLSelectElement | null;
-    msel?.addEventListener('change', () => { this.mediaModel = msel.value; this.render(); });
-    for (const b of Array.from(this.body.querySelectorAll('[data-pick]')) as HTMLElement[]) {
-      b.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const key = b.dataset.pick!;
-        const inp = document.createElement('input');
-        inp.type = 'file';
-        inp.accept = b.dataset.accept!;
-        inp.multiple = !!b.dataset.multiple;
-        // kept in the page while the phone's picker is open (some WebViews ignore detached inputs)
-        inp.style.cssText = 'position:fixed;left:-9999px;opacity:0';
-        document.body.appendChild(inp);
-        // a cancelled picker never fires change: tidy up once the game has focus again
-        window.addEventListener('focus', () => setTimeout(() => inp.remove(), 2000), { once: true });
-        inp.onchange = async () => {
-          const files = Array.from(inp.files ?? []);
-          const f = files[0];
-          inp.remove();
-          if (!f) return;
-          try {
-            if (key.startsWith('model:')) await this.useModel(key.slice(6), files);
-            else {
-              if (key.startsWith('art:')) await media.setImage(key.slice(4), f);
-              else await media.setSound(key, f);
-              audio.play('equip');
-              this.game.toast('Saved on this phone', 'good', 1.6);
-            }
-          } catch (err) {
-            audio.play('error');
-            this.game.toast((err as Error).message || 'That file could not be used', 'warn', 3);
-          }
-          this.render();
-        };
-        inp.click();
-      });
-    }
-  }
-
-  /** Stores and reads a 3D model for character `id`, then puts it on whoever is that character right now. */
-  private async useModel(id: string, files: File[]) {
-    await media.setModel(id, files, MODEL_MAX_BYTES);
-    const job = customModels.load(id);
-    this.render();
-    const t = await job;
-    if (!t) {
-      const why = customModels.errors.get(id) ?? 'That model could not be read.';
-      await media.remove('model:' + id);
-      throw new Error(why);
-    }
-    this.game.world.refreshModels(id);
-    this.game.ui.hud?.refreshPortrait();
-    audio.play('equip');
-    const name = ART_SLOTS.find(a => a.id === id)?.label ?? id;
-    this.game.toast(t.rigged ? `${name} now wears your model` : `${name} now uses your model (no skeleton found, so it stands like a statue)`, 'good', 2.6);
-  }
-
   /** Akari Nitta's board: today's exorcisms, what each drops, and seals traded for signature pieces. */
   private renderDaily() {
     const ps = this.game.ps!;
@@ -1102,16 +981,6 @@ export class Menus {
         this.close();
         if (h) this.game.ui.hud?.showHint(h);
         else this.game.toast('Nothing to hint at right now.', 'info', 2);
-        return;
-      }
-      case 'checkupdate': {
-        audio.play('click');
-        void updates.check(true).then((u) => { audio.play(u ? 'questAccept' : 'tab'); this.refresh(); });
-        break;
-      }
-      case 'getupdate': {
-        const u = updates.latest;
-        if (u) { this.close(); void this.game.ui.updateNotice(u); }
         return;
       }
       case 'discard': {
@@ -1225,21 +1094,6 @@ export class Menus {
         break;
       }
       case 'travel': this.close(); this.game.travel(t.dataset.id!); return;
-      case 'openmedia': this.openShop('media', 'gojo'); return;
-      case 'mediaclear': {
-        const key = t.dataset.key!;
-        void media.remove(key).then(() => {
-          if (key.startsWith('model:')) { const id = key.slice(6); customModels.forget(id); this.game.world.refreshModels(id); this.game.ui.hud?.refreshPortrait(); }
-          audio.play('tab'); this.render();
-        });
-        return;
-      }
-      case 'mediatest': {
-        const name = t.dataset.key!;
-        if (name === 'sfx:step') audio.step('stone');
-        else if (name.startsWith('sfx:')) audio.play(name.slice(4));
-        return;
-      }
       case 'dailyfight': {
         const b = DAILY_BOSSES.find(x => x.id === t.dataset.id);
         const ps = this.game.ps!;

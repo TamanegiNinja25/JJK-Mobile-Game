@@ -419,7 +419,7 @@ button { font-family: inherit; color: inherit; }
 @keyframes hop { 40% { translate: 0 -7px; } }
 .vn-box { position: absolute; left: 50%; bottom: calc(10px + var(--sb)); transform: translateX(-50%); width: min(980px, calc(100% - 24px - var(--sl) - var(--sr))); min-height: 122px; padding: 22px 26px 18px; border-radius: 16px; background: linear-gradient(rgba(18, 13, 34, .9), rgba(8, 6, 16, .95)); border: 1px solid rgba(200, 180, 255, .26); border-top: 2px solid var(--plate, #8a6aff); box-shadow: 0 -6px 30px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06); cursor: pointer; }
 .vn-plate { position: absolute; top: -17px; left: 24px; display: flex; align-items: baseline; gap: 8px; padding: 4px 16px 5px; border-radius: 8px; background: var(--plate, #8a6aff); background: linear-gradient(135deg, var(--plate, #8a6aff), color-mix(in srgb, var(--plate, #8a6aff) 40%, #120c22)); box-shadow: 0 3px 12px rgba(0, 0, 0, .5); }
-.vn.speaker-right .vn-plate { left: auto; right: 24px; }
+/* the name plate keeps its place whoever speaks: the box's border colour already says who it is */
 .vn-name { font-family: var(--serif); font-weight: 900; font-size: 15px; letter-spacing: .05em; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .8); }
 .vn-jp { font-family: var(--serif); font-size: 11px; color: rgba(255, 255, 255, .82); letter-spacing: .12em; text-shadow: 0 1px 2px rgba(0, 0, 0, .8); }
 .vn-text { font-size: 17px; line-height: 1.55; min-height: 54px; text-shadow: 0 1px 2px #000; }
@@ -428,7 +428,7 @@ button { font-family: inherit; color: inherit; }
 .vn.sukuna .vn-box { background: linear-gradient(rgba(44, 4, 12, .93), rgba(12, 2, 4, .96)); border-top-color: #ff2a3a; box-shadow: 0 -6px 30px rgba(255, 0, 32, .35); }
 .vn-hint { position: absolute; right: 18px; bottom: 7px; color: var(--plate, #b49aff); animation: bob .7s infinite alternate; font-size: 12px; }
 .vn-ctrl { position: absolute; right: 14px; top: -13px; display: flex; gap: 6px; }
-.vn.speaker-right .vn-ctrl { right: auto; left: 14px; }
+/* AUTO and SKIP stay in the same spot through the whole conversation */
 .vn-btn { font-size: 10px; font-weight: 900; letter-spacing: .08em; padding: 5px 10px; border-radius: 99px; background: rgba(12, 9, 24, .94); color: #c8bce8; border: 1px solid rgba(200, 180, 255, .35); cursor: pointer; }
 .vn-btn.on { background: #e8bf55; color: #1a1208; border-color: #ffe9a0; }
 .vn-choices { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); display: flex; flex-direction: column; gap: 8px; width: min(540px, 88%); }
@@ -827,3 +827,17 @@ button { font-family: inherit; color: inherit; }
   .map-side .hint { font-size: 10px; margin-top: 4px; }
 }
 .media-art-ctrl .warn { color: #ff9aa8; }
+
+/* Settings on the title screen: scrolls inside itself so nothing is cut off on a short screen */
+.slots-panel.settings { max-height: calc(100vh - 24px); overflow-y: auto; overscroll-behavior: contain; }
+.set-btns { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; }
+.set-btns .btn { flex: 1; min-width: 140px; }
+/* Your Pictures, Sounds & Models on the title screen */
+.title-media { width: min(920px, 96vw); height: min(640px, calc(100vh - 24px)); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px 12px; }
+.title-media .shop { height: auto; flex: 1; min-height: 0; }
+.title-media .tbtn.back { flex: none; align-self: center; width: min(320px, 80vw); margin-top: 4px; }
+.media-msg { flex: none; padding: 6px 10px; border-radius: 8px; background: rgba(90, 220, 140, .12); border: 1px solid rgba(90, 220, 140, .35); color: #c8ffd8; font-size: 13px; }
+.media-msg.warn { background: rgba(255, 90, 110, .12); border-color: rgba(255, 90, 110, .4); color: #ffc8d0; }
+/* the objective's general location, under the compass */
+.tracker-where { margin-top: 2px; font-size: 10px; color: rgba(255, 240, 200, .78); line-height: 1.25; }
+@media (max-height: 440px) { .tracker-where { font-size: 9px; } }

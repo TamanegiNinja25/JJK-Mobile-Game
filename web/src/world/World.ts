@@ -16,7 +16,7 @@ import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { Actor } from '../entities/Actor';
 import { Summon } from '../entities/Summon';
-import { NPC } from '../entities/NPC';
+import { NPC, pulseQuestRings } from '../entities/NPC';
 import { Projectile } from '../entities/Projectile';
 import { Loot, Pickup, Portal } from '../entities/Loot';
 import { ENEMIES, GRADE_NAME } from '../rpg/enemies';
@@ -249,6 +249,7 @@ export class World implements WorldAPI {
     for (const pk of this.pickups) pk.update(dt);
     for (const po of this.portals) po.update(dt);
     for (const n of this.npcs) n.update(dt);
+    pulseQuestRings(performance.now() / 1000);
     this.npcTimer -= dt;
     if (this.npcTimer <= 0) { this.npcTimer = 1; this.refreshNpcs(); }
     this.tickSpawners(dt);
@@ -430,6 +431,8 @@ export class World implements WorldAPI {
     const def = ENEMIES[id];
     const e = new Enemy(this, def, x, z, level);
     e.noLoot = noLoot;
+    // anything that appears mid boss fight (a boss's summons) joins the fight at once
+    if (this.bossActive && this.player) { e.aggro = true; e.target = this.player; }
     this.enemies.push(e);
     if (def.ai !== 'dummy' && this.time > 0.5) { this.fx.smoke(x, z, 0x2a1a3a, 8); }
     return e;
@@ -641,7 +644,8 @@ export class World implements WorldAPI {
   // ------------------------------------------------------------------
 
   /** Where the tracked objective is, or the exit / door / travel gate that leads toward it. */
-  guide: { x: number; z: number; hint: string } | null = null;
+  /** where the tracked objective leads in this area; `where` says in words where the objective is */
+  guide: { x: number; z: number; hint: string; where?: string } | null = null;
   /** areas where the tracked objective can be done (for the world map) */
   guideMaps: string[] = [];
   private guideT = 0;
@@ -709,16 +713,51 @@ export class World implements WorldAPI {
       }
     }
     this.guideMaps = maps.length ? maps : at ? [here] : [];
-    if (at) { this.guide = at; return; }
+    if (at) { this.guide = { ...at, where: this.describeSpot(here, at.x, at.z) }; return; }
     if (!maps.length || maps.includes(here)) return;
+    // the objective is in another area: name it, and where in it when the atlas knows the spot
+    const there = maps.find(m => !MAPS[m]?.interior) ?? maps[0];
+    const E = A[there];
+    const spot = !E ? undefined
+      : g.kind === 'talk' ? E.npcs.find(d => d.id === g.npc && (!d.cond || d.cond(ps)))
+      : g.kind === 'boss' ? E.bosses.find(b => (b.as ?? b.id) === g.boss && (!b.quest || b.quest === g.quest) && (!b.cond || b.cond(ps)))
+      : g.kind === 'collect' ? E.pickups.find(x => x.item === g.item && x.quest === g.quest) : undefined;
+    const where = spot ? 'In ' + this.describeSpot(there, spot.x, spot.z) : `In ${MAPS[there]?.name ?? there}`;
     // not in this area: a portal straight there, else the outside of the building it's in, else travel
     const doorsTo = (targets: string[]) => this.portals.find(po => targets.includes(po.d.to));
     const outside = Object.keys(A).filter(m => A[m].portals.some(po => maps.includes(po.to) && po.style === 'door'));
     const po = doorsTo(maps) ?? (this.mapDef.interior ? this.portals.find(x => x.d.style === 'door') : undefined) ?? doorsTo(outside);
     const dest = MAPS[maps.find(m => !MAPS[m].interior) ?? outside[0] ?? maps[0]];
-    if (po) { this.guide = { x: po.d.x, z: po.d.z, hint: po.d.style === 'travel' ? `Travel to ${dest.name}` : po.d.label }; return; }
+    if (po) { this.guide = { x: po.d.x, z: po.d.z, hint: po.d.style === 'travel' ? `Travel to ${dest.name}` : po.d.label, where }; return; }
     const gate = this.portals.find(x => x.d.style === 'travel')?.d ?? this.npcs.find(n => n.id === 'ijichi');
-    if (gate) this.guide = { x: gate.x, z: gate.z, hint: `Travel to ${dest.name}` };
+    if (gate) this.guide = { x: gate.x, z: gate.z, hint: `Travel to ${dest.name}`, where };
+  }
+
+  /**
+   * Where a spot lies in area `id`, in words: the area, its side of it and the nearest thing with a name
+   * ("Tokyo Jujutsu High · north-east, near ▣ First-year dorm"). Named things are doors, roads, the travel
+   * gate and landmarks already found (one not yet found stays a surprise). North is up on the map (−z).
+   */
+  describeSpot(id: string, x: number, z: number) {
+    const def = MAPS[id];
+    if (!def) return '';
+    const [W, D] = def.size;
+    const fx = x / (W / 2), fz = z / (D / 2);
+    const ns = fz < -0.34 ? 'north' : fz > 0.34 ? 'south' : '';
+    const ew = fx < -0.34 ? 'west' : fx > 0.34 ? 'east' : '';
+    const side = ns && ew ? `${ns}-${ew}` : ns || ew || 'centre';
+    const feats: { x: number; z: number; name: string }[] = [];
+    for (const po of getAtlas()[id]?.portals ?? []) {
+      feats.push({ x: po.x, z: po.z, name: po.style === 'travel' ? '⛩ travel gate' : po.style === 'road' ? `➜ ${po.label}` : `▣ ${po.label}` });
+    }
+    if (id === this.mapDef?.id) {
+      const flags = this.game.ps?.d.flags ?? {};
+      for (const lm of this.map.landmarks) if (flags[lm.flag]) feats.push({ x: lm.x, z: lm.z, name: `★ ${lm.name}` });
+    }
+    const reach = Math.max(10, 0.2 * Math.min(W, D));
+    let best: { name: string; d: number } | null = null;
+    for (const f of feats) { const d = Math.hypot(f.x - x, f.z - z); if (d <= reach && (!best || d < best.d)) best = { name: f.name, d }; }
+    return `${def.name} · ${side}${best ? `, near ${best.name}` : ''}`;
   }
 
   hideGuideArrow() { if (this.guideArrow) this.guideArrow.visible = false; }
@@ -825,6 +864,7 @@ export class World implements WorldAPI {
       const d = Math.hypot(e.x - p.x, e.z - p.z);
       if (d > 20) continue;
       const elite = e.d.grade <= 1;
+      if (e.alertT > 0) o.markers.push({ x: e.x, y: (e.model?.height ?? 1.6) * e.scale + 0.95 + (e.d.flying ? 0.6 : 0), z: e.z, kind: 'alert' });
       if (e.hp < e.maxHp || elite || d < 7) {
         o.bars.push({ x: e.x, y: (e.model?.height ?? 1.6) * e.scale + 0.35 + (e.d.flying ? 0.6 : 0), z: e.z, hp: e.hp, max: e.maxHp, name: `Lv${e.level} ${e.d.name}`, gradeColor: e.gradeColor, elite, marked: e.marked, stun: e.stunned });
       }

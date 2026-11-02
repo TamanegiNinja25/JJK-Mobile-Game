@@ -417,9 +417,12 @@ export function enhanceCost(it: ItemInstance) {
   };
 }
 
-/** Pick a random gear base appropriate for a level (and optionally class). */
+/**
+ * Pick a random gear base appropriate for a level. With a class, only gear that sorcerer can use: their
+ * own weapons and gear anyone can wear (another sorcerer's weapon used to drop a quarter of the time).
+ */
 export function randomGear(level: number, cls?: ClassId) {
-  const fits = Object.values(ITEMS).filter(b => isGear(b) && !b.unique && b.req <= level + 2 && (!b.cls || !cls || b.cls === cls || Math.random() < 0.25));
+  const fits = Object.values(ITEMS).filter(b => isGear(b) && !b.unique && b.req <= level + 2 && (!b.cls || !cls || b.cls === cls));
   // drops come from the top 12 levels of what exists, so gaps between tiers still drop gear
   const top = fits.reduce((m, b) => Math.max(m, b.req), 0);
   const pool = fits.filter(b => b.req >= Math.min(level, top) - 12);

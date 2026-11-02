@@ -139,6 +139,7 @@ export class Enemy extends Actor {
       if (this.lungeV.t <= 0) this.lungeV = null;
     }
 
+    if (this.alertT > 0) this.alertT -= dt;
     if (this.stunned) { this.syncModel(dt); return; }
     if (this.d.ai === 'dummy') { this.syncModel(dt); return; }
 
@@ -152,17 +153,41 @@ export class Enemy extends Actor {
     this.model.update(dt);
   }
 
-  /** Pick the closest hostile (player or a shikigami). */
-  pickTarget(range: number): Actor | null {
+  /**
+   * Pick the closest hostile (player or a shikigami). An enemy that isn't fighting yet only goes for what it
+   * notices (see `notices`); `look` is false between its looks around, so it keeps to itself until then.
+   */
+  pickTarget(range: number, look = true): Actor | null {
     const p = this.world.player;
-    let best: Actor | null = p.alive ? p : null;
-    let bd = best ? Math.hypot(p.x - this.x, p.z - this.z) : Infinity;
+    const blind = !this.aggro && !this.isBoss;
+    if (blind && !look) return null;
+    const sees = (a: Actor, d: number) => !blind || this.notices(a, d, range);
+    let best: Actor | null = null, bd = Infinity;
+    if (p.alive) { const d = Math.hypot(p.x - this.x, p.z - this.z); if (sees(p, d)) { best = p; bd = d; } }
     for (const s of this.world.summons) {
       if (!s.alive || !s.targetable) continue;
       const d = Math.hypot(s.x - this.x, s.z - this.z);
-      if (d < bd - 1.5) { bd = d; best = s; }
+      if (d < bd - 1.5 && sees(s, d)) { bd = d; best = s; }
     }
     return bd <= range ? best : (this.aggro && best && bd < range * 2.2 ? best : null);
+  }
+
+  /** seconds until this enemy next looks around for someone to fight (sight is worked out a few times a second) */
+  private lookT = Math.random() * 0.2;
+  /** while above 0, a red "!" over its head: it has just spotted you */
+  alertT = 0;
+
+  /**
+   * Whether an enemy that isn't fighting yet notices `t`: in front of it (a 130° cone), within its sight range
+   * and not behind a wall, or close enough to hear (2.6 m). Bosses, enemies already fighting and anything hit
+   * by you don't need to; this is only how a quiet enemy first spots you.
+   */
+  private notices(t: Actor, dist: number, range: number) {
+    if (dist <= 2.6) return true;
+    if (dist > range) return false;
+    const fx = Math.sin(this.facing), fz = Math.cos(this.facing);
+    if (((t.x - this.x) * fx + (t.z - this.z) * fz) / dist < 0.42) return false;
+    return !this.world.col.segmentHit(this.x, this.z, t.x, t.z, 0.15);
   }
 
   think(dt: number, dToP: number) {
@@ -172,9 +197,13 @@ export class Enemy extends Actor {
       this.runAttack(dt);
       return;
     }
-    const t = this.pickTarget(d.aggro);
+    this.lookT -= dt;
+    const look = this.lookT <= 0;
+    if (look) this.lookT = 0.2;
+    const t = this.pickTarget(d.aggro, look);
     if (t && !this.aggro) {
       this.aggro = true;
+      if (!this.isBoss) this.alertT = 1.1;
       if (d.voice && Math.random() < 0.6) this.world.sfx(d.voice, this.x, this.z, 0.6, 0.8 + Math.random() * 0.4);
     }
     this.target = t;
@@ -350,7 +379,7 @@ export class Enemy extends Actor {
   }
 
   onHit(dmg: number, src: Actor | null) {
-    if (!this.aggro) { this.aggro = true; this.target = src ?? this.world.player; }
+    if (!this.aggro) { this.aggro = true; this.target = src ?? this.world.player; if (!this.isBoss && this.d.ai !== 'dummy') this.alertT = 1.1; }
     this.model?.hit();
     this.flashT = 0.12;
     this.flashColor = 0xffffff;

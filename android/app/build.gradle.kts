@@ -10,8 +10,8 @@ android {
         applicationId = "com.tamanegininja.cursedchronicles"
         minSdk = 24
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.7.0"
+        versionCode = 10
+        versionName = "1.7.9"
     }
 
     // Android only installs a new APK as an update when it is signed with the same key as the
