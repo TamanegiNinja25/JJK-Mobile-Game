@@ -168,7 +168,8 @@ landscape. If the frame rate stays low, it lowers the graphics quality automatic
 you can also set it under **System**, along with camera distance, screen shake
 (Off / Light / Full), dialogue voices (character voices, spoken with your phone's
 text-to-speech, or blips), combat voices, text speed, cutscenes (Full / Short / Off) and
-quest hints. **System → Updates** shows your version and checks for a newer one.
+quest hints. **Settings** on the title screen shows your version and checks for a newer
+one (in a game, **System → Save & Return to Title** gets you there).
 
 ## Features
 
@@ -224,7 +225,8 @@ Sovereign (Lv 80) gear starts dropping.
   a short "zone" buff.
 - **Loot:** four rarities (Common, Graded, Special Grade, Cursed Tool) with random
   bonus stats. Gear fills six slots: weapon, headgear, uniform, charm, accessory and
-  shoes. The bag and the shops group items by category.
+  shoes. Curses only drop gear the sorcerer you are playing can use: their own weapons
+  and gear anyone can wear. The bag and the shops group items by category.
 - **Infusion:** Yaga's workshop upgrades gear from +1 to +10. Higher levels can fail
   and drop a level.
 - **Reforge:** Mechamaru, by the storehouse at Jujutsu High, takes +10 gear on to +30.
@@ -234,7 +236,15 @@ Sovereign (Lv 80) gear starts dropping.
 - **Quest tracking:** pick any active quest in the log (or tap the tracker to cycle) and
   it follows you on the HUD. A gold arrow on the ground, a ◆ on the minimap and a
   distance readout point at the objective, or at the door, exit or travel gate that
-  leads to it.
+  leads to it. Under the compass, a 📍 line says roughly where that is: the area, which
+  part of it and what it is near ("Tokyo Outskirts · north-west, near ★ Mountain
+  Shrine"), or "In Shibuya · …" when it is in another area.
+- **Quest givers** stand in a glowing ring: gold when they have a new quest for you (!),
+  green when you have something to report (?).
+- **Curses have to see you.** One that hasn't noticed you keeps to itself until you step
+  into its view (in front of it, within its sight and not behind a wall) or come close
+  enough to be heard. A red **!** over its head means it has spotted you. Hitting it, or
+  starting a boss fight, wakes it at once.
 - **Hints when you're stuck:** if the quest you follow hasn't moved for two minutes of
   play, whoever gave it says what is needed and where; after four minutes they offer the
   map, after seven to take you there. Every active quest in the log has a **Hint** button.
@@ -258,7 +268,9 @@ Sovereign (Lv 80) gear starts dropping.
 - **Visual-novel conversations.** The player stands on the left in large character art
   and whoever they are talking to on the right, both drawn from their 3D models. The
   speaker is lit and moves their mouth, and faces show five moods. Name plates carry
-  the Japanese names. **AUTO** and **SKIP** work like any dating sim.
+  the Japanese names. **AUTO** and **SKIP** work like any dating sim. The name plate and
+  the AUTO / SKIP buttons stay in the same spot whoever is talking; the plate's colour
+  shows who it is.
 - **A voice for everyone.** Each character speaks in a generated voice with their own
   pitch, pace and tone, and curses growl and echo. Pick **Spoken** in System to have
   lines read aloud by your phone's text-to-speech instead. Characters in the world blink
@@ -288,7 +300,8 @@ any signature piece outright.
 
 ### Your own pictures, sounds and 3D models
 
-**System → Your Pictures, Sounds & Models** lets you choose files on your phone for your own copy:
+**Settings → Your own files** on the title screen lets you choose files on your phone for your
+own copy (in a game, **System → Save & Return to Title** first):
 
 - a picture for any of 35 characters (portrait and dialogue art)
 - **a 3D model for any of 34 characters**: GLB, glTF (with its textures, or the `.zip` a
@@ -434,8 +447,9 @@ Some of the later bosses play by their own rules:
   change with the ground, swings sound on the wind-up and hits on the contact frame, for
   players, curses, shikigami and bosses alike. Blows, blades, footsteps, coins, doors and
   menu taps use recorded takes from Kenney's CC0 packs layered with the game's
-  synthesised sounds; cursed techniques are synthesised. **System → Audio → Sound
-  effects** picks **Recorded** or **Synthesised**. Sounds fade with distance.
+  synthesised sounds; cursed techniques are synthesised. **Sound effects** in Settings
+  on the title screen, or under **System → Audio** in a game, picks **Recorded** or
+  **Synthesised**. Sounds fade with distance.
 - A music theme for each area and for bosses, layered over ambience such as rain,
   crickets, city noise and wind.
 

@@ -61,6 +61,8 @@ export class Player extends Actor implements Caster {
     }
     const m = withCustomModel(ps.cls.model, wrapHumanoid(buildCharacter(ps.cls.model)));
     this.setModel(m, this.scale || 1);
+    // a new look keeps the old one's visibility (the title screen's stand-in player stays hidden)
+    if (old && !old.root.visible) m.root.visible = false;
     m.setStance?.(ps.cls.stance);
     if (old?.dead) m.die();
     // footsteps land exactly when a foot plants in the walk cycle, and carry the body's weight:

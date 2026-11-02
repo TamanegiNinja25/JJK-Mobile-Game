@@ -12,7 +12,8 @@ import { PlayerState, STAT_POINTS_PER_LEVEL } from '../rpg/PlayerState';
 import { MAPS } from '../world/maps';
 import { audio } from '../audio/Audio';
 import { confirmDialog, slotCard } from './Confirm';
-import { APP_VERSION, UpdateInfo, openReleasePage, updates } from '../core/Updates';
+import { APP_VERSION, UpdateInfo, openReleasePage, updates, updateStatus } from '../core/Updates';
+import { MediaPanel } from './MediaPanel';
 
 export class UI {
   root: HTMLElement;
@@ -131,7 +132,7 @@ export class UI {
       updates.onChange((u) => {
         this.titleUpdate();
         // found while playing: one quiet line, the notice waits for the title screen
-        if (u && !this.titleEl && this.game.state === 'play') this.game.toast(`Update ${u.version} is out. Get it from System → Updates.`, 'info', 5);
+        if (u && !this.titleEl && this.game.state === 'play') this.game.toast(`Update ${u.version} is out. Get it from Settings on the title screen.`, 'info', 5);
       });
     }
     const slot = this.titleEl?.querySelector('.title-update') as HTMLElement | null;
@@ -326,16 +327,32 @@ export class UI {
     };
   }
 
+  /**
+   * The main menu's Settings: sound and graphics, and (since 1.7.9) the player's own pictures, sounds and
+   * 3D models and the update check, which used to sit in the in-game System tab.
+   */
   private titleSettings() {
     const t = this.titleEl!;
     const s = this.game.settings;
     const q = (v: string, l: string) => `<button class="chip ${s.quality === v ? 'on' : ''}" data-q="${v}">${l}</button>`;
-    t.innerHTML = `${this.logo()}<div class="slots-panel"><div class="panel-title">Settings</div>
+    const sx = (v: 'recorded' | 'synth', l: string) => `<button class="chip ${(s.sfxStyle ?? 'recorded') === v ? 'on' : ''}" data-sx="${v}">${l}</button>`;
+    const u = updates.latest;
+    const status = escapeHtml(updateStatus());
+    const keep = (t.querySelector('.slots-panel.settings') as HTMLElement | null)?.scrollTop ?? 0;
+    t.innerHTML = `<div class="slots-panel settings"><div class="panel-title">Settings</div>
       <label class="set"><span>Music</span><input type="range" min="0" max="100" value="${Math.round(s.music * 100)}" data-set="music"></label>
       <label class="set"><span>Effects</span><input type="range" min="0" max="100" value="${Math.round(s.sfx * 100)}" data-set="sfx"></label>
       <label class="set"><span>Ambience</span><input type="range" min="0" max="100" value="${Math.round(s.amb * 100)}" data-set="amb"></label>
+      <div class="set-label">Sound effects</div><div class="chips">${sx('recorded', 'Recorded')}${sx('synth', 'Synthesised')}</div>
       <div class="panel-title">Graphics</div><div class="chips">${q('low', 'Low')}${q('medium', 'Medium')}${q('high', 'High')}</div>
+      <div class="panel-title">Your own files</div>
+      <button class="btn wide" data-a="media">Your Pictures, Sounds &amp; Models</button>
+      <div class="help">Your own character pictures, 3D models, sound effects and music, picked from this phone. They stay on it.</div>
+      <div class="panel-title">Updates</div>
+      <div class="help">This is version <b>${escapeHtml(APP_VERSION)}</b>. ${u ? `<b class="upd-new">${status}</b>` : status}</div>
+      <div class="set-btns">${u ? '<button class="btn primary" data-a="getupdate">Get the update</button>' : ''}<button class="btn" data-a="checkupdate" ${updates.status === 'checking' ? 'disabled' : ''}>Check for updates</button></div>
       <button class="tbtn back" data-back="1">Back</button></div>`;
+    (t.querySelector('.slots-panel.settings') as HTMLElement).scrollTop = keep;
     for (const inp of Array.from(t.querySelectorAll('input[data-set]')) as HTMLInputElement[]) {
       inp.addEventListener('input', () => { (s as any)[inp.dataset.set!] = +inp.value / 100; this.game.applySettings(); });
     }
@@ -343,8 +360,26 @@ export class UI {
       const tgt = e.target as HTMLElement;
       if (tgt.closest('[data-back]')) { audio.play('click'); this.titleMain(); return; }
       const qb = tgt.closest('[data-q]') as HTMLElement | null;
-      if (qb) { s.quality = qb.dataset.q as any; s.autoQ = false; this.game.applySettings(); this.titleSettings(); }
+      if (qb) { s.quality = qb.dataset.q as any; s.autoQ = false; this.game.applySettings(); this.titleSettings(); return; }
+      const sb = tgt.closest('[data-sx]') as HTMLElement | null;
+      if (sb) { s.sfxStyle = sb.dataset.sx as 'recorded' | 'synth'; this.game.applySettings(); audio.play('punch'); audio.play('click', { delay: 0.25 }); this.titleSettings(); return; }
+      const a = (tgt.closest('[data-a]') as HTMLElement | null)?.dataset.a;
+      if (a === 'media') { audio.play('click'); this.titleMedia(); }
+      if (a === 'checkupdate') {
+        audio.play('click');
+        void updates.check(true).then((nu) => { audio.play(nu ? 'questAccept' : 'tab'); if (this.titleEl?.querySelector('.slots-panel.settings')) this.titleSettings(); });
+        this.titleSettings();
+      }
+      if (a === 'getupdate' && updates.latest) { audio.play('click'); void this.updateNotice(updates.latest); }
     };
+  }
+
+  /** Your Pictures, Sounds & Models, on the title screen; Back returns to Settings. */
+  private titleMedia() {
+    const t = this.titleEl!;
+    t.onclick = null;
+    t.innerHTML = '<div class="title-media"></div>';
+    new MediaPanel(this.game, t.querySelector('.title-media') as HTMLElement, () => this.titleSettings()).render();
   }
 
   /** First screen: needed so the audio context unlocks on a user gesture. */

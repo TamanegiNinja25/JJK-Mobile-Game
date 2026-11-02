@@ -6,7 +6,7 @@ import { Renderer } from '../render/Renderer';
 interface FloatText { x: number; y: number; z: number; txt: string; color: string; size: number; t: number; dur: number; vx: number; crit: boolean }
 
 export interface BarInfo { x: number; y: number; z: number; hp: number; max: number; name?: string; color?: string; grade?: string; gradeColor?: string; elite?: boolean; marked?: number; stun?: boolean }
-export interface MarkerInfo { x: number; y: number; z: number; kind: '!' | '?' | 'shop' | '…' | 'travel' | 'pickup'; name?: string; near?: boolean }
+export interface MarkerInfo { x: number; y: number; z: number; kind: '!' | '?' | 'shop' | '…' | 'travel' | 'pickup' | 'alert'; name?: string; near?: boolean }
 
 export class Overlay2D {
   canvas: HTMLCanvasElement;
@@ -129,6 +129,16 @@ export class Overlay2D {
         c.fillStyle = m.kind === '!' ? '#ffd23a' : '#7affb0';
         c.shadowColor = c.fillStyle; c.shadowBlur = 12;
         c.fillText(m.kind, this.p.x, y);
+        c.shadowBlur = 0;
+      } else if (m.kind === 'alert') {
+        // an enemy that has just spotted you
+        c.font = '900 26px system-ui, sans-serif';
+        c.lineWidth = 5;
+        c.strokeStyle = 'rgba(30,0,0,0.9)';
+        c.strokeText('!', this.p.x, this.p.y);
+        c.fillStyle = '#ff3a4a';
+        c.shadowColor = '#ff3a4a'; c.shadowBlur = 10;
+        c.fillText('!', this.p.x, this.p.y);
         c.shadowBlur = 0;
       } else if (m.kind === 'pickup') {
         c.font = '900 22px system-ui';
