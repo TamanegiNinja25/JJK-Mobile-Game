@@ -64,6 +64,10 @@ game's own animations and stay on the phone.
 
 <table>
   <tr>
+    <td width="50%"><img src="docs/screenshots/custom-model.jpg" alt="Your own 3D model in play"><br><sub><b>Your own 3D models</b>: a CC0 robot (RobotExpressive by Tomás Laulhé) worn by Yuji, throwing the game's own uppercut</sub></td>
+    <td width="50%"><img src="docs/screenshots/models-panel.jpg" alt="The 3D model menu"><br><sub><b>Pick a model on your phone</b>: GLB, glTF, VRM or FBX, and the menu says what it recognised</sub></td>
+  </tr>
+  <tr>
     <td width="50%"><img src="docs/screenshots/yuta-domain.jpg" alt="Yuta's Authentic Mutual Love"><br><sub><b>Yuta Okkotsu</b> opens Authentic Mutual Love, a field of katanas, with Rika at his side</sub></td>
     <td width="50%"><img src="docs/screenshots/toji-play.jpg" alt="Playing as Toji Fushiguro"><br><sub><b>Toji Fushiguro</b>: no cursed energy, a stamina bar and a storehouse of cursed tools</sub></td>
   </tr>
@@ -117,7 +121,7 @@ game's own animations and stay on the phone.
   </tr>
   <tr>
     <td><img src="docs/screenshots/tracking.jpg" alt="Quest tracking"><br><sub><b>Quest tracking</b>: a ground arrow, the tracker and a minimap ◆ lead to the objective</sub></td>
-    <td><img src="docs/screenshots/map.jpg" alt="World map"><br><sub><b>Map</b>: tap an area to travel; ⛩ travel points, ▣ enterable buildings, ◆ objective</sub></td>
+    <td><img src="docs/screenshots/map.jpg" alt="Map tab"><br><sub><b>Map</b>: scroll the names, see any area's streets, doors, quest givers and bosses, and travel from there</sub></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/eso.jpg" alt="Eso at Yasohachi Bridge"><br><sub><b>Death Painting</b>: Eso's Rot Technique on the banks of Yasohachi Bridge</sub></td>
