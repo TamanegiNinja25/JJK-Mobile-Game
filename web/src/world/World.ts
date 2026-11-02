@@ -647,6 +647,15 @@ export class World implements WorldAPI {
   private guideT = 0;
   /** recompute guidance on the next frame (the tracked quest changed) */
   refreshGuide() { this.guideT = 0; }
+
+  /**
+   * Rebuilds the models of whoever wears character `id` (everyone when omitted) after the player adds
+   * or removes a 3D model for them. Enemies pick it up as they spawn; the rest of the area on the next visit.
+   */
+  refreshModels(id?: string) {
+    if (this.player && (!id || this.game.ps?.d.cls && this.player.ps.cls.model === id)) this.player.buildModel();
+    for (const n of this.npcs) if (!id || (n.d.model ?? n.d.id) === id) n.rebuildModel();
+  }
   /** Recompute the guidance right now (a hint built this frame must not read last second's target). */
   ensureGuide() { if (this.map && this.game.ps) this.updateGuide(); }
   private guideArrow: THREE.Mesh | null = null;

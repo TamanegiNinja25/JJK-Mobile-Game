@@ -1,7 +1,8 @@
-// Procedural audio engine: every sound effect is synthesised at runtime with
-// WebAudio, so there are no audio files to ship.
+// Audio engine. Sound effects are synthesised at runtime with WebAudio; physical and menu sounds can also
+// use recorded takes (Kenney's CC0 packs, see Samples.ts), and any sound can be replaced by the player's own.
 import { clamp } from '../core/util';
 import { media } from '../core/CustomMedia';
+import { samples, SAMPLES, STEPS } from './Samples';
 
 export type Surface = 'grass' | 'stone' | 'wood' | 'water' | 'concrete' | 'metal' | 'flesh' | 'dirt';
 
@@ -29,6 +30,10 @@ export class AudioSys {
   private lastPlay = new Map<string, number>();
   private plucks = new Map<string, AudioBuffer>();
   muted = false;
+  /** recorded takes play instead of (or over) the synthesised sounds; off = everything synthesised */
+  recorded = true;
+  /** while a synthesised sound is being built: its own output, set to the volume it was asked for */
+  private route: { dry: AudioNode; wet: AudioNode } | null = null;
 
   /** Must be called from a user gesture on mobile. */
   unlock() {
@@ -58,6 +63,7 @@ export class AudioSys {
       this.pink = this.makeNoise(2, true);
       this.applyVolumes();
       void media.attach(ctx);
+      void samples.load(ctx);
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
   }
@@ -116,14 +122,37 @@ export class AudioSys {
       g.connect(p);
       last = p;
     }
-    last.connect(bus ?? this.sfxBus);
+    last.connect(bus ?? this.route?.dry ?? this.sfxBus);
     if (o.wet) {
       const s = ctx.createGain();
       s.gain.value = o.wet;
       last.connect(s);
-      s.connect(this.reverbSend);
+      s.connect(this.route?.wet ?? this.reverbSend);
     }
     return g;
+  }
+
+  /**
+   * Builds synthesised sound `fn` at `level`: the caller's volume, which carries the distance to the sound.
+   * (The synth recipes set their own loudness, so the level is applied on a gain after them.)
+   */
+  private synth(fn: SfxFn, t: number, p: number, o: SfxOpts, level: number) {
+    if (Math.abs(level - 1) < 0.01) { fn(this, t, p, o); return; }
+    const ctx = this.ctx!;
+    const dry = ctx.createGain(), wet = ctx.createGain();
+    dry.gain.value = wet.gain.value = Math.max(0, level);
+    dry.connect(this.sfxBus); wet.connect(this.reverbSend);
+    this.route = { dry, wet };
+    try { fn(this, t, p, o); } finally { this.route = null; }
+  }
+
+  /** One recorded take, re-pitched a little so repeats don't sound copied. */
+  private playTake(buf: AudioBuffer, t: number, vol: number, rate: number, o: SfxOpts) {
+    const src = this.ctx!.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = clamp(rate * (0.96 + Math.random() * 0.08), 0.5, 2);
+    src.connect(this.out({ pan: o.pan, wet: o.wet, vol }));
+    src.start(t);
   }
 
   osc(type: OscillatorType, f0: number, f1: number, t: number, dur: number, dest: AudioNode, vol = 0.5, attack = 0.005, curve: 'exp' | 'lin' = 'exp') {
@@ -253,19 +282,37 @@ export class AudioSys {
     // a sound the player picked from their phone replaces the generated one
     const own = media.buffer('sfx:' + name);
     if (own) { this.playOwn(name, own, t, o); return; }
-    const fn = (SFX as any)[name] as ((a: AudioSys, t: number, p: number, o: SfxOpts) => void) | undefined;
-    if (fn) fn(this, t, p, o);
+    const fn = SFX[name] as SfxFn | undefined;
+    const level = o.vol ?? 1;
+    // a recorded take, alone or over a quieter synthesised one
+    const sd = this.recorded ? SAMPLES[name] : undefined;
+    const take = sd ? samples.pick(name, sd.files) : null;
+    if (sd && take) {
+      this.playTake(take, t, level * sd.vol, p * (sd.rate ?? 1), o);
+      if (sd.synth && fn) this.synth(fn, t, p, o, level * sd.synth);
+      return;
+    }
+    if (fn) this.synth(fn, t, p, o, level);
   }
 
-  private ownPlaying = new Map<string, AudioBufferSourceNode>();
-  /** Custom clips don't stack: a long voice line isn't restarted while it is still playing. */
+  private ownPlaying = new Map<string, AudioBufferSourceNode[]>();
+  /**
+   * The player's own clip for a sound. A long one (a voice line, a jingle) isn't restarted while it is still
+   * playing; a short one (a punch, a step) can overlap up to four times, re-pitched a touch each time, so a
+   * flurry of blows sounds like one.
+   */
   private playOwn(name: string, buf: AudioBuffer, t: number, o: SfxOpts) {
-    if (this.ownPlaying.has(name)) return;
+    const live = this.ownPlaying.get(name) ?? [];
+    const short = buf.duration < 0.6;
+    if (live.length && !short) return;
+    if (live.length >= 4) { try { live.shift()!.stop(); } catch { /* already ended */ } }
     const src = this.ctx!.createBufferSource();
     src.buffer = buf;
+    if (short) src.playbackRate.value = clamp((o.pitch ?? 1) * (0.96 + Math.random() * 0.08), 0.5, 2);
     src.connect(this.out({ ...o, vol: Math.min(1, (o.vol ?? 1) * 1.1) }));
-    src.onended = () => { if (this.ownPlaying.get(name) === src) this.ownPlaying.delete(name); };
-    this.ownPlaying.set(name, src);
+    src.onended = () => { const l = this.ownPlaying.get(name); if (l) { const i = l.indexOf(src); if (i >= 0) l.splice(i, 1); if (!l.length) this.ownPlaying.delete(name); } };
+    live.push(src);
+    this.ownPlaying.set(name, live);
     src.start(t);
   }
 
@@ -273,6 +320,12 @@ export class AudioSys {
     if (!this.ctx || this.muted) return;
     if (this.throttle('step', 90)) return;
     const t = this.now;
+    // recorded footsteps for the ground underfoot; the player's own step sound wins over both
+    const own = media.buffer('sfx:step');
+    if (own) { this.playOwn('step', own, t, { ...o, vol: (o.vol ?? 1) * 0.6 }); return; }
+    const set = this.recorded ? STEPS[surface] : undefined;
+    const take = set ? samples.pick('step:' + surface, set.files) : null;
+    if (set && take) { this.playTake(take, t, (o.vol ?? 1) * set.vol, o.pitch ?? 1, o); return; }
     const out = this.out({ ...o, vol: (o.vol ?? 1) * 0.35 });
     // pitch carries the walker's weight (a heavy body lands lower)
     const r = (0.85 + Math.random() * 0.3) * (o.pitch ?? 1);
@@ -309,7 +362,7 @@ type SfxFn = (a: AudioSys, t: number, p: number, o: SfxOpts) => void;
 /** All named sound effects. Each one builds a short synth graph and lets it die. */
 const SFX: Record<string, SfxFn> = {
   // ---- UI ----
-  click: (a, t, p, o) => { const d = a.out({ ...o, vol: (o.vol ?? 1) * 0.3 }); a.osc('triangle', 1400 * p, 900 * p, t, 0.05, d, 0.5); },
+  click: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.3 }); a.osc('triangle', 1400 * p, 900 * p, t, 0.05, d, 0.5); },
   tab: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.25 }); a.osc('sine', 900 * p, 1300 * p, t, 0.06, d, 0.5); },
   open: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.3, wet: 0.2 }); a.osc('sine', 500 * p, 900 * p, t, 0.12, d, 0.4); a.osc('sine', 750 * p, 1350 * p, t + 0.04, 0.12, d, 0.3); },
   close: (a, t, p, o) => { const d = a.out({ ...o, vol: 0.3 }); a.osc('sine', 900 * p, 450 * p, t, 0.12, d, 0.4); },

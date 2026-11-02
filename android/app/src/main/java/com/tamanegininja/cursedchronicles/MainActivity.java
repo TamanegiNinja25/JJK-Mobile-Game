@@ -3,6 +3,7 @@ package com.tamanegininja.cursedchronicles;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
 import android.content.Intent;
 import android.content.res.AssetManager;
 import android.graphics.Color;
@@ -94,8 +95,21 @@ public class MainActivity extends Activity {
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 if (fileCallback != null) fileCallback.onReceiveValue(null);
                 fileCallback = callback;
+                // createIntent() takes only the first accept type as a MIME type, and file extensions such as
+                // ".glb" (3D models) aren't MIME types at all: show every file then, and let the game check it
+                Intent intent = params.createIntent();
+                String[] accept = params.getAcceptTypes();
+                boolean byExtension = false;
+                if (accept != null) for (String a : accept) if (a != null && a.trim().startsWith(".")) byExtension = true;
+                if (byExtension) {
+                    intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                }
+                // a glTF can come with its textures: let several files be picked at once
+                if (params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE) intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                 try {
-                    startActivityForResult(params.createIntent(), REQ_FILE);
+                    startActivityForResult(intent, REQ_FILE);
                 } catch (ActivityNotFoundException e) {
                     fileCallback = null;
                     return false;
@@ -167,7 +181,18 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQ_FILE) {
-            if (fileCallback != null) fileCallback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
+            // parseResult() only reads a single file; several picked files arrive as ClipData
+            Uri[] picked = null;
+            if (resultCode == RESULT_OK && data != null) {
+                ClipData clip = data.getClipData();
+                if (clip != null && clip.getItemCount() > 0) {
+                    picked = new Uri[clip.getItemCount()];
+                    for (int i = 0; i < clip.getItemCount(); i++) picked[i] = clip.getItemAt(i).getUri();
+                } else if (data.getData() != null) {
+                    picked = new Uri[] { data.getData() };
+                }
+            }
+            if (fileCallback != null) fileCallback.onReceiveValue(picked);
             fileCallback = null;
             return;
         }
@@ -221,6 +246,8 @@ public class MainActivity extends Activity {
             MIME.put("woff2", "font/woff2");
             MIME.put("wav", "audio/wav");
             MIME.put("mp3", "audio/mpeg");
+            MIME.put("ogg", "audio/ogg");
+            MIME.put("txt", "text/plain");
         }
 
         AssetClient(AssetManager assets) {

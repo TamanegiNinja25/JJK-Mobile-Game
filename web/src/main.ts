@@ -13,6 +13,10 @@ import { QUESTS } from './data/story';
 import { MAPS, TRAVEL_LIST } from './world/maps';
 import { ENEMIES } from './rpg/enemies';
 import { CLASSES } from './rpg/classes';
+import { samples, SAMPLES, STEPS } from './audio/Samples';
+import { customModels, withCustomModel } from './render/models/imported';
+import { buildCharacter } from './render/models/characters';
+import { wrapHumanoid } from './render/models/model';
 
 function showFatal(msg: string) {
   const d = document.createElement('div');
@@ -27,11 +31,12 @@ window.addEventListener('unhandledrejection', (e) => showFatal('Promise: ' + (e.
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 
-// the player's own pictures and sounds load in the background
-void media.init();
+// the player's own pictures, sounds and 3D models load in the background
+void media.init().then(() => customModels.loadAll()).then(() => game.onCustomModels());
 const game = new Game();
 (window as any).game = game;
 game.start();
 
 // debugging/test hooks
-(window as any).__dbg = { atlas: getAtlas, skillIcon, itemIcon, SKILLS, ITEMS, audio, QUESTS, MAPS, TRAVEL_LIST, ENEMIES, CLASSES, makeItem, confirmDialog, updates, LINES };
+(window as any).__dbg = { atlas: getAtlas, skillIcon, itemIcon, SKILLS, ITEMS, audio, QUESTS, MAPS, TRAVEL_LIST, ENEMIES, CLASSES, makeItem, confirmDialog, updates, LINES, samples, SAMPLES, STEPS, media, customModels,
+  mk: (id: string) => withCustomModel(id, wrapHumanoid(buildCharacter(id))) };

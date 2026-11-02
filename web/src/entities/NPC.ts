@@ -2,6 +2,7 @@
 import type { World } from '../world/World';
 import { buildCharacter } from '../render/models/characters';
 import { wrapHumanoid, ModelHandle } from '../render/models/model';
+import { withCustomModel } from '../render/models/imported';
 import { approachAngle, rand } from '../core/util';
 import { NPC_NAMES } from '../data/story';
 import { PlayerState } from '../rpg/PlayerState';
@@ -27,13 +28,26 @@ export class NPC {
   emoteT = rand(4, 9);
   radius = 0.5;
   constructor(public world: World, public d: NpcDef) {
-    this.model = wrapHumanoid(buildCharacter(d.model ?? d.id));
     this.x = d.x; this.z = d.z;
     this.facing = d.facing ?? 0;
-    this.model.root.position.set(this.x, 0, this.z);
-    this.model.root.rotation.y = this.facing;
-    world.root.add(this.model.root);
-    if (d.id === 'gojo') this.model.setStance?.('none');
+    this.model = this.makeModel();
+  }
+
+  /** The character's model (the player's own 3D model for them, if they picked one), placed in the world. */
+  private makeModel() {
+    const d = this.d;
+    const m = withCustomModel(d.model ?? d.id, wrapHumanoid(buildCharacter(d.model ?? d.id)));
+    m.root.position.set(this.x, 0, this.z);
+    m.root.rotation.y = this.facing;
+    this.world.root.add(m.root);
+    if (d.id === 'gojo') m.setStance?.('none');
+    return m;
+  }
+
+  /** Swaps in a fresh model (after the player adds or removes a 3D model for this character). */
+  rebuildModel() {
+    this.world.root.remove(this.model.root);
+    this.model = this.makeModel();
   }
   get id() { return this.d.id; }
   get name() { return this.d.name ?? NPC_NAMES[this.d.id] ?? this.d.id; }
