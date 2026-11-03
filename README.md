@@ -62,6 +62,8 @@ game's own animations and stay on the phone.
 
 ## Screenshots
 
+<p align="center"><img src="docs/screenshots/cast.jpg" width="860" alt="The cast in the courtyard of Jujutsu High"><br><sub><b>2.7.9: a new look for every character.</b> Nobara, Megumi, Yuji, Gojo, Maki, Yuta, Inumaki and Panda with realistic proportions, long coats with buttons and hoods, and layered hair</sub></p>
+
 <table>
   <tr>
     <td width="50%"><img src="docs/screenshots/quest-ring.jpg" alt="A quest giver's ring and the tracker's location line"><br><sub><b>Where to go</b>: quest givers stand in a glowing ring, and under the compass the tracker says where the objective is</sub></td>
@@ -84,8 +86,8 @@ game's own animations and stay on the phone.
     <td><img src="docs/screenshots/update.jpg" alt="Update notice"><br><sub><b>Update notice</b>: when a newer version is out, the title screen says so</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/vn-dialogue.jpg" alt="Visual-novel dialogue"><br><sub><b>Conversations like a visual novel</b>: both speakers in large art, each with their own voice</sub></td>
-    <td width="50%"><img src="docs/screenshots/domain-cutin.jpg" alt="Domain Expansion cut-in"><br><sub><b>Domain Expansion cut-in</b>: 領域展開, then the domain's name</sub></td>
+    <td width="50%"><img src="docs/screenshots/vn-dialogue.jpg" alt="Visual-novel dialogue"><br><sub><b>Conversations like a visual novel</b>: both speakers in large art drawn from their 3D models, each with their own voice</sub></td>
+    <td width="50%"><img src="docs/screenshots/domain-cutin.jpg" alt="Domain Expansion cut-in"><br><sub><b>Domain Expansion cut-in</b>: a close-up, 領域展開, then the domain's name</sub></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/shrine-meter.jpg" alt="Inside Malevolent Shrine"><br><sub><b>Inside Malevolent Shrine</b>: slashes never stop, and the meter counts down in 5% steps</sub></td>
@@ -105,7 +107,7 @@ game's own animations and stay on the phone.
   </tr>
   <tr>
     <td><img src="docs/screenshots/combat-megumi.jpg" alt="Megumi in combat"><br><sub><b>Megumi</b> fights alongside his shikigami</sub></td>
-    <td><img src="docs/screenshots/combat-yuji.jpg" alt="Yuji in combat"><br><sub><b>Yuji</b> brawls through the Eishu detention yard</sub></td>
+    <td><img src="docs/screenshots/combat-yuji.jpg" alt="Yuji in combat"><br><sub><b>Yuji</b> spin-kicks into a pack of curses in the Tokyo Outskirts</sub></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/kyoto.jpg" alt="Kyoto forest"><br><sub><b>Kyoto Goodwill Event</b>: the forest where Hanami hides</sub></td>
