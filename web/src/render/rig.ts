@@ -57,8 +57,12 @@ export class RigBuilder {
   /** options merged into every part on the given bone while set (e.g. the hair's sheen) */
   partDefaults: { bone: string; o: PartOpts } | null = null;
 
+  /** outline width for every part added while set (a face's small features get a finer line) */
+  ink: number | undefined;
+
   part(boneName: string, geo: THREE.BufferGeometry, color: number, o: PartOpts = {}) {
     if (this.partDefaults && this.partDefaults.bone === boneName) o = { ...this.partDefaults.o, ...o };
+    if (this.ink !== undefined && o.ink === undefined) o = { ...o, ink: this.ink };
     const b = this.byName[boneName];
     if (!b) throw new Error('No bone ' + boneName);
     this.root.updateMatrixWorld(true);

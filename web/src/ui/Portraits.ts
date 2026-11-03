@@ -62,8 +62,19 @@ export class Portraits {
     const h = box.max.y;
     const headY = id === 'dagon' ? h * 0.8 : id === 'panda' ? h * 0.82 : id === 'kechizu' ? h * 0.66 : h * 0.87;
     const dist = id === 'dagon' ? 4.5 : id === 'panda' ? 2.6 : id === 'kechizu' ? 2.9 : 1.9 * (h / 1.75);
-    this.cam.position.set(0.25 * dist / 2, headY + 0.05, dist);
-    this.cam.lookAt(0, headY - 0.02, 0);
+    const hb = !CREATURE_IDS.has(id) && id !== 'panda' ? model.rig.bones?.head : undefined;
+    if (hb) {
+      // a head-and-shoulders shot from where the head actually is (people have realistic proportions)
+      const hy = hb.getWorldPosition(new THREE.Vector3()).y;
+      const fk = (model.rig as { faceK?: number }).faceK;
+      const head = fk ? fk * 0.215 * 2.5 : Math.max(0.12, h - hy);
+      const cy = hy + head * 0.4, d = (head * 1.55 / 2) / Math.tan(THREE.MathUtils.degToRad(this.cam.fov / 2));
+      this.cam.position.set(0.14 * d, cy + head * 0.06, d);
+      this.cam.lookAt(0, cy, 0);
+    } else {
+      this.cam.position.set(0.25 * dist / 2, headY + 0.05, dist);
+      this.cam.lookAt(0, headY - 0.02, 0);
+    }
     const gl = this.r.gl;
     const prevTarget = gl.getRenderTarget();
     const prevClear = gl.getClearColor(new THREE.Color());

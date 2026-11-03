@@ -3,6 +3,51 @@
 All notable changes to Cursed Chronicles. Every release since 1.2.0 installs over the
 previous one and keeps your saves.
 
+## 2.7.9 — A new look for every character
+
+### Realistic proportions for every character
+- Every sorcerer, villain and NPC is rebuilt in the game's own code with realistic anime
+  proportions instead of the old chibi build. They are about seven heads tall, with long
+  legs, shoulders, a waist and a neck, and a smaller head with a tapered jaw and chin.
+- Women have their own build: narrower shoulders, a waist and wider hips. Heavy fighters
+  (Todo, Ishigori, Yaga) are broad, with muscled arms.
+- Everyone keeps the height they had, so they fit doors, health bars and fights as before.
+- New faces sized for the new heads: anime eyes with lashes, brows, a nose and a mouth.
+  Blinking, talking and the five moods in conversations all still work.
+- Panda has a bear's build to match: a longer, heavier body and a smaller head.
+- Cursed spirits (Jogo, Hanami, Dagon and the rest) keep their monster shapes.
+
+### Long coats with hoods and buttons
+- Jujutsu High uniforms are long coats with a stand-up collar, a row of gold buttons and a
+  hood. Yuji's hood is red and wraps round his collar, as in the anime. The other students'
+  hoods match their coats, and Yuta's coat is white. Gojo and Inumaki keep their tall collars.
+- The skirts of long coats, robes and kimonos swing with each leg. A run or a kick opens the
+  coat instead of passing through it.
+- Suits have lapels, a white shirt and a tie. Shoko's lab coat hangs open. Robes and
+  kimonos have a crossed collar, an obi and wide sleeves.
+- Nobara, Mai and Sasaki wear short jackets with pleated skirts. Yaga wears a long dark
+  coat, and Junpei wears his hoodie.
+
+### Layered hair
+- Hair is built from layers of locks instead of one solid cap. Long hair falls, and
+  spiky hair stands up.
+- Examples: Yuji's spikes over a dark undercut, Megumi's black spikes, Gojo's white hair
+  standing up, Nobara's bob, Mei Mei's braid, Geto's half-up bun and single bang, and
+  Ishigori's pompadour.
+
+### Cutscenes and conversations
+- Conversation art and HUD portraits are framed on each character's face (head and
+  shoulders), and conversation art is drawn at a higher resolution.
+- Faces get a finer ink line than bodies, so eyes stay clear in close-ups. The Domain
+  Expansion cut-in comes in closer.
+- Fixed: outlines of rotated parts (on characters, buildings and props) pushed out
+  unevenly. The ink line is now even all round.
+
+### Unchanged
+- Sounds are untouched.
+- Your own pictures, sounds and 3D models in Settings work as before. A model you add
+  still moves with the game's animations.
+
 ## 1.7.9 — Settings on the title screen, quest rings and curses that need to see you
 
 ### Settings on the title screen

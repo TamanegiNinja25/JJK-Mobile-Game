@@ -435,15 +435,20 @@ Some of the later bosses play by their own rules:
 
 ### Look and sound
 
+- Characters with realistic anime proportions (since 2.7.9), about seven heads tall.
+  Jujutsu High uniforms are long coats with a stand-up collar, gold buttons and a hood (Yuji's
+  red hood wraps his collar). The skirts of coats, robes and kimonos swing with each leg.
 - Low-poly, faceted models: every surface is lit as flat planes on a 4-band cel ramp,
-  while faces stay smooth. Ink outlines, rim light, glowing cursed energy and bloom.
+  while faces stay smooth. Ink outlines (finer on faces), rim light, glowing cursed energy
+  and bloom.
 - Characters carry their trademarks: Gojo's blindfold, Nanami's goggles and
   leopard-print tie, Maki's glasses and polearm, Inumaki's zipped collar, Todo's scar,
   Choso's blood stripe, Yuta's white uniform and katana, Higuruma's gavel, Kashimo's staff,
   and Sukuna's four arms and second face in his true form.
-- Each character has their own silhouette (leg length, shoulder width) and eye shape
-  (round, sharp, narrow or tired, with matching brows), and every hairstyle catches a band
-  of light across the crown.
+- Each character has their own build (height, leg length, shoulder width; women have a
+  waist and wider hips) and eye shape (round, sharp, narrow or tired, with matching brows).
+  Hair is built from layered locks, long hair falls and spiky hair stands, and every style
+  catches a band of light across the crown.
 - Day and night lighting, dynamic lights and weather: rain, sakura, falling leaves, ash,
   embers, fireflies and snow.
 - Trees, roofs and walls fade out when they would hide your character.
@@ -530,6 +535,10 @@ picker when you choose your own pictures or sounds.
 - Characters and curses are built from primitives by `RigBuilder`. Each becomes one
   rigid-skinned mesh with a shared skeleton, animated by a procedural animator with
   attack, cast and reaction poses for each move.
+- People share one parametric body (`src/render/models/humanoid.ts`). A coat's skirt is a
+  panel on each thigh plus one behind the hips, so it opens with a stride or a kick. Hair
+  (`hair.ts`) is a scalp cap cut along a hairline, with tapered, curved locks rooted in
+  overlapping rows; falling hair hangs under its own weight.
 - Materials use a 4-band toon ramp and per-vertex glow, with inverted-hull outlines
   and a shared rim light. Parts are built with few segments and lit with per-face
   normals for the low-poly look; a copy of the smooth normal drives the outline hull so

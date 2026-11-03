@@ -1,13 +1,25 @@
 // Parametric anime-style humanoid: one builder drives every sorcerer and NPC.
+//
+// Since 2.7.9 bodies have realistic proportions, about seven heads tall, instead of the old chibi
+// build: long legs, a waist, shoulders and a neck, and a smaller head with a tapered jaw and an
+// anime face sized to it. Jujutsu High uniforms are long coats with a stand-up collar, a row of
+// buttons and a hood. The skirts of coats, robes and kimonos are panels that swing with each thigh,
+// so a kick opens the coat instead of passing through it. Hair is layered strands (see hair.ts).
+// Every character keeps the overall height it had, so collisions, cameras and health bars still fit.
 import * as THREE from 'three';
-import { G, V3 } from '../geo';
+import { G, V3, concat, LOW_POLY } from '../geo';
 import { RigBuilder, RigModel, resetPose } from '../rig';
 import { TAU, clamp, lerp } from '../../core/util';
+import { darken, lighten, mix } from './colors';
+import { buildHair } from './hair';
+
+export { darken, lighten } from './colors';
 
 export type HairStyle =
   | 'yuji' | 'megumi' | 'nobara' | 'gojo' | 'nanami' | 'maki' | 'inumaki' | 'shoko' | 'todo'
   | 'yaga' | 'ijichi' | 'junpei' | 'meimei' | 'mahito' | 'geto' | 'miwa' | 'bald' | 'short' | 'bun' | 'long'
-  | 'bob' | 'choso' | 'yuta' | 'naoya' | 'pompadour' | 'kashimo' | 'uro' | 'mai' | 'sukunaBack' | 'toji' | 'kamo';
+  | 'bob' | 'choso' | 'yuta' | 'naoya' | 'pompadour' | 'kashimo' | 'uro' | 'mai' | 'sukunaBack' | 'toji' | 'kamo'
+  | 'hakari' | 'uraume' | 'kenjaku';
 
 export type Outfit = 'uniform' | 'uniformHood' | 'uniformSkirt' | 'suit' | 'labcoat' | 'casual' | 'robe' | 'tank' | 'patchwork' | 'kimono' | 'uniformHigh';
 
@@ -36,6 +48,12 @@ export interface HumanoidSpec {
   shoulders?: number;
   /** eye shape: round (open, young), sharp (focused), narrow (cold, menacing), tired (heavy lids) */
   eyeShape?: 'round' | 'sharp' | 'narrow' | 'tired';
+  /** a woman's build: narrower shoulders, a waist, wider hips */
+  fem?: boolean;
+  /** how far a coat, robe or kimono reaches below the hips: 0 hip length, 1 the knee, 2 the ankle (each outfit has its own default) */
+  coat?: number;
+  /** a hood hanging behind the collar: its colour, or true for the coat's own */
+  hood?: number | boolean;
 }
 
 export interface Humanoid extends RigModel {
@@ -44,638 +62,588 @@ export interface Humanoid extends RigModel {
   hand: THREE.Bone;
   handL: THREE.Bone;
   anim: HumanoidAnimator;
+  /** size of the face against the old chibi head (expressions scale their moves by it) */
+  faceK: number;
 }
 
+/** overall scale: keeps every character about the height it was before 2.7.9 */
+const S0 = 1.03;
+/** how far each outfit's coat reaches by default (see HumanoidSpec.coat) */
+const COAT: Record<Outfit, number> = {
+  uniform: 1.0, uniformHood: 1.0, uniformHigh: 1.08, uniformSkirt: 0, suit: 0.14, labcoat: 1.12,
+  casual: 0, robe: 1.92, tank: 0, patchwork: 0, kimono: 1.95,
+};
+
+/** Every measurement of one body, worked out once from its spec. */
+interface Body {
+  r: RigBuilder;
+  spec: HumanoidSpec;
+  fem: boolean;
+  /** length scale (height) and width scale (build) */
+  S: number; W: number;
+  LU: number; LL: number; AH: number; hipY: number; SC: number; CS: number; CN: number; NH: number;
+  SW: number; AU: number; AL: number; hipW: number;
+  /** head: radius, centre (in the head bone's space), eye placement, and the face's scale against the old head */
+  hr: number; hc: V3; eyeX: number; eyeY: number; eyeZ: number; fk: number;
+  chest: { rx: number; ry: number; rz: number; y: number };
+  waist: [number, number, number];
+  waistZ: number;
+  pelvis: { rx: number; ry: number; rz: number };
+  arm: [number, number, number, number];
+  leg: [number, number, number, number];
+  /** how far the coat reaches below the hip joints (0: no coat skirt) */
+  coatLen: number;
+}
+
+function measure(r: RigBuilder, spec: HumanoidSpec): Body {
+  const H = spec.height ?? 1, B = spec.bulk ?? 1, fem = !!spec.fem;
+  const S = S0 * H;
+  const W = S0 * B * (0.7 + 0.3 * H);
+  const legs = spec.legs ?? 1, sh = spec.shoulders ?? 1;
+  const LU = 0.455 * S * legs, LL = 0.43 * S * legs, AH = 0.072 * S;
+  const hipY = LU + LL + AH + 0.035 * S + 0.013 * S;
+  const hr = 0.106 * S0 * (spec.head ?? 1) * (0.68 + 0.32 * H);
+  const hc: V3 = [0, hr * 0.98, hr * 0.04];
+  const f = spec.coat ?? COAT[spec.outfit];
+  const coatLen = f <= 0 ? 0 : f <= 1 ? f * LU : LU + (f - 1) * LL * 0.92;
+  return {
+    r, spec, fem, S, W, LU, LL, AH, hipY,
+    SC: 0.21 * S, CS: 0.25 * S, CN: 0.285 * S, NH: 0.072 * S,
+    SW: (fem ? 0.148 : 0.17) * W * sh,
+    AU: 0.29 * S, AL: 0.255 * S,
+    hipW: (fem ? 0.09 : 0.086) * W,
+    hr, hc, eyeX: hr * 0.36, eyeY: hc[1] - hr * 0.08, eyeZ: hc[2] + hr * 0.835, fk: hr / 0.215,
+    chest: { rx: (fem ? 0.135 : 0.158) * W * Math.sqrt(sh), ry: 0.155 * S, rz: (fem ? 0.104 : 0.112) * W, y: 0.115 * S },
+    waist: fem ? [0.142 * W, 0.118 * W, 0.13 * W] : [0.138 * W, 0.13 * W, 0.152 * W],
+    waistZ: fem ? 0.8 : 0.74,
+    pelvis: { rx: (fem ? 0.158 : 0.145) * W, ry: 0.1 * S, rz: (fem ? 0.112 : 0.104) * W },
+    arm: fem ? [0.041 * W, 0.034 * W, 0.034 * W, 0.027 * W] : [0.048 * W, 0.04 * W, 0.04 * W, 0.031 * W],
+    leg: fem ? [0.074 * W, 0.05 * W, 0.05 * W, 0.034 * W] : [0.076 * W, 0.054 * W, 0.054 * W, 0.038 * W],
+    coatLen,
+  };
+}
+
+// ------------------------------------------------------------------ geometry helpers
+
+const lp = (n: number, min: number) => Math.max(min, Math.round(n * LOW_POLY.factor));
+
+/** An open shell seen from both sides: the outer surface, and an inner copy pushed in by `th` and turned to face inward. */
+function shell2(g: THREE.BufferGeometry, th: number): [THREE.BufferGeometry, THREE.BufferGeometry] {
+  const a = g.index ? g.toNonIndexed() : g;
+  a.computeVertexNormals();
+  const b = a.clone();
+  const P = b.getAttribute('position') as THREE.BufferAttribute, N = b.getAttribute('normal') as THREE.BufferAttribute;
+  for (let i = 0; i < P.count; i++) {
+    P.setXYZ(i, P.getX(i) - N.getX(i) * th, P.getY(i) - N.getY(i) * th, P.getZ(i) - N.getZ(i) * th);
+    N.setXYZ(i, -N.getX(i), -N.getY(i), -N.getZ(i));
+  }
+  // reverse the winding so the inner copy faces the other way
+  for (let i = 0; i + 2 < P.count; i += 3) {
+    for (const A of [P, N]) {
+      const x = A.getX(i + 1), y = A.getY(i + 1), z = A.getZ(i + 1);
+      A.setXYZ(i + 1, A.getX(i + 2), A.getY(i + 2), A.getZ(i + 2));
+      A.setXYZ(i + 2, x, y, z);
+    }
+  }
+  return [concat([a]), b];
+}
+
+/** Part of a cone frustum around Y, hanging down from y = 0: radius `rt` at the top, `rb` at the bottom. theta 0 = front (+z), PI/2 = +x. */
+function panel(rt: number, rb: number, h: number, t0: number, tl: number, seg = 10, hseg = 2) {
+  const g = new THREE.CylinderGeometry(rt, rb, h, lp(seg, 5), hseg, true, t0, tl);
+  g.translate(0, -h / 2, 0);
+  return g;
+}
+
+/** The anime head: an egg-shaped skull narrowing into the jaw and a pointed chin, `hr` in radius. */
+function headGeo(hr: number) {
+  const g = new THREE.SphereGeometry(1, lp(26, 14), lp(20, 11));
+  const P = g.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < P.count; i++) {
+    let x = P.getX(i) * 0.92, y = P.getY(i) * 1.04, z = P.getZ(i);
+    if (y < 0.15) {
+      const t = Math.min(1, (0.15 - y) / 1.19);
+      const front = Math.max(0, z);
+      x *= 1 - 0.42 * Math.pow(t, 1.25);
+      z *= z < 0 ? 1 - 0.35 * t : 1 - 0.06 * t;
+      y -= 0.16 * t * t * (0.4 + 0.6 * front);
+    }
+    if (z > 0.55) z = 0.55 + (z - 0.55) * 0.8;
+    P.setXYZ(i, x * hr, y * hr, z * hr);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+/** A surface of revolution around Y from [radius, height] points, `zs` deep for every unit wide. */
+function lathe(pts: [number, number][], zs: number, seg = 14) {
+  const g = new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p[0], p[1])), lp(seg, 7));
+  g.scale(1, 1, zs);
+  return g;
+}
+
+// ------------------------------------------------------------------ the builder
+
 export function buildHumanoid(spec: HumanoidSpec): Humanoid {
-  const H = spec.height ?? 1;
-  const B = spec.bulk ?? 1;
-  const HS = spec.head ?? 1;
   const r = new RigBuilder();
-
-  const legLen = 0.42 * H * (spec.legs ?? 1);
-  const hipY = legLen * 2 + 0.06;
-  const torsoLen = 0.5 * H;
-  const shoulderW = 0.2 * B * (spec.shoulders ?? 1);
-  const headR = 0.215 * HS;
-
-  r.bone('hips', 'root', [0, hipY, 0]);
-  r.bone('spine', 'hips', [0, 0.05, 0]);
-  r.bone('chest', 'spine', [0, torsoLen * 0.5, 0]);
-  r.bone('neck', 'chest', [0, torsoLen * 0.45, 0]);
-  r.bone('head', 'neck', [0, 0.06, 0]);
-  // face bones: eyes close (blink, smile), brows tilt, the mouth opens — for dialogue art and talking
-  const hc: V3 = [0, headR * 0.95, 0.01];
-  const eyeY = hc[1] - headR * 0.08, eyeZ = headR * 0.9, eyeX = headR * 0.37;
-  const mouthAt: V3 = [0, eyeY - 0.13, headR * 0.84];
-  for (const s of ['L', 'R'] as const) {
-    const sx = s === 'L' ? 1 : -1;
-    r.bone('eye' + s, 'head', [sx * eyeX, eyeY, eyeZ]);
-    r.bone('brow' + s, 'head', [sx * eyeX, eyeY + 0.1, eyeZ - 0.005], [0, sx * 0.35, sx * 0.12]);
-  }
-  r.bone('mouth', 'head', mouthAt);
-  for (const s of ['L', 'R'] as const) {
-    const sx = s === 'L' ? 1 : -1;
-    r.bone('armUp' + s, 'chest', [sx * (shoulderW + 0.04), torsoLen * 0.38, 0]);
-    r.bone('armLow' + s, 'armUp' + s, [0, -0.27 * H, 0]);
-    r.bone('hand' + s, 'armLow' + s, [0, -0.25 * H, 0]);
-    r.bone('legUp' + s, 'hips', [sx * 0.105 * B, -0.03, 0]);
-    r.bone('legLow' + s, 'legUp' + s, [0, -legLen, 0]);
-    r.bone('foot' + s, 'legLow' + s, [0, -legLen + 0.04, 0]);
-  }
-
-  const { skin, top, bottom, accent, shoes } = spec;
-  const inner = spec.inner ?? 0x222222;
-  const isSkirt = spec.outfit === 'uniformSkirt';
-  const isSuit = spec.outfit === 'suit';
-  const longCoat = spec.outfit === 'labcoat' || spec.outfit === 'robe' || spec.outfit === 'kimono';
-
-  // ---- Torso ----
-  const torsoW = 0.21 * B;
-  r.part('spine', G.capsuleUp(torsoW * 0.92, torsoLen * 0.6, 12), top, { pos: [0, -0.04, 0], scale: [1, 1, 0.72] });
-  r.part('chest', G.ellipsoid(torsoW * 1.06, torsoLen * 0.42, torsoW * 0.78, 14, 10), top, { pos: [0, torsoLen * 0.18, 0] });
-  // shoulders
-  r.part('chest', G.ellipsoid(shoulderW + 0.06, 0.09, 0.13 * B, 12, 8), top, { pos: [0, torsoLen * 0.36, 0] });
-  // pelvis
-  r.part('hips', G.ellipsoid(torsoW * 0.95, 0.12, torsoW * 0.72, 12, 8), isSkirt ? bottom : (spec.outfit === 'tank' ? bottom : bottom), { pos: [0, 0.0, 0] });
-
-  if (spec.outfit === 'uniform' || spec.outfit === 'uniformHood' || spec.outfit === 'uniformSkirt' || spec.outfit === 'uniformHigh') {
-    // Jujutsu High jacket: dark navy with high collar, gold spiral buttons
-    for (let i = 0; i < 4; i++) {
-      r.part('chest', G.sphere(0.022, 8, 6), accent, { pos: [0.005, torsoLen * (0.28 - i * 0.13), torsoW * 0.8], glow: 0.25 });
-    }
-    r.part('neck', G.cyl(0.085, 0.1, spec.outfit === 'uniformHigh' ? 0.2 : 0.11, 14, false), top, { pos: [0, spec.outfit === 'uniformHigh' ? 0.06 : 0.0, 0] });
-    if (spec.outfit === 'uniformHood') {
-      // red hood draped behind the collar (Yuji)
-      r.part('chest', G.ellipsoid(0.2, 0.11, 0.1, 12, 8), inner, { pos: [0, torsoLen * 0.42, -0.14] });
-      r.part('chest', G.ellipsoid(0.17, 0.07, 0.06, 10, 6), inner, { pos: [0, torsoLen * 0.47, 0.11] });
-    }
-    // jacket hem flaring at the hips
-    if (!isSkirt) r.part('hips', G.cyl(torsoW * 0.98, torsoW * 1.12, 0.16, 14, true), top, { pos: [0, -0.04, 0], scale: [1, 1, 0.78] });
-  }
-  if (isSuit) {
-    r.part('chest', G.box(0.1, torsoLen * 0.42, 0.02), 0xf2f0ea, { pos: [0, torsoLen * 0.14, torsoW * 0.76], rot: [-0.12, 0, 0] });
-    r.part('chest', G.box(0.045, torsoLen * 0.38, 0.03), inner, { pos: [0, torsoLen * 0.12, torsoW * 0.8], rot: [-0.12, 0, 0] });
-    r.part('hips', G.cyl(torsoW * 0.98, torsoW * 1.1, 0.14, 14, true), top, { pos: [0, -0.03, 0], scale: [1, 1, 0.78] });
-  }
-  if (longCoat) {
-    r.part('hips', G.cyl(torsoW * 1.0, torsoW * 1.45, 0.62 * H, 14, true), top, { pos: [0, -0.3 * H, 0], scale: [1, 1, 0.8] });
-    if (spec.outfit !== 'labcoat') {
-      // obi sash + collar trim
-      r.part('spine', G.cyl(torsoW * 0.98, torsoW * 1.0, 0.12, 14), spec.accent, { pos: [0, 0.06, 0], scale: [1, 1, 0.76] });
-      r.part('chest', G.box(0.05, torsoLen * 0.55, 0.02), spec.accent, { pos: [0.03, torsoLen * 0.15, torsoW * 0.76], rot: [-0.1, 0, 0.35] });
-    }
-  }
-  if (spec.outfit === 'tank') {
-    r.part('chest', G.ellipsoid(torsoW * 1.12, torsoLen * 0.3, torsoW * 0.85, 12, 8), skin, { pos: [0, torsoLen * 0.34, 0] });
-  }
-  if (spec.outfit === 'patchwork') {
-    // Mahito: patchwork shirt with stitched seams
-    for (let i = 0; i < 5; i++) r.part('chest', G.box(0.05, 0.008, 0.01), 0x6a6a7a, { pos: [0.04, torsoLen * (0.3 - i * 0.09), torsoW * 0.78], rot: [0, 0, 0.5] });
-    r.part('chest', G.box(0.008, torsoLen * 0.45, 0.01), 0x6a6a7a, { pos: [0.04, torsoLen * 0.12, torsoW * 0.79] });
-  }
-  if (isSkirt) {
-    r.part('hips', G.cyl(torsoW * 0.98, torsoW * 1.65, 0.3 * H, 16, true), bottom, { pos: [0, -0.12 * H, 0], scale: [1, 1, 0.85] });
-  }
-  if (spec.extras?.includes('tie')) {
-    // Nanami's tie is leopard print: dark rosettes over the base colour
-    const leopard = spec.extras.includes('leopardTie');
-    r.part('chest', G.box(0.05, torsoLen * 0.4, 0.025), inner, { pos: [0, torsoLen * 0.12, torsoW * 0.8], rot: [-0.1, 0, 0],
-      colorFn: leopard ? (x, y, _z, c) => { if (Math.sin(x * 160 + y * 37) * Math.sin(y * 90) > 0.35) c.setHex(0x2a1a10); } : undefined });
-    if (leopard) for (let i = 0; i < 4; i++) r.part('chest', G.box(0.014, 0.014, 0.01), 0x2a1a10, { pos: [(i % 2 ? 0.012 : -0.012), torsoLen * (0.27 - i * 0.07), torsoW * 0.8 + 0.014] });
-  }
-  if (spec.extras?.includes('backPolearm')) {
-    // Maki: a cursed polearm slung across her back
-    r.part('chest', G.cyl(0.016, 0.016, 1.5, 6), 0x5a3a24, { pos: [0, torsoLen * 0.1, -torsoW * 0.95], rot: [0, 0, 0.7] });
-    // the shaft is tilted +0.7 rad about Z, so its upper end sits up and to -X
-    const ux = -Math.sin(0.7), uy = Math.cos(0.7);
-    r.part('chest', G.cone(0.035, 0.26, 4), 0xc8ccd4, { pos: [ux * 0.88, torsoLen * 0.1 + uy * 0.88, -torsoW * 0.95], rot: [0, 0, 0.7], glow: 0.08 });
-    r.part('chest', G.box(0.045, 0.06, 0.045), 0x2a2a30, { pos: [ux * 0.72, torsoLen * 0.1 + uy * 0.72, -torsoW * 0.95], rot: [0, 0, 0.7] });
-    // carrying strap across the chest
-    r.part('chest', G.box(0.03, torsoLen * 0.75, 0.014), 0x3a2a20, { pos: [0, torsoLen * 0.16, torsoW * 0.8], rot: [-0.1, 0, -0.7] });
-  }
-
-  // ---- Arms ----
-  const armTop = isSuit || spec.outfit === 'casual' || spec.outfit === 'kimono' ? top : top;
-  for (const s of ['L', 'R'] as const) {
-    const bareArms = spec.outfit === 'tank';
-    r.part('armUp' + s, G.limb(0.072 * B, 0.062 * B, 0.27 * H), bareArms ? skin : armTop);
-    r.part('armLow' + s, G.limb(0.062 * B, 0.052 * B, 0.23 * H), bareArms ? skin : armTop);
-    // cuff
-    if (!bareArms) r.part('armLow' + s, G.cyl(0.066 * B, 0.07 * B, 0.05, 10), spec.outfit.startsWith('uniform') ? top : accent, { pos: [0, -0.2 * H, 0] });
-    const gloves = spec.extras?.includes('gloves');
-    r.part('hand' + s, G.ellipsoid(0.058, 0.07, 0.045, 10, 8), gloves ? 0x1c1c22 : skin, { pos: [0, -0.04, 0] });
-    // Sukuna's black bands around each wrist
-    if (spec.extras?.includes('wristMarks')) for (let i = 0; i < 2; i++) r.part('hand' + s, G.cyl(0.056, 0.056, 0.014, 10, false), 0x141014, { pos: [0, 0.03 - i * 0.03, 0] });
-    r.part('hand' + s, G.ellipsoid(0.022, 0.04, 0.022, 6, 5), gloves ? 0x1c1c22 : skin, { pos: [s === 'L' ? -0.04 : 0.04, -0.02, 0.025], rot: [0, 0, s === 'L' ? 0.6 : -0.6] });
-  }
-
-  // ---- Legs ----
-  for (const s of ['L', 'R'] as const) {
-    const legColor = isSkirt ? 0x1a1a1f : bottom; // stockings under skirt
-    r.part('legUp' + s, G.limb(0.088 * B, 0.07 * B, legLen), legColor);
-    r.part('legLow' + s, G.limb(0.07 * B, 0.058 * B, legLen - 0.02), legColor);
-    // shoe
-    r.part('foot' + s, G.ellipsoid(0.07, 0.055, 0.13, 10, 6), shoes, { pos: [0, -0.01, 0.045] });
-    r.part('foot' + s, G.box(0.13, 0.025, 0.24), darken(shoes, 0.55), { pos: [0, -0.055, 0.04] });
-  }
-
-  // ---- Head ----
-  r.part('neck', G.cyl(0.055, 0.06, 0.12, 10), skin, { pos: [0, 0.02, 0], smooth: true });
-  r.part('head', G.ellipsoid(headR * 0.94, headR * 1.02, headR * 0.98, 18, 14), skin, { pos: hc, smooth: true });
-  // jaw / chin
-  r.part('head', G.ellipsoid(headR * 0.62, headR * 0.5, headR * 0.6, 12, 8), skin, { pos: [0, headR * 0.5, headR * 0.28], smooth: true });
-  // ears
-  r.part('head', G.ellipsoid(0.03, 0.05, 0.022, 8, 6), skin, { pos: [headR * 0.92, headR * 0.92, 0] });
-  r.part('head', G.ellipsoid(0.03, 0.05, 0.022, 8, 6), skin, { pos: [-headR * 0.92, headR * 0.92, 0] });
-
-  // eyes (large anime style, sitting on the face surface)
-  const glasses = spec.glasses ?? 'none';
-  if (glasses !== 'blindfold') {
-    // eye shape: how open the eye is, how the lash line slants, and how heavy it is
-    const shape = spec.eyeShape ?? 'round';
-    const ey = shape === 'sharp' ? 0.8 : shape === 'narrow' ? 0.62 : shape === 'tired' ? 0.84 : 1.04;
-    // positive: inner corners low (a hard stare); negative: inner corners high (soft, worried, tired)
-    const slant = shape === 'sharp' ? 0.12 : shape === 'narrow' ? 0.22 : shape === 'tired' ? -0.2 : -0.1;
-    const browTilt = shape === 'sharp' ? 0.14 : shape === 'narrow' ? 0.22 : shape === 'tired' ? -0.1 : 0;
-    const lash = shape === 'sharp' || shape === 'narrow' ? 0.02 : 0.016;
-    const lidY = 0.056 * (0.55 + 0.45 * ey);
-    for (const sx of [1, -1]) {
-      const yaw = sx * 0.35, eb = sx === 1 ? 'eyeL' : 'eyeR';
-      // eyeball, iris, pupil and highlight ride the eye bone (offsets from the eye centre)
-      r.part(eb, G.ellipsoid(0.05, 0.06 * ey, 0.022, 12, 8), 0xf9f7f2, { pos: [0, 0, 0], rot: [0, yaw, 0], smooth: true });
-      r.part(eb, G.ellipsoid(0.037, 0.05 * ey, 0.02, 12, 8), spec.eyes, { pos: [-sx * eyeX * 0.02, -0.004, 0.01], rot: [0, yaw, 0], smooth: true, glow: spec.extras?.includes('cursedEyes') ? 0.55 : 0.12, topColor: darken(spec.eyes, 0.55) });
-      r.part(eb, G.ellipsoid(0.018, 0.026 * Math.max(0.75, ey), 0.01, 8, 6), 0x08080e, { pos: [-sx * eyeX * 0.03, -0.006, 0.02], rot: [0, yaw, 0], smooth: true });
-      r.part(eb, G.sphere(0.011, 6, 4), 0xffffff, { pos: [-sx * eyeX * 0.05 + 0.013, 0.017 * ey, 0.027], glow: 0.25 });
-      // upper lash line (stays put, so a closed eye reads as a line); its slant carries the expression
-      r.part('head', G.box(0.11, lash, 0.02), 0x15121a, { pos: [sx * eyeX, eyeY + lidY, eyeZ + 0.004], rot: [0, yaw, sx * slant] });
-      // a heavy upper lid for tired eyes
-      if (shape === 'tired') r.part('head', G.ellipsoid(0.052, 0.018, 0.016, 10, 6), darken(skin, 0.86), { pos: [sx * eyeX, eyeY + lidY - 0.012, eyeZ + 0.006], rot: [0, yaw, sx * 0.08] });
-      // brow (its bone carries the tilt)
-      r.part(sx === 1 ? 'browL' : 'browR', G.box(0.075, 0.014, 0.014), darken(spec.hair, 0.6), { pos: [0, browTilt ? -0.004 : 0, 0], rot: [0, 0, sx * browTilt] });
-    }
-    if (spec.extras?.includes('sukunaMarks')) {
-      for (const sx of [1, -1]) {
-        r.part('head', G.box(0.07, 0.012, 0.012), 0x8a0d18, { pos: [sx * eyeX, eyeY - 0.075, eyeZ + 0.01], rot: [0, sx * 0.35, 0] });
-        // second pair of eyes under the first
-        r.part('head', G.ellipsoid(0.03, 0.016, 0.012), 0xff2a3a, { pos: [sx * (eyeX + 0.03), eyeY - 0.045, eyeZ - 0.01], rot: [0, sx * 0.5, 0], glow: 1.5 });
-      }
-    }
-  }
-  // nose + mouth
-  r.part('head', G.ellipsoid(0.014, 0.02, 0.016, 6, 5), darken(skin, 0.9), { pos: [0, eyeY - 0.07, eyeZ + 0.03], smooth: true });
-  if (spec.extras?.includes('surgicalMask')) {
-    r.part('head', G.ellipsoid(headR * 0.66, headR * 0.4, headR * 0.34, 12, 8), 0xf2f2ee, { pos: [0, eyeY - 0.13, headR * 0.6], smooth: true });
-    for (const sx of [1, -1]) r.part('head', G.box(0.008, 0.008, headR * 0.9), 0xd8d8d0, { pos: [sx * headR * 0.62, eyeY - 0.08, headR * 0.2], rot: [0, sx * 0.3, 0] });
-  }
-  if (!spec.extras?.includes('collar') && !spec.extras?.includes('mask') && !spec.extras?.includes('surgicalMask')) {
-    r.part('mouth', G.box(0.055, 0.009, 0.012), 0x6a2a2a, { pos: [0, 0, 0] });
-  }
-
-  if (glasses === 'round' || glasses === 'shades' || glasses === 'goggles') {
-    const lens = glasses === 'shades' ? 0x101014 : glasses === 'goggles' ? 0x2a2c34 : 0x9ad8ff;
-    for (const sx of [1, -1]) {
-      r.part('head', G.torus(0.045, 0.007, 5, 14), 0x222228, { pos: [sx * eyeX, eyeY, eyeZ + 0.035] });
-      r.part('head', G.ellipsoid(0.042, glasses === 'goggles' ? 0.028 : 0.04, 0.006, 10, 6), lens, { pos: [sx * eyeX, eyeY, eyeZ + 0.035], glow: glasses === 'round' ? 0.25 : 0.05 });
-    }
-    r.part('head', G.box(0.06, 0.008, 0.008), 0x222228, { pos: [0, eyeY + 0.005, eyeZ + 0.04] });
-  }
-  if (glasses === 'blindfold') {
-    r.part('head', G.cyl(headR * 1.0, headR * 1.0, 0.09, 18, false), 0x111116, { pos: [0, eyeY + 0.01, 0.012], scale: [1, 1, 0.98] });
-  }
-  if (spec.extras?.includes('eyepatch')) {
-    r.part('head', G.ellipsoid(0.05, 0.05, 0.015), 0x111111, { pos: [eyeX, eyeY, eyeZ + 0.03] });
-  }
-  if (spec.extras?.includes('collar') || spec.extras?.includes('mask')) {
-    // high zip collar covering the mouth (Inumaki)
-    r.part('head', G.cyl(headR * 0.8, headR * 0.7, 0.16, 16, false), spec.extras?.includes('mask') ? 0x1a1a1a : spec.top, { pos: [0, headR * 0.45, 0.03] });
-  }
-  if (spec.extras?.includes('facescar') || spec.extras?.includes('scars')) {
-    r.part('head', G.box(0.012, 0.11, 0.01), darken(skin, 0.6), { pos: [-eyeX - 0.01, eyeY - 0.02, eyeZ + 0.03], rot: [0, 0, 0.3] });
-  }
-  if (spec.extras?.includes('goatee')) {
-    r.part('head', G.ellipsoid(0.05, 0.05, 0.03, 8, 6), darken(spec.hair, 0.9), { pos: [0, eyeY - 0.19, headR * 0.86] });
-    r.part('head', G.box(0.09, 0.012, 0.012), darken(spec.hair, 0.9), { pos: [0, eyeY - 0.11, headR * 0.9] });
-  }
-  if (spec.extras?.includes('eyeBags')) {
-    for (const sx of [1, -1]) r.part('head', G.box(0.06, 0.008, 0.008), darken(skin, 0.68), { pos: [sx * eyeX, eyeY - 0.068, eyeZ + 0.012], rot: [0, sx * 0.35, sx * -0.12] });
-  }
-  if (spec.extras?.includes('mole')) {
-    r.part('head', G.sphere(0.008, 5, 4), 0x2a1a18, { pos: [-eyeX - 0.012, eyeY - 0.075, eyeZ + 0.014], smooth: true });
-  }
-  if (spec.extras?.includes('zipper')) {
-    r.part('head', G.box(0.012, 0.15, 0.012), 0xb8bcc4, { pos: [0, headR * 0.47, headR * 0.82] });
-    r.part('head', G.box(0.026, 0.03, 0.014), 0xd8dce4, { pos: [0, headR * 0.56, headR * 0.84] });
-  }
-  if (spec.extras?.includes('hairpin')) {
-    r.part('head', G.box(0.07, 0.014, 0.014), 0xe8d06a, { pos: [-headR * 0.55, hc[1] + headR * 0.55, headR * 0.7], rot: [0, -0.5, 0.4], glow: 0.15 });
-    r.part('head', G.box(0.07, 0.014, 0.014), 0xe8d06a, { pos: [-headR * 0.6, hc[1] + headR * 0.47, headR * 0.68], rot: [0, -0.5, 0.4], glow: 0.15 });
-  }
-  if (spec.extras?.includes('bloodStripe')) {
-    // Choso: a band of blood across the bridge of the nose, cheek to cheek
-    r.part('head', G.box(headR * 1.5, 0.026, 0.02), 0x5a0e16, { pos: [0, eyeY - 0.045, eyeZ + 0.02], scale: [1, 1, 1] });
-  }
-  if (spec.extras?.includes('browStitch')) {
-    // Kenjaku: the stitched seam across the forehead
-    r.part('head', G.box(headR * 1.3, 0.008, 0.01), 0x3a2a2a, { pos: [0, eyeY + 0.16, eyeZ - 0.03], rot: [-0.25, 0, 0] });
-    for (let i = 0; i < 7; i++) r.part('head', G.box(0.006, 0.03, 0.01), 0x3a2a2a, { pos: [-headR * 0.55 + i * headR * 0.18, eyeY + 0.16, eyeZ - 0.025], rot: [-0.25, 0, 0] });
-  }
-  if (spec.extras?.includes('bandage')) {
-    r.part('armUpL', G.cyl(0.08 * B, 0.08 * B, 0.12, 10), 0xf4f0e8, { pos: [0, -0.12, 0] });
-    r.part('armUpL', G.box(0.03, 0.05, 0.02), 0xc02a2a, { pos: [0.02, -0.1, 0.075] });
-  }
-  if (spec.extras?.includes('stitches')) {
-    for (let i = 0; i < 6; i++) {
-      r.part('head', G.box(0.03, 0.006, 0.006), 0x2a2030, { pos: [-headR * 0.5 + i * 0.012, eyeY - 0.02 - i * 0.03, eyeZ + 0.02 - i * 0.004], rot: [0, 0, 0.6] });
-    }
-    r.part('head', G.box(0.008, 0.2, 0.008), 0x2a2030, { pos: [-headR * 0.42, eyeY - 0.05, eyeZ + 0.02], rot: [0, 0, 0.5] });
-  }
-
-  if (spec.extras?.includes('stubble')) {
-    r.part('head', G.ellipsoid(headR * 0.6, headR * 0.34, headR * 0.5, 10, 6), darken(skin, 0.78), { pos: [0, headR * 0.42, headR * 0.34] });
-  }
-  if (spec.extras?.includes('piercings')) {
-    for (const sx of [1, -1]) for (let i = 0; i < 2; i++) r.part('head', G.torus(0.014, 0.004, 4, 8), 0xd8dce4, { pos: [sx * headR * 0.97, headR * (0.86 - i * 0.07), 0.01], rot: [0, Math.PI / 2, 0], glow: 0.3 });
-  }
-  if (spec.extras?.includes('secondFace')) {
-    // Heian-era Sukuna: a second face grown over the right side of the head
-    const fx = -headR * 0.72, fz = headR * 0.62;
-    r.part('head', G.ellipsoid(headR * 0.36, headR * 0.48, headR * 0.2, 10, 8), darken(skin, 0.9), { pos: [fx, hc[1] - headR * 0.05, fz], rot: [0, -0.9, 0] });
-    for (const dy of [0.08, -0.04]) r.part('head', G.ellipsoid(0.026, 0.014, 0.01), 0xff2a3a, { pos: [fx - 0.02, hc[1] + dy, fz + 0.06], rot: [0, -0.9, 0], glow: 1.4 });
-    r.part('head', G.box(0.06, 0.01, 0.01), 0x4a0a10, { pos: [fx - 0.03, hc[1] - headR * 0.32, fz + 0.06], rot: [0, -0.9, 0] });
-  }
-  if (spec.extras?.includes('bellyMouth')) {
-    r.part('spine', G.ellipsoid(torsoW * 0.5, 0.05, 0.03, 12, 6), 0x3a0810, { pos: [0, 0.12, torsoW * 0.82], glow: 0.2 });
-    for (let i = 0; i < 6; i++) r.part('spine', G.cone(0.012, 0.035, 4), 0xf4efe0, { pos: [(i - 2.5) * torsoW * 0.16, 0.145, torsoW * 0.84], rot: [Math.PI, 0, 0] });
-  }
-  if (spec.extras?.includes('scarf')) {
-    r.part('neck', G.torus(0.09, 0.035, 6, 14), spec.inner ?? 0x8a2a2a, { pos: [0, -0.02, 0.01], rot: [Math.PI / 2, 0, 0] });
-    r.part('chest', G.box(0.08, 0.26, 0.03), spec.inner ?? 0x8a2a2a, { pos: [0.08, torsoLen * 0.62, torsoW * 0.78], rot: [0.15, 0, 0.12] });
-  }
-  if (spec.extras?.includes('ring')) {
-    r.part('handL', G.torus(0.016, 0.005, 4, 8), 0xd8dce4, { pos: [-0.01, -0.07, 0.02], rot: [Math.PI / 2, 0, 0], glow: 0.6 });
-  }
-  // held weapons for NPCs and human bosses (the player's weapon is attached separately)
-  if (spec.extras?.includes('katana')) {
-    r.part('handR', G.cyl(0.018, 0.02, 0.24, 6), 0x1a1a22, { pos: [0, -0.06, 0.02], rot: [Math.PI / 2, 0, 0] });
-    r.part('handR', G.box(0.1, 0.02, 0.04), 0x8a7a4a, { pos: [0, -0.06, 0.15], rot: [Math.PI / 2, 0, 0] });
-    r.part('handR', G.box(0.03, 0.008, 0.82), 0xe8ecf4, { pos: [0, -0.06, 0.57], glow: 0.15 });
-  }
-  if (spec.extras?.includes('gavel')) {
-    r.part('handR', G.cyl(0.018, 0.022, 0.5, 6), 0x5a3a24, { pos: [0, -0.06, 0.18], rot: [Math.PI / 2, 0, 0] });
-    r.part('handR', G.cyl(0.07, 0.07, 0.24, 10), 0x7a5232, { pos: [0, -0.06, 0.44], rot: [0, 0, Math.PI / 2] });
-    for (const sx of [-1, 1]) r.part('handR', G.cyl(0.075, 0.075, 0.025, 10), 0xd8b04a, { pos: [sx * 0.11, -0.06, 0.44], rot: [0, 0, Math.PI / 2], glow: 0.2 });
-  }
-  if (spec.extras?.includes('staff')) {
-    r.part('handR', G.cyl(0.02, 0.02, 1.5, 6), 0x2a3a5a, { pos: [0, -0.06, 0.1], rot: [Math.PI / 2, 0, 0] });
-    for (const z of [-0.62, 0.82]) r.part('handR', G.cyl(0.03, 0.03, 0.08, 6), 0x6adfff, { pos: [0, -0.06, z], rot: [Math.PI / 2, 0, 0], glow: 0.9 });
-  }
-
-  if (spec.extras?.includes('fourEyes')) {
-    // Tengen: a second, smaller pair of eyes above the first
-    for (const sx of [1, -1]) {
-      r.part('head', G.ellipsoid(0.03, 0.036, 0.014, 10, 6), 0xf9f7f2, { pos: [sx * eyeX * 0.8, eyeY + 0.12, eyeZ - 0.02], rot: [0, sx * 0.3, 0], smooth: true });
-      r.part('head', G.ellipsoid(0.016, 0.022, 0.01, 8, 6), 0x2a2a3a, { pos: [sx * eyeX * 0.8, eyeY + 0.12, eyeZ - 0.005], rot: [0, sx * 0.3, 0], glow: 0.2 });
-    }
-  }
-  if (spec.extras?.includes('lipScar')) {
-    r.part('head', G.box(0.008, 0.06, 0.01), darken(skin, 0.55), { pos: [0.02, eyeY - 0.13, headR * 0.86], rot: [0, 0, -0.2] });
-  }
-  if (spec.extras?.includes('wormCurse')) {
-    // Toji's inventory curse, coiled around his shoulders
-    for (let i = 0; i < 9; i++) {
-      const a = -1.2 + i * 0.32;
-      r.part('chest', G.sphere(0.075 - i * 0.003, 8, 6), i % 2 ? 0x8a6aa0 : 0x7a5a90, { pos: [Math.sin(a) * 0.24, torsoLen * 0.72 + Math.cos(a * 1.4) * 0.03, Math.cos(a) * 0.14 - 0.02], smooth: true });
-    }
-    r.part('chest', G.sphere(0.035, 6, 4), 0xffd23a, { pos: [Math.sin(1.4) * 0.24, torsoLen * 0.76, Math.cos(1.4) * 0.14 + 0.03], glow: 1.2 });
-  }
-  if (spec.extras?.includes('kesa')) {
-    // a monk's stole draped over one shoulder (Geto)
-    r.part('chest', G.box(0.09, torsoLen * 1.15, 0.03), spec.accent, { pos: [0.05, torsoLen * 0.28, torsoW * 0.8], rot: [0.05, 0, -0.5] });
-    r.part('chest', G.box(0.09, torsoLen * 1.0, 0.03), spec.accent, { pos: [-0.02, torsoLen * 0.28, -torsoW * 0.8], rot: [-0.05, 0, -0.5] });
-  }
-  if (spec.extras?.includes('scissors')) {
-    for (const sx of [-1, 1]) r.part('handR', G.box(0.02, 0.008, 0.7), 0xc8ccd4, { pos: [sx * 0.02, -0.06, 0.38], rot: [0, sx * 0.12, 0], glow: 0.1 });
-    r.part('handR', G.torus(0.04, 0.012, 5, 10), 0x3a1a1a, { pos: [0, -0.06, 0.0], rot: [Math.PI / 2, 0, 0] });
-  }
-  if (spec.extras?.includes('longCoat')) {
-    r.part('spine', G.cyl(torsoW * 1.0, torsoW * 1.25, 0.62 * H, 14, false), spec.top, { pos: [0, -0.3 * H, 0] });
-  }
+  const b = measure(r, spec);
+  skeleton(b);
+  torso(b);
+  limbs(b);
+  outfit(b);
+  head(b);
+  // eyes, brows, nose, mouth and the marks on a face get a fine ink line: the full one swallows them
+  r.ink = 0.32;
+  face(b);
+  r.ink = undefined;
+  extras(b);
   // every hair part on the head gets the anime sheen: a light band across the crown
-  r.partDefaults = { bone: 'head', o: { shine: { y: hc[1] + headR * 0.62, band: headR * 0.14, k: 0.3 } } };
-  buildHair(r, spec, headR, hc);
+  r.partDefaults = { bone: 'head', o: { shine: { y: b.hc[1] + b.hr * 0.72, band: b.hr * 0.16, k: 0.3 } } };
+  buildHair(r, spec, b.hr, b.hc);
   r.partDefaults = null;
 
-  const model = r.build({ outline: spec.outline ?? 0.018 });
+  const model = r.build({ outline: spec.outline ?? 0.016 });
   const hm = model as Humanoid;
   hm.spec = spec;
   hm.hand = model.bones.handR;
   hm.handL = model.bones.handL;
+  hm.faceK = b.fk;
   hm.anim = new HumanoidAnimator(hm);
   return hm;
 }
 
-const _dirQ = new THREE.Quaternion();
-const _up = new THREE.Vector3(0, 1, 0);
-function eulerFromDir(dx: number, dy: number, dz: number): V3 {
-  const d = new THREE.Vector3(dx, dy, dz).normalize();
-  _dirQ.setFromUnitVectors(_up, d);
-  const e = new THREE.Euler().setFromQuaternion(_dirQ);
-  return [e.x, e.y, e.z];
-}
-
-/** Spherical helper: polar angle `pol` from the crown (0 = top), azimuth `az` from the front (+z). */
-function sph(pol: number, az: number): V3 {
-  return [Math.sin(pol) * Math.sin(az), Math.cos(pol), Math.sin(pol) * Math.cos(az)];
-}
-
-function buildHair(r: RigBuilder, spec: HumanoidSpec, headR: number, hc: V3) {
-  const c = spec.hair;
-  const R = headR * 1.06;
-  const hi = lighten(c, 1.3);
-  /** Partial sphere shell: polar range [p0,p1], azimuth centred on the back. */
-  const shell = (p0: number, p1: number, backSpan: number, col = c, scale = 1.0, yOff = 0) => {
-    const span = Math.min(Math.PI * 2, backSpan);
-    // three's phi=0 is -x; front (+z) is phi = PI/2, back is 3PI/2.
-    const g = new THREE.SphereGeometry(R * scale, 12, 7, 1.5 * Math.PI - span / 2, span, p0, p1 - p0);
-    r.part('head', g, col, { pos: [hc[0], hc[1] + yOff, hc[2] - 0.005], topColor: lighten(col, 1.2) });
-  };
-  /** Cone spike rooted on the scalp, pointing along (surface normal + bias). */
-  const spike = (pol: number, az: number, len: number, w: number, bias: V3 = [0, 0, 0], col = c, rootDepth = 0.75) => {
-    const n = sph(pol, az);
-    const d: V3 = [n[0] + bias[0], n[1] + bias[1], n[2] + bias[2]];
-    const L = Math.hypot(d[0], d[1], d[2]);
-    const u: V3 = [d[0] / L, d[1] / L, d[2] / L];
-    const base: V3 = [n[0] * R * rootDepth, n[1] * R * rootDepth, n[2] * R * rootDepth];
-    const ctr: V3 = [hc[0] + base[0] + u[0] * len * 0.5, hc[1] + base[1] + u[1] * len * 0.5, hc[2] + base[2] + u[2] * len * 0.5];
-    r.part('head', G.cone(w, len, 6), col, { pos: ctr, rot: eulerFromDir(u[0], u[1], u[2]), topColor: hi });
-  };
-  /** Flat lock of hair (bang) hanging from the hairline. */
-  const lock = (az: number, len: number, w: number, tiltOut = 0.5, col = c, pol = 0.95) => {
-    const n = sph(pol, az);
-    const d: V3 = [n[0] * tiltOut, -1, n[2] * tiltOut];
-    const L = Math.hypot(d[0], d[1], d[2]);
-    const u: V3 = [d[0] / L, d[1] / L, d[2] / L];
-    const ctr: V3 = [hc[0] + n[0] * R * 0.98 + u[0] * len * 0.45, hc[1] + n[1] * R * 0.98 + u[1] * len * 0.45, hc[2] + n[2] * R * 0.98 + u[2] * len * 0.45];
-    const g = G.cone(w, len, 6);
-    g.rotateX(Math.PI); // point down
-    g.scale(1, 1, 0.45);
-    const e = eulerFromDir(-u[0], -u[1], -u[2]);
-    r.part('head', g, col, { pos: ctr, rot: [e[0], e[1] + az * 0, e[2]], topColor: hi });
-  };
-
-  const TAUh = Math.PI * 2;
-  switch (spec.hairStyle) {
-    case 'yuji': {
-      shell(0, 1.05, TAUh);                       // pink crown
-      shell(1.0, 1.75, Math.PI * 1.25, 0x3a2626, 0.985); // dark undercut sides/back
-      for (let i = 0; i < 12; i++) spike(0.35 + (i % 3) * 0.22, (i / 12) * TAUh, 0.13 + (i % 2) * 0.03, 0.05, [0, 0.9, 0]);
-      for (let i = 0; i < 4; i++) spike(0.08, (i / 4) * TAUh, 0.12, 0.05, [0, 1.2, 0]);
-      for (let i = -2; i <= 2; i++) spike(0.75, i * 0.3, 0.1, 0.04, [0, -0.2, 0.6]);
-      break;
-    }
-    case 'sukunaBack': {
-      // Sukuna wearing Yuji: the same pink hair, pushed flat and straight back off the forehead
-      shell(0, 1.05, TAUh, c, 1.0);
-      shell(1.0, 1.75, Math.PI * 1.25, 0x3a2626, 0.985);
-      for (let i = 0; i < 9; i++) {
-        const az = Math.PI + (i - 4) * 0.3;
-        spike(1.05 + (i % 2) * 0.15, az, 0.2 + (i % 3) * 0.03, 0.055, [0, -0.4, -0.9], c, 0.85);
-      }
-      for (let i = -2; i <= 2; i++) spike(0.75, Math.PI + i * 0.5, 0.16, 0.05, [0, 0.1, -1.4], c, 0.9);
-      break;
-    }
-    case 'toji': {
-      // short, messy black hair
-      shell(0, 1.3, TAUh, c, 1.02);
-      shell(1.2, 1.8, Math.PI * 1.3, c, 1.0);
-      for (let i = 0; i < 14; i++) spike(0.3 + (i % 3) * 0.28, (i / 14) * TAUh, 0.09 + (i % 2) * 0.03, 0.05, [0, 0.3, -0.2]);
-      for (let i = -3; i <= 3; i++) lock(i * 0.22, 0.1, 0.035, 0.55, c, 0.9);
-      break;
-    }
-    case 'kamo': {
-      // tied-back hair with a long tail
-      shell(0, 1.25, TAUh, c, 1.02);
-      shell(1.1, 1.85, Math.PI * 1.3, c, 1.0);
-      r.part('head', G.ellipsoid(0.07, 0.22, 0.07), c, { pos: [hc[0], hc[1] - R * 0.25, hc[2] - R * 1.05], rot: [-0.2, 0, 0], topColor: hi });
-      for (let i = -2; i <= 2; i++) lock(i * 0.25, 0.1, 0.03, 0.55, c, 0.88);
-      break;
-    }
-    case 'megumi': {
-      shell(0, 1.3, TAUh, c, 1.02);
-      shell(1.2, 1.95, Math.PI * 1.3, c, 1.0);
-      for (let i = 0; i < 22; i++) {
-        const pol = 0.25 + (i % 4) * 0.3;
-        const az = (i / 22) * TAUh + (i % 2) * 0.15;
-        spike(pol, az, 0.17 + ((i * 7) % 5) * 0.025, 0.06, [0, 0.35, -0.25]);
-      }
-      for (let i = 0; i < 5; i++) spike(0.05, i * 1.25, 0.16, 0.055, [0, 0.6, -0.4]);
-      for (let i = -3; i <= 3; i++) lock(i * 0.24, 0.13 - Math.abs(i) * 0.01, 0.035, 0.55, c, 0.9);
-      break;
-    }
-    case 'nobara': {
-      shell(0, 1.2, TAUh, c, 1.03);
-      shell(0.9, 2.25, Math.PI * 1.45, c, 1.05);
-      // flared ends at chin height
-      for (let i = 0; i < 9; i++) {
-        const az = Math.PI - 1.25 + (i / 8) * 2.5;
-        const n = sph(2.15, az);
-        r.part('head', G.ellipsoid(0.07, 0.05, 0.05, 8, 6), c, { pos: [hc[0] + n[0] * R * 1.08, hc[1] + n[1] * R * 1.05, hc[2] + n[2] * R * 1.08] });
-      }
-      // side-swept fringe
-      for (let i = 0; i < 6; i++) lock(-0.75 + i * 0.25, 0.15 - i * 0.012, 0.045, 0.5, c, 0.85);
-      break;
-    }
-    case 'gojo': {
-      shell(0, 1.2, TAUh, c, 1.02);
-      shell(1.1, 1.8, Math.PI * 1.3, c, 1.0);
-      for (let i = 0; i < 20; i++) {
-        const pol = 0.2 + (i % 4) * 0.25;
-        const az = (i / 20) * TAUh;
-        spike(pol, az, 0.2 + (i % 3) * 0.05, 0.065, [0, 0.9, -0.3]);
-      }
-      for (let i = -2; i <= 2; i++) spike(0.7, i * 0.3, 0.17, 0.05, [0, 1.3, 0.1]);
-      break;
-    }
-    case 'nanami': {
-      shell(0, 1.25, TAUh, c, 1.02);
-      shell(1.1, 1.7, Math.PI * 1.3, c, 1.0);
-      r.part('head', G.ellipsoid(R * 0.75, R * 0.18, R * 0.5), c, { pos: [hc[0] - 0.05, hc[1] + R * 0.68, hc[2] + R * 0.45], rot: [0.45, 0, 0.25], topColor: hi });
-      for (let i = 0; i < 3; i++) lock(0.3 + i * 0.2, 0.09, 0.03, 0.6, c, 0.85);
-      break;
-    }
-    case 'maki': {
-      shell(0, 1.25, TAUh, c, 1.02);
-      shell(1.1, 1.9, Math.PI * 1.3, c, 1.0);
-      r.part('head', G.ellipsoid(0.06, 0.16, 0.06), c, { pos: [hc[0], hc[1] + R * 0.25, hc[2] - R * 1.1], rot: [-0.45, 0, 0], topColor: hi });
-      for (let i = -3; i <= 3; i++) lock(i * 0.22, 0.12, 0.035, 0.55, c, 0.88);
-      break;
-    }
-    case 'inumaki': {
-      shell(0, 1.25, TAUh, c, 1.02);
-      shell(1.1, 1.75, Math.PI * 1.3, c, 1.0);
-      for (let i = 0; i < 12; i++) spike(0.3 + (i % 3) * 0.25, (i / 12) * TAUh, 0.12, 0.055, [0, 0.5, 0]);
-      for (let i = -2; i <= 2; i++) lock(i * 0.25, 0.11, 0.035, 0.6, c, 0.88);
-      break;
-    }
-    case 'shoko': {
-      shell(0, 1.25, TAUh, c, 1.03);
-      shell(0.9, 2.5, Math.PI * 1.4, c, 1.05);
-      r.part('head', G.ellipsoid(R * 0.95, R * 0.9, R * 0.45), c, { pos: [hc[0], hc[1] - R * 0.95, hc[2] - R * 0.6], topColor: hi });
-      for (let i = -2; i <= 3; i++) lock(i * 0.22, 0.14, 0.035, 0.5, c, 0.85);
-      break;
-    }
-    case 'todo': {
-      shell(0, 1.15, TAUh, c, 1.01);
-      shell(1.0, 1.6, Math.PI * 1.3, c, 1.0);
-      r.part('head', G.ellipsoid(0.075, 0.12, 0.075), c, { pos: [hc[0], hc[1] + R * 1.05, hc[2] - R * 0.35], topColor: hi });
-      r.part('head', G.torus(0.055, 0.016, 6, 12), 0x8a2a2a, { pos: [hc[0], hc[1] + R * 0.9, hc[2] - R * 0.33], rot: [Math.PI / 2, 0, 0] });
-      break;
-    }
-    case 'yaga': {
-      shell(0, 0.9, TAUh, c, 1.0);
-      shell(0.8, 1.5, Math.PI * 1.2, c, 0.99);
-      r.part('head', G.ellipsoid(0.05, 0.05, 0.04), c, { pos: [0, hc[1] - R * 0.62, hc[2] + R * 0.62] });
-      break;
-    }
-    case 'ijichi': {
-      shell(0, 1.25, TAUh, c, 1.02);
-      shell(1.1, 1.7, Math.PI * 1.3, c, 1.0);
-      for (let i = -2; i <= 2; i++) lock(i * 0.25, 0.14, 0.04, 0.5, c, 0.85);
-      break;
-    }
-    case 'junpei': {
-      shell(0, 1.3, TAUh, c, 1.03);
-      shell(1.1, 2.0, Math.PI * 1.4, c, 1.03);
-      for (let i = -3; i <= 3; i++) lock(i * 0.2 - 0.15, 0.2 - Math.abs(i) * 0.01, 0.045, 0.45, c, 0.82);
-      break;
-    }
-    case 'meimei': {
-      shell(0, 1.25, TAUh, c, 1.03);
-      shell(1.0, 1.9, Math.PI * 1.4, c, 1.03);
-      for (let i = 0; i < 8; i++) r.part('head', G.ellipsoid(0.05, 0.065, 0.05), c, { pos: [0.02, hc[1] - 0.1 - i * 0.09, hc[2] - R * 1.0 - i * 0.012], topColor: hi });
-      for (let i = -2; i <= 2; i++) lock(i * 0.25, 0.12, 0.035, 0.5, c, 0.86);
-      break;
-    }
-    case 'mahito': {
-      shell(0, 1.25, TAUh, c, 1.03);
-      shell(1.0, 2.4, Math.PI * 1.3, c, 1.05);
-      for (const sx of [1, -1]) r.part('head', G.ellipsoid(0.04, 0.17, 0.04), c, { pos: [hc[0] + sx * R * 0.82, hc[1] - R * 0.7, hc[2] + R * 0.35], topColor: hi });
-      for (let i = -2; i <= 2; i++) lock(i * 0.25, 0.14, 0.035, 0.5, c, 0.86);
-      break;
-    }
-    case 'geto': {
-      shell(0, 1.25, TAUh, c, 1.02);
-      shell(1.1, 1.8, Math.PI * 1.3, c, 1.0);
-      r.part('head', G.sphere(0.08, 10, 8), c, { pos: [0, hc[1] + R * 0.5, hc[2] - R * 0.95] });
-      r.part('head', G.ellipsoid(0.03, 0.15, 0.02), c, { pos: [hc[0] - R * 0.55, hc[1] - R * 0.1, hc[2] + R * 0.82], rot: [0, 0, -0.1] });
-      break;
-    }
-    case 'miwa': {
-      shell(0, 1.25, TAUh, c, 1.03);
-      shell(0.95, 2.6, Math.PI * 1.45, c, 1.05);
-      for (let i = -3; i <= 3; i++) lock(i * 0.22, 0.13, 0.035, 0.5, c, 0.86);
-      break;
-    }
-    case 'bun': {
-      shell(0, 1.25, TAUh, c, 1.02);
-      shell(1.1, 1.8, Math.PI * 1.3, c, 1.0);
-      r.part('head', G.sphere(0.085, 10, 8), c, { pos: [0, hc[1] + R * 0.75, hc[2] - R * 0.75], topColor: hi });
-      break;
-    }
-    case 'long': {
-      shell(0, 1.25, TAUh, c, 1.03);
-      shell(0.95, 2.6, Math.PI * 1.4, c, 1.05);
-      r.part('head', G.ellipsoid(R * 0.95, R * 1.0, R * 0.4), c, { pos: [hc[0], hc[1] - R * 1.05, hc[2] - R * 0.6], topColor: hi });
-      for (let i = -2; i <= 2; i++) lock(i * 0.25, 0.12, 0.035, 0.5, c, 0.86);
-      break;
-    }
-    case 'bob': {
-      // straight bob with blunt bangs (Sasaki)
-      shell(0, 1.25, TAUh, c, 1.03);
-      shell(0.9, 2.05, Math.PI * 1.45, c, 1.06);
-      for (let i = -3; i <= 3; i++) lock(i * 0.2, 0.12, 0.04, 0.25, c, 0.86);
-      for (const sx of [1, -1]) r.part('head', G.ellipsoid(0.05, 0.13, 0.08), c, { pos: [hc[0] + sx * R * 0.86, hc[1] - R * 0.35, hc[2] + R * 0.05], topColor: hi });
-      break;
-    }
-    case 'choso': {
-      // spiky dark hair gathered into two short tufts on top
-      shell(0, 1.2, TAUh, c, 1.02);
-      shell(1.05, 1.75, Math.PI * 1.3, c, 1.0);
-      for (const sx of [1, -1]) {
-        r.part('head', G.sphere(0.05, 8, 6), c, { pos: [hc[0] + sx * R * 0.42, hc[1] + R * 0.9, hc[2] - R * 0.15], topColor: hi });
-        for (let i = 0; i < 3; i++) spike(0.42, sx * (0.9 + i * 0.25), 0.14, 0.04, [sx * 0.6, 1.4, -0.3]);
-      }
-      for (let i = -2; i <= 2; i++) lock(i * 0.24, 0.13, 0.035, 0.55, c, 0.88);
-      break;
-    }
-    case 'yuta': {
-      // messy black hair falling over the eyes
-      shell(0, 1.3, TAUh, c, 1.03);
-      shell(1.1, 1.95, Math.PI * 1.4, c, 1.02);
-      for (let i = 0; i < 14; i++) spike(0.35 + (i % 3) * 0.3, (i / 14) * TAUh + 0.2, 0.12 + (i % 2) * 0.03, 0.05, [0, 0.2, -0.3]);
-      for (let i = -3; i <= 3; i++) lock(i * 0.22, 0.17 - Math.abs(i) * 0.012, 0.042, 0.4, c, 0.86);
-      break;
-    }
-    case 'naoya': {
-      // short bleached hair, darker roots, swept back from the forehead
-      shell(0, 1.15, TAUh, c, 1.02);
-      shell(1.0, 1.65, Math.PI * 1.3, darken(c, 0.55), 0.99);
-      for (let i = 0; i < 12; i++) spike(0.3 + (i % 3) * 0.22, (i / 12) * TAUh, 0.11, 0.05, [0, 0.4, -0.8]);
-      for (let i = -1; i <= 1; i++) lock(i * 0.3 + 0.2, 0.08, 0.03, 0.7, c, 0.86);
-      break;
-    }
-    case 'pompadour': {
-      // a towering quiff swept forward (Ishigori; Hakari wears it shorter)
-      shell(0, 1.2, TAUh, c, 1.02);
-      shell(1.05, 1.7, Math.PI * 1.3, c, 1.0);
-      r.part('head', G.ellipsoid(R * 0.7, R * 0.42, R * 0.85, 12, 8), c, { pos: [hc[0], hc[1] + R * 1.0, hc[2] + R * 0.45], rot: [0.35, 0, 0], topColor: hi });
-      r.part('head', G.ellipsoid(R * 0.5, R * 0.32, R * 0.5, 10, 6), c, { pos: [hc[0], hc[1] + R * 0.95, hc[2] + R * 1.05], rot: [0.8, 0, 0], topColor: hi });
-      break;
-    }
-    case 'kashimo': {
-      // long pale-blue hair gathered high on the head
-      shell(0, 1.25, TAUh, c, 1.03);
-      shell(1.05, 1.8, Math.PI * 1.3, c, 1.01);
-      r.part('head', G.sphere(0.07, 10, 8), c, { pos: [0, hc[1] + R * 1.1, hc[2] - R * 0.3], topColor: hi });
-      for (let i = 0; i < 4; i++) r.part('head', G.ellipsoid(0.05 - i * 0.006, 0.09, 0.05), c, { pos: [0, hc[1] + R * 0.9 - i * 0.12, hc[2] - R * 0.75 - i * 0.05], rot: [-0.4, 0, 0], topColor: hi });
-      for (let i = -2; i <= 2; i++) lock(i * 0.26, 0.15, 0.035, 0.5, c, 0.86);
-      break;
-    }
-    case 'uro': {
-      // long dark hair with a centre parting, tied low behind
-      shell(0, 1.25, TAUh, c, 1.03);
-      shell(0.95, 2.4, Math.PI * 1.4, c, 1.05);
-      for (let i = 0; i < 6; i++) r.part('head', G.ellipsoid(0.07, 0.08, 0.06), c, { pos: [0, hc[1] - R * 0.7 - i * 0.1, hc[2] - R * 1.0 - i * 0.02], topColor: hi });
-      for (const sx of [1, -1]) for (let i = 0; i < 2; i++) lock(sx * (0.35 + i * 0.25), 0.2, 0.04, 0.35, c, 0.85);
-      break;
-    }
-    case 'mai': {
-      // short bob with one long lock on the left
-      shell(0, 1.25, TAUh, c, 1.03);
-      shell(0.9, 2.0, Math.PI * 1.45, c, 1.05);
-      for (let i = -3; i <= 3; i++) lock(i * 0.2, 0.11, 0.04, 0.3, c, 0.86);
-      r.part('head', G.ellipsoid(0.04, 0.2, 0.05), c, { pos: [hc[0] + R * 0.88, hc[1] - R * 0.65, hc[2] + R * 0.2], topColor: hi });
-      break;
-    }
-    case 'short':
-      shell(0, 1.2, TAUh, c, 1.02);
-      shell(1.1, 1.7, Math.PI * 1.3, c, 1.0);
-      for (let i = -2; i <= 2; i++) lock(i * 0.25, 0.09, 0.035, 0.6, c, 0.88);
-      break;
-    case 'bald':
-      break;
+function skeleton(b: Body) {
+  const { r, S } = b;
+  r.bone('hips', 'root', [0, b.hipY, 0]);
+  r.bone('spine', 'hips', [0, 0.05 * S, 0]);
+  r.bone('chest', 'spine', [0, b.SC, 0]);
+  r.bone('neck', 'chest', [0, b.CN, -0.008 * S]);
+  r.bone('head', 'neck', [0, b.NH, 0.006 * S]);
+  // face bones: eyes close (blink, smile), brows tilt, the mouth opens — for dialogue art and talking
+  for (const s of ['L', 'R'] as const) {
+    const sx = s === 'L' ? 1 : -1;
+    r.bone('eye' + s, 'head', [sx * b.eyeX, b.eyeY, b.eyeZ]);
+    r.bone('brow' + s, 'head', [sx * b.eyeX * 1.04, b.eyeY + b.hr * 0.3, b.eyeZ - b.hr * 0.01], [0, sx * 0.3, sx * 0.1]);
+  }
+  r.bone('mouth', 'head', [0, b.hc[1] - b.hr * 0.74, b.hc[2] + b.hr * 0.71]);
+  for (const s of ['L', 'R'] as const) {
+    const sx = s === 'L' ? 1 : -1;
+    r.bone('armUp' + s, 'chest', [sx * b.SW, b.CS, -0.006 * S]);
+    r.bone('armLow' + s, 'armUp' + s, [0, -b.AU, 0]);
+    r.bone('hand' + s, 'armLow' + s, [0, -b.AL, 0]);
+    r.bone('legUp' + s, 'hips', [sx * b.hipW, -0.035 * S, 0]);
+    r.bone('legLow' + s, 'legUp' + s, [0, -b.LU, 0]);
+    r.bone('foot' + s, 'legLow' + s, [0, -b.LL, 0]);
   }
 }
 
-export function darken(hex: number, f: number) {
-  const c = new THREE.Color(hex);
-  c.multiplyScalar(f);
-  return c.getHex();
+/** Front surface of the chest at height y (chest bone space): how far forward it is. */
+function chestFront(b: Body, y: number) {
+  const c = b.chest, t = (y - c.y) / c.ry;
+  return c.rz * Math.sqrt(Math.max(0, 1 - t * t));
 }
-export function lighten(hex: number, f: number) {
-  const c = new THREE.Color(hex);
-  c.r = Math.min(1, c.r * f + 0.02); c.g = Math.min(1, c.g * f + 0.02); c.b = Math.min(1, c.b * f + 0.02);
-  return c.getHex();
+/** Front surface of the waist at height y (spine bone space). */
+function waistFront(b: Body, y: number) {
+  const [w0, w1, w2] = b.waist, k = clamp(y / b.SC, 0, 1);
+  const rad = k < 0.45 ? lerp(w0, w1, k / 0.45) : lerp(w1, w2, (k - 0.45) / 0.55);
+  return rad * b.waistZ;
+}
+
+function torso(b: Body) {
+  const { r, spec, S, W, fem } = b;
+  const o = spec.outfit;
+  const top = spec.top, bottom = spec.bottom;
+  const skin = spec.skin;
+  const tank = o === 'tank';
+  const coatOver = b.coatLen > 0 || o.startsWith('uniform') || o === 'suit';
+  // pelvis: trousers, or the coat over them
+  r.part('hips', G.ellipsoid(b.pelvis.rx, b.pelvis.ry, b.pelvis.rz, 14, 9), coatOver ? top : bottom, { pos: [0, -0.012 * S, -0.004 * S] });
+  // waist and belly
+  const [w0, w1, w2] = b.waist;
+  r.part('spine', lathe([[w0 * 0.9, -0.03 * S], [w0, 0], [w1, b.SC * 0.45], [w2, b.SC + 0.03 * S], [w2 * 0.7, b.SC + 0.06 * S]], b.waistZ), top);
+  // ribcage and chest
+  const c = b.chest;
+  r.part('chest', G.ellipsoid(c.rx, c.ry, c.rz, 16, 11), top, { pos: [0, c.y, 0] });
+  if (fem) for (const sx of [1, -1]) r.part('chest', G.ellipsoid(0.05 * W, 0.044 * W, 0.034 * W, 12, 8), top, { pos: [sx * 0.054 * W, c.y + 0.014 * S, c.rz * 0.76], smooth: true });
+  // the slope from the neck out to the shoulders
+  // (a vest stops short of the bare shoulders)
+  r.part('chest', G.ellipsoid(tank ? b.SW * 0.72 : b.SW + 0.004 * W, 0.034 * S, 0.074 * W, 14, 7), top, { pos: [0, b.CS - 0.004 * S, -0.012 * S] });
+  r.part('chest', G.ellipsoid(b.SW * 0.55, 0.05 * S, 0.07 * W, 12, 7), top, { pos: [0, b.CS + 0.014 * S, -0.014 * S] });
+  if (tank) {
+    // a vest: bare upper chest and shoulders, a strap over each
+    r.part('chest', G.ellipsoid(c.rx * 0.45, c.ry * 0.36, c.rz * 0.5, 12, 7), skin, { pos: [0, c.y + c.ry * 0.7, c.rz * 0.58] });
+    r.part('chest', G.ellipsoid(c.rx * 0.4, c.ry * 0.3, c.rz * 0.4, 10, 6), skin, { pos: [0, c.y + c.ry * 0.82, -c.rz * 0.5] });
+  }
+}
+
+function limbs(b: Body) {
+  const { r, spec, S, W } = b;
+  const o = spec.outfit;
+  const skin = spec.skin;
+  const bare = o === 'tank';
+  const sleeve = spec.top;
+  const gloves = spec.extras?.includes('gloves');
+  const uniform = o.startsWith('uniform') && o !== 'uniformSkirt';
+  const hw = S0 * (0.75 + 0.25 * (spec.bulk ?? 1)) * (0.8 + 0.2 * (spec.height ?? 1));
+  const [a0, a1, a2, a3] = b.arm;
+  for (const s of ['L', 'R'] as const) {
+    const sx = s === 'L' ? 1 : -1;
+    // shoulder (deltoid) and arm
+    r.part('armUp' + s, G.ellipsoid(a0 * 1.08, a0 * 1.2, a0 * 1.1, 10, 8), bare ? skin : sleeve, { pos: [0, -0.02 * S, 0] });
+    r.part('armUp' + s, G.limb(a0, a1, b.AU * 0.98), bare ? skin : sleeve);
+    r.part('armLow' + s, G.limb(a2, a3, b.AL * 0.94), bare ? skin : sleeve);
+    if ((spec.bulk ?? 1) > 1.15) {
+      // biceps and forearm muscle
+      r.part('armUp' + s, G.ellipsoid(a0 * 1.12, b.AU * 0.3, a0 * 1.18, 10, 7), bare ? skin : sleeve, { pos: [0, -b.AU * 0.45, a0 * 0.18] });
+      r.part('armLow' + s, G.ellipsoid(a2 * 1.12, b.AL * 0.26, a2 * 1.1, 10, 7), bare ? skin : sleeve, { pos: [0, -b.AL * 0.25, 0] });
+    }
+    if (!bare) {
+      // the cuff, a shade darker
+      r.part('armLow' + s, G.cyl(a3 + 0.009 * W, a3 + 0.012 * W, 0.045 * S, 10, false), darken(sleeve, 0.82), { pos: [0, -b.AL * 0.86, 0] });
+    }
+    // hand: a loose fist and a thumb
+    const hc = gloves ? 0x1c1c22 : skin;
+    r.part('hand' + s, G.ellipsoid(0.03 * hw, 0.045 * hw, 0.027 * hw, 10, 8), hc, { pos: [0, -0.046 * hw, 0.004 * hw] });
+    r.part('hand' + s, G.ellipsoid(0.011 * hw, 0.024 * hw, 0.011 * hw, 6, 5), hc, { pos: [sx * -0.022 * hw, -0.032 * hw, 0.02 * hw], rot: [0, 0, sx * 0.5] });
+    // Sukuna's black bands around each wrist
+    if (spec.extras?.includes('wristMarks')) for (let i = 0; i < 2; i++) r.part('hand' + s, G.cyl(0.03 * hw, 0.03 * hw, 0.008 * hw, 10, false), 0x141014, { pos: [0, 0.012 * hw - i * 0.016 * hw, 0] });
+  }
+  const [l0, l1, l2, l3] = b.leg;
+  const skirt = o === 'uniformSkirt';
+  const legCol = skirt ? 0x1a1a1f : spec.bottom; // dark tights under a skirt
+  for (const s of ['L', 'R'] as const) {
+    r.part('legUp' + s, G.limb(l0, l1, b.LU), legCol);
+    // uniform trousers are cut wide at the ankle
+    r.part('legLow' + s, G.limb(l2, uniform ? l3 * 1.3 : l3, b.LL - 0.012 * S), legCol);
+    // shoe: the upper, the toe and a darker sole
+    const sh = spec.shoes;
+    r.part('foot' + s, G.ellipsoid(0.044 * S0, 0.04 * S0, 0.07 * S0, 10, 7), sh, { pos: [0, -0.032 * S, 0.035 * S] });
+    r.part('foot' + s, G.ellipsoid(0.043 * S0, 0.031 * S0, 0.072 * S0, 10, 6), sh, { pos: [0, -0.044 * S, 0.105 * S] });
+    r.part('foot' + s, G.box(0.088 * S0, 0.02 * S, 0.255 * S0), darken(sh, 0.5), { pos: [0, -0.062 * S, 0.05 * S] });
+  }
+}
+
+/** Coats, collars, buttons, hoods, lapels, skirts and sashes: what the outfit adds over the body. */
+function outfit(b: Body) {
+  const { r, spec, S, W } = b;
+  const o = spec.outfit;
+  const top = spec.top, accent = spec.accent;
+  const inner = spec.inner ?? 0x222222;
+  const uniform = o.startsWith('uniform');
+  const c = b.chest;
+
+  // ---- the coat's skirt: a panel on each thigh (they swing with the legs, so a stride or a kick opens the
+  // coat at the front) and one behind the hips
+  if (b.coatLen > 0.05 && b.coatLen < b.LU * 0.45) {
+    // a jacket that ends just below the hips: a fitted hem, open a little at the front
+    const L = b.coatLen + 0.1 * S;
+    const [ho, hi] = shell2(panel(b.pelvis.rx * 1.05, b.pelvis.rx * 1.1, L, 0.22, TAU - 0.44, 16, 1), 0.005 * S);
+    r.part('hips', ho, top, { pos: [0, 0.07 * S, -0.004 * S], scale: [1, 1, 0.84] });
+    r.part('hips', hi, darken(top, 0.55), { pos: [0, 0.07 * S, -0.004 * S], scale: [1, 1, 0.84] });
+  } else if (b.coatLen > 0.05) {
+    const L = b.coatLen + 0.1 * S;
+    const long = b.coatLen > b.LU * 1.2;
+    const flare = (long ? 0.08 : 0.05) * W;
+    const legCol = o === 'kimono' ? spec.bottom : top;
+    const lining = darken(legCol, 0.55);
+    const rt = 0.118 * W;
+    for (const s of ['L', 'R'] as const) {
+      const sx = s === 'L' ? 1 : -1;
+      // from just past the middle of the front, round the outer side, to the back
+      const t0 = sx > 0 ? -1.12 : -2.2, tl = 3.32;
+      const [out, inn] = shell2(panel(rt, rt + flare, L, t0, tl, 20, long ? 4 : 3), 0.006 * S);
+      const at: V3 = [sx * 0.006 * W, 0.1 * S, -0.006 * S];
+      r.part('legUp' + s, out, legCol, { pos: at });
+      r.part('legUp' + s, inn, lining, { pos: at });
+    }
+    // behind: fills the gap between the two thigh panels
+    const br = b.pelvis.rx * 1.1;
+    const [out, inn] = shell2(panel(br, br + flare * 1.4, L - 0.03 * S, Math.PI - 0.95, 1.9, 12, 3), 0.006 * S);
+    r.part('hips', out, legCol, { pos: [0, 0.04 * S, -0.008 * S] });
+    r.part('hips', inn, lining, { pos: [0, 0.04 * S, -0.008 * S] });
+  }
+
+  // ---- Jujutsu High: stand-up collar, a placket with gold buttons, a hood, the jacket hem
+  if (uniform) {
+    const high = o === 'uniformHigh';
+    const ch = (high ? 0.125 : 0.058) * S;
+    const [co, ci] = shell2(new THREE.CylinderGeometry(0.05 * S0, 0.058 * S0, ch, lp(14, 8), 1, true), 0.005 * S);
+    const cy = b.CN + ch / 2 - 0.022 * S;
+    r.part('chest', co, top, { pos: [0, cy, -0.008 * S] });
+    r.part('chest', ci, darken(top, 0.6), { pos: [0, cy, -0.008 * S] });
+    // placket: a dark seam down the front, chest then belly
+    const seam = darken(top, 0.55);
+    const yTop = b.CS - 0.01 * S;
+    r.part('chest', G.box(0.007 * W, yTop - (c.y - c.ry * 0.85), 0.004 * S), seam, { pos: [0.004 * W, (yTop + c.y - c.ry * 0.85) / 2, chestFront(b, c.y) + 0.002 * S] });
+    r.part('spine', G.box(0.007 * W, b.SC * 0.9, 0.004 * S), seam, { pos: [0.004 * W, b.SC * 0.5, waistFront(b, b.SC * 0.5) + 0.002 * S] });
+    // buttons: three down the chest, two on the belly
+    const btn = (bone: string, y: number, z: number) => {
+      r.part(bone, G.sphere(0.011 * S0, 8, 6), accent, { pos: [0.012 * W, y, z + 0.005 * S], glow: 0.25 });
+      r.part(bone, G.torus(0.006 * S0, 0.0018 * S0, 3, 8), darken(accent, 0.55), { pos: [0.012 * W, y, z + 0.0145 * S] });
+    };
+    for (let i = 0; i < 3; i++) { const y = b.CS - 0.035 * S - i * 0.075 * S; btn('chest', y, chestFront(b, y)); }
+    for (let i = 0; i < 2; i++) { const y = b.SC * (0.72 - i * 0.48); btn('spine', y, waistFront(b, y)); }
+    if (o === 'uniformSkirt') {
+      // a short jacket over the skirt: its hem flares at the hips
+      const [ho, hi] = shell2(panel(b.pelvis.rx * 1.06, b.pelvis.rx * 1.2, 0.1 * S, 0, TAU, 14, 1), 0.005 * S);
+      r.part('hips', ho, top, { pos: [0, 0.03 * S, -0.004 * S] });
+      r.part('hips', hi, darken(top, 0.6), { pos: [0, 0.03 * S, -0.004 * S] });
+    }
+  }
+  const hood = spec.hood ?? (o === 'uniformHood' ? inner : o === 'uniform' ? true : false);
+  if (hood !== false) {
+    const hc = hood === true ? top : hood;
+    // the hood's edge runs right round the collar, dipping at the front
+    const rim = new THREE.TorusGeometry(0.068 * S0, 0.022 * S0, lp(6, 4), lp(18, 10));
+    rim.rotateX(Math.PI / 2 + 0.3);
+    r.part('chest', rim, hc, { pos: [0, b.CN - 0.004 * S, -0.016 * S] });
+    // the hood itself lies folded on the upper back
+    r.part('chest', G.ellipsoid(0.112 * W, 0.085 * S, 0.05 * W, 12, 8), hc, { pos: [0, b.CN - 0.1 * S, -c.rz - 0.022 * W], rot: [0.22, 0, 0] });
+    r.part('chest', G.ellipsoid(0.07 * W, 0.045 * S, 0.026 * W, 10, 6), darken(hc, 0.55), { pos: [0, b.CN - 0.065 * S, -c.rz - 0.04 * W], rot: [0.5, 0, 0] });
+  }
+
+  // ---- suits: lapels over a white shirt, a tie, the jacket hem
+  if (o === 'suit') {
+    const lap = darken(top, 0.86);
+    r.part('chest', G.box(0.075 * W, c.ry * 1.0, 0.006 * S), 0xf2f0ea, { pos: [0, c.y + c.ry * 0.38, chestFront(b, c.y + c.ry * 0.38) - 0.002 * S], rot: [-0.16, 0, 0] });
+    for (const sx of [1, -1]) r.part('chest', G.box(0.036 * W, c.ry * 1.2, 0.008 * S), lap, { pos: [sx * 0.05 * W, c.y + c.ry * 0.22, chestFront(b, c.y + c.ry * 0.1) + 0.005 * S], rot: [-0.12, 0, -sx * 0.3] });
+    for (let i = 0; i < 2; i++) { const y = b.SC * (0.62 - i * 0.4); r.part('spine', G.sphere(0.009 * S0, 6, 5), darken(top, 0.6), { pos: [0, y, waistFront(b, y) + 0.004 * S] }); }
+  }
+  if (spec.extras?.includes('tie') || o === 'suit') {
+    if (spec.extras?.includes('tie')) {
+      // Nanami's tie is leopard print: dark rosettes over the base colour
+      const leopard = spec.extras.includes('leopardTie');
+      r.part('chest', G.box(0.028 * W, c.ry * 1.05, 0.012 * S), inner, {
+        pos: [0, c.y + c.ry * 0.18, chestFront(b, c.y + c.ry * 0.18) + 0.011 * S], rot: [-0.14, 0, 0],
+        colorFn: leopard ? (x, y, _z, col) => { if (Math.sin(x * 330 + y * 77) * Math.sin(y * 180) > 0.35) col.setHex(0x2a1a10); } : undefined,
+      });
+      r.part('chest', G.box(0.03 * W, 0.022 * S, 0.016 * S), inner, { pos: [0, b.CS - 0.03 * S, chestFront(b, b.CS - 0.03 * S) + 0.013 * S] });
+    }
+  }
+  // ---- a lab coat: open down the front over a dark top
+  if (o === 'labcoat') {
+    r.part('chest', G.box(0.08 * W, c.ry * 1.3, 0.008 * S), inner, { pos: [0, c.y + c.ry * 0.1, chestFront(b, c.y) + 0.001 * S] });
+    r.part('spine', G.box(0.07 * W, b.SC, 0.008 * S), inner, { pos: [0, b.SC * 0.5, waistFront(b, b.SC * 0.5) + 0.001 * S] });
+    for (const sx of [1, -1]) r.part('chest', G.box(0.045 * W, c.ry * 1.25, 0.012 * S), lighten(top, 1.02), { pos: [sx * 0.058 * W, c.y + c.ry * 0.05, chestFront(b, c.y) + 0.004 * S], rot: [-0.05, 0, sx * 0.2] });
+  }
+  // ---- robes and kimonos: a crossed collar, an obi sash, wide sleeves
+  if (o === 'robe' || o === 'kimono') {
+    const trim = o === 'kimono' ? (spec.inner ?? accent) : inner;
+    for (const sx of [1, -1]) r.part('chest', G.box(0.03 * W, c.ry * 1.5, 0.012 * S), trim, { pos: [sx * 0.042 * W, c.y + c.ry * 0.28, chestFront(b, c.y + c.ry * 0.1) + 0.004 * S], rot: [-0.12, 0, -sx * 0.4] });
+    r.part('spine', G.cyl(b.waist[0] * 1.06, b.waist[0] * 1.08, 0.085 * S, 16), accent, { pos: [0, 0.045 * S, 0], scale: [1, 1, b.waistZ + 0.04] });
+    for (const s of ['L', 'R'] as const) {
+      const [so, si] = shell2(panel(b.arm[2] + 0.02 * W, b.arm[2] + 0.075 * W, b.AL * 0.78, 0, TAU, 12, 1), 0.005 * S);
+      r.part('armLow' + s, so, top, { pos: [0, -0.02 * S, -0.012 * S] });
+      r.part('armLow' + s, si, darken(top, 0.6), { pos: [0, -0.02 * S, -0.012 * S] });
+    }
+  }
+  // ---- Mahito: a patchwork shirt held together with seams
+  if (o === 'patchwork') {
+    const seam = 0x5a5a6a;
+    for (let i = 0; i < 4; i++) r.part('chest', G.box(0.06 * W, 0.004 * S, 0.004 * S), seam, { pos: [0.03 * W, c.y + c.ry * (0.5 - i * 0.3), chestFront(b, c.y + c.ry * (0.5 - i * 0.3)) + 0.002 * S], rot: [0, 0, 0.5] });
+    r.part('chest', G.box(0.004 * W, c.ry * 1.4, 0.004 * S), seam, { pos: [0.03 * W, c.y, chestFront(b, c.y) + 0.002 * S] });
+    r.part('spine', G.box(0.09 * W, 0.004 * S, 0.004 * S), seam, { pos: [-0.02 * W, b.SC * 0.5, waistFront(b, b.SC * 0.5) + 0.002 * S], rot: [0, 0, -0.3] });
+  }
+  // ---- casual: an open shirt collar
+  if (o === 'casual' && spec.hood === undefined) {
+    r.part('chest', G.torus(0.052 * S0, 0.012 * S0, 4, 12), darken(top, 0.85), { pos: [0, b.CN - 0.018 * S, -0.004 * S], rot: [Math.PI / 2 + 0.25, 0, 0] });
+  }
+  // ---- a pleated skirt (uniform skirts)
+  if (o === 'uniformSkirt') {
+    const L = 0.36 * S;
+    const [so, si] = shell2(panel(b.pelvis.rx * 1.02, b.pelvis.rx * 1.75, L, 0, TAU, 16, 1), 0.005 * S);
+    const pleat = darken(spec.bottom, 0.72);
+    r.part('hips', so, spec.bottom, { pos: [0, 0.035 * S, 0], colorFn: (x, _y, z, col) => { if (Math.sin(Math.atan2(x, z) * 8) > 0.55) col.setHex(pleat); } });
+    r.part('hips', si, darken(spec.bottom, 0.5), { pos: [0, 0.035 * S, 0] });
+  }
+}
+
+function head(b: Body) {
+  const { r, spec, S } = b;
+  const skin = spec.skin;
+  const nr = (b.fem ? 0.034 : 0.04) * S0 * (0.85 + 0.15 * (spec.bulk ?? 1));
+  r.part('neck', G.cyl(nr * 0.95, nr * 1.08, b.NH + 0.07 * S, 12), skin, { pos: [0, (b.NH + 0.07 * S) / 2 - 0.02 * S, 0], smooth: true });
+  r.part('head', headGeo(b.hr), skin, { pos: b.hc, smooth: true });
+  // ears
+  for (const sx of [1, -1]) r.part('head', G.ellipsoid(0.15 * b.hr, 0.27 * b.hr, 0.11 * b.hr, 8, 6), skin, { pos: [sx * b.hr * 0.86, b.hc[1] - b.hr * 0.16, b.hc[2] - b.hr * 0.06], rot: [0, sx * 0.35, 0], smooth: true, ink: 0.5 });
+}
+
+/** Eyes, brows, nose and mouth, and the marks on a face (scars, stitches, Sukuna's eyes, glasses, masks). */
+function face(b: Body) {
+  const { r, spec, hr, hc, eyeX, eyeY, eyeZ, fk } = b;
+  const skin = spec.skin;
+  const glasses = spec.glasses ?? 'none';
+  const ex = spec.extras ?? [];
+  if (glasses !== 'blindfold') {
+    // eye shape: how open the eye is, how the lash line slants, and how heavy it is
+    const shape = spec.eyeShape ?? 'round';
+    const ey = shape === 'sharp' ? 0.78 : shape === 'narrow' ? 0.6 : shape === 'tired' ? 0.8 : 1;
+    // positive: inner corners low (a hard stare); negative: inner corners high (soft, worried, tired)
+    const slant = shape === 'sharp' ? 0.14 : shape === 'narrow' ? 0.24 : shape === 'tired' ? -0.18 : -0.08;
+    const browTilt = shape === 'sharp' ? 0.16 : shape === 'narrow' ? 0.24 : shape === 'tired' ? -0.1 : 0;
+    const glow = ex.includes('cursedEyes') ? 0.55 : 0.12;
+    for (const sx of [1, -1]) {
+      const yaw = sx * 0.32, eb = sx === 1 ? 'eyeL' : 'eyeR';
+      // eyeball, iris, pupil and highlight ride the eye bone
+      r.part(eb, G.ellipsoid(hr * 0.2, hr * 0.13 * ey, hr * 0.07, 12, 8), 0xf9f7f2, { rot: [0, yaw, 0], smooth: true });
+      r.part(eb, G.ellipsoid(hr * 0.122, hr * 0.122 * Math.max(0.8, ey), hr * 0.06, 12, 8), spec.eyes, { pos: [-sx * hr * 0.012, -hr * 0.006, hr * 0.022], rot: [0, yaw, 0], smooth: true, glow, topColor: darken(spec.eyes, 0.5) });
+      r.part(eb, G.ellipsoid(hr * 0.058, hr * 0.078 * Math.max(0.8, ey), hr * 0.035, 8, 6), 0x08080e, { pos: [-sx * hr * 0.016, -hr * 0.008, hr * 0.04], rot: [0, yaw, 0], smooth: true });
+      r.part(eb, G.sphere(hr * 0.03, 6, 4), 0xffffff, { pos: [-sx * hr * 0.03 + hr * 0.035, hr * 0.045 * ey, hr * 0.06], glow: 0.3 });
+      // upper lash line (stays put, so a closed eye reads as a line); its slant carries the expression
+      const lidY = hr * 0.125 * ey;
+      r.part('head', G.box(hr * 0.46, hr * 0.045, hr * 0.05), 0x15121a, { pos: [sx * eyeX, eyeY + lidY, eyeZ + hr * 0.025], rot: [0, yaw, sx * slant] });
+      // the outer corner flicks out a little
+      r.part('head', G.box(hr * 0.12, hr * 0.032, hr * 0.04), 0x15121a, { pos: [sx * (eyeX + hr * 0.22), eyeY + lidY - hr * 0.035, eyeZ - hr * 0.035], rot: [0, yaw * 1.5, sx * (slant - 0.55)] });
+      // a soft lower lash
+      r.part('head', G.box(hr * 0.28, hr * 0.018, hr * 0.03), darken(skin, 0.62), { pos: [sx * (eyeX + hr * 0.02), eyeY - hr * 0.12 * ey, eyeZ + hr * 0.008], rot: [0, yaw, sx * 0.08] });
+      if (shape === 'tired') r.part('head', G.ellipsoid(hr * 0.21, hr * 0.06, hr * 0.05, 10, 6), darken(skin, 0.86), { pos: [sx * eyeX, eyeY + lidY - hr * 0.04, eyeZ + hr * 0.02], rot: [0, yaw, sx * 0.08] });
+      // brow (its bone carries the tilt)
+      r.part(sx === 1 ? 'browL' : 'browR', G.box(hr * 0.34, hr * 0.045, hr * 0.045), darken(spec.hair, 0.6), { rot: [0, 0, sx * browTilt] });
+    }
+    if (ex.includes('sukunaMarks')) {
+      for (const sx of [1, -1]) {
+        // the marks under the eyes, and a second pair of eyes beneath the first
+        r.part('head', G.box(hr * 0.3, hr * 0.05, hr * 0.05), 0x8a0d18, { pos: [sx * eyeX, eyeY - hr * 0.33, eyeZ - hr * 0.01], rot: [0, sx * 0.32, 0] });
+        r.part('head', G.ellipsoid(hr * 0.12, hr * 0.06, hr * 0.05), 0xff2a3a, { pos: [sx * (eyeX + hr * 0.1), eyeY - hr * 0.2, eyeZ - hr * 0.05], rot: [0, sx * 0.45, 0], glow: 1.5 });
+      }
+    }
+  }
+  // nose
+  r.part('head', G.ellipsoid(hr * 0.065, hr * 0.13, hr * 0.07, 6, 5), darken(skin, 0.92), { pos: [0, hc[1] - hr * 0.36, hc[2] + hr * 0.84], rot: [0.3, 0, 0], smooth: true });
+  r.part('head', G.ellipsoid(hr * 0.055, hr * 0.045, hr * 0.05, 6, 5), darken(skin, 0.86), { pos: [0, hc[1] - hr * 0.45, hc[2] + hr * 0.88], smooth: true });
+  if (ex.includes('surgicalMask')) {
+    r.part('head', G.ellipsoid(hr * 0.66, hr * 0.42, hr * 0.38, 12, 8), 0xf2f2ee, { pos: [0, hc[1] - hr * 0.6, hc[2] + hr * 0.5], smooth: true });
+    for (const sx of [1, -1]) r.part('head', G.box(0.008 * fk, 0.008 * fk, hr * 0.9), 0xd8d8d0, { pos: [sx * hr * 0.66, hc[1] - hr * 0.42, hc[2]], rot: [0, sx * 0.3, 0] });
+  }
+  if (!ex.includes('collar') && !ex.includes('mask') && !ex.includes('surgicalMask')) {
+    r.part('mouth', G.box(hr * 0.26, hr * 0.035, hr * 0.04), 0x6a2a2a);
+  }
+  if (glasses === 'round' || glasses === 'shades' || glasses === 'goggles') {
+    const lens = glasses === 'shades' ? 0x101014 : glasses === 'goggles' ? 0x2a2c34 : 0x9ad8ff;
+    for (const sx of [1, -1]) {
+      r.part('head', G.torus(hr * 0.2, hr * 0.03, 5, 14), 0x222228, { pos: [sx * eyeX, eyeY, eyeZ + hr * 0.15], rot: [0, sx * 0.2, 0] });
+      r.part('head', G.ellipsoid(hr * 0.19, glasses === 'goggles' ? hr * 0.13 : hr * 0.18, hr * 0.025, 10, 6), lens, { pos: [sx * eyeX, eyeY, eyeZ + hr * 0.15], rot: [0, sx * 0.2, 0], glow: glasses === 'round' ? 0.25 : 0.05 });
+      // arms back to the ears
+      r.part('head', G.box(hr * 0.02, hr * 0.03, hr * 0.85), 0x222228, { pos: [sx * hr * 0.8, eyeY + hr * 0.02, hc[2] + hr * 0.4] });
+    }
+    r.part('head', G.box(hr * 0.24, hr * 0.03, hr * 0.03), 0x222228, { pos: [0, eyeY + hr * 0.04, eyeZ + hr * 0.17] });
+  }
+  if (glasses === 'blindfold') {
+    r.part('head', G.cyl(hr * 0.96, hr * 0.98, hr * 0.42, 18, false), 0x111116, { pos: [0, eyeY + hr * 0.04, hc[2] - hr * 0.01], scale: [0.96, 1, 1.0] });
+  }
+  if (ex.includes('eyepatch')) r.part('head', G.ellipsoid(hr * 0.22, hr * 0.22, hr * 0.06), 0x111111, { pos: [eyeX, eyeY, eyeZ + hr * 0.12] });
+  if (ex.includes('collar') || ex.includes('mask')) {
+    // a high zipped collar over the mouth (Inumaki), or a mask over the lower face
+    r.part('head', G.cyl(hr * 0.86, hr * 0.74, hr * 0.78, 16, false), ex.includes('mask') ? 0x1a1a1a : spec.top, { pos: [0, hc[1] - hr * 0.72, hc[2] + hr * 0.04] });
+  }
+  if (ex.includes('facescar') || ex.includes('scars')) r.part('head', G.box(hr * 0.05, hr * 0.5, hr * 0.04), darken(skin, 0.6), { pos: [-eyeX - hr * 0.06, eyeY - hr * 0.08, eyeZ + hr * 0.02], rot: [0, -0.3, 0.3] });
+  if (ex.includes('goatee')) {
+    r.part('head', G.ellipsoid(hr * 0.22, hr * 0.2, hr * 0.12, 8, 6), darken(spec.hair, 0.9), { pos: [0, hc[1] - hr * 0.98, hc[2] + hr * 0.62] });
+    r.part('head', G.box(hr * 0.42, hr * 0.05, hr * 0.05), darken(spec.hair, 0.9), { pos: [0, hc[1] - hr * 0.62, hc[2] + hr * 0.76] });
+  }
+  if (ex.includes('eyeBags')) for (const sx of [1, -1]) r.part('head', G.box(hr * 0.26, hr * 0.03, hr * 0.03), darken(skin, 0.68), { pos: [sx * eyeX, eyeY - hr * 0.2, eyeZ + hr * 0.02], rot: [0, sx * 0.32, sx * -0.12] });
+  if (ex.includes('mole')) r.part('head', G.sphere(hr * 0.035, 5, 4), 0x2a1a18, { pos: [-eyeX - hr * 0.06, eyeY - hr * 0.3, eyeZ - hr * 0.02], smooth: true });
+  if (ex.includes('zipper')) {
+    r.part('head', G.box(hr * 0.05, hr * 0.6, hr * 0.05), 0xb8bcc4, { pos: [0, hc[1] - hr * 0.72, hc[2] + hr * 0.86] });
+    r.part('head', G.box(hr * 0.12, hr * 0.13, hr * 0.06), 0xd8dce4, { pos: [0, hc[1] - hr * 0.42, hc[2] + hr * 0.88] });
+  }
+  if (ex.includes('hairpin')) {
+    for (let i = 0; i < 2; i++) r.part('head', G.box(hr * 0.32, hr * 0.065, hr * 0.065), 0xe8d06a, { pos: [-hr * 0.62, hc[1] + hr * (0.55 - i * 0.14), hc[2] + hr * 0.7], rot: [0, -0.5, 0.4], glow: 0.15 });
+  }
+  if (ex.includes('bloodStripe')) r.part('head', G.box(hr * 1.45, hr * 0.12, hr * 0.06), 0x5a0e16, { pos: [0, eyeY - hr * 0.2, eyeZ + hr * 0.02] });
+  if (ex.includes('browStitch')) {
+    // Kenjaku: the stitched seam across the forehead
+    r.part('head', G.box(hr * 1.3, hr * 0.035, hr * 0.04), 0x3a2a2a, { pos: [0, eyeY + hr * 0.6, eyeZ - hr * 0.12], rot: [-0.32, 0, 0] });
+    for (let i = 0; i < 7; i++) r.part('head', G.box(hr * 0.03, hr * 0.13, hr * 0.04), 0x3a2a2a, { pos: [-hr * 0.55 + i * hr * 0.18, eyeY + hr * 0.6, eyeZ - hr * 0.1], rot: [-0.32, 0, 0] });
+  }
+  if (ex.includes('stitches')) {
+    for (let i = 0; i < 6; i++) r.part('head', G.box(hr * 0.13, hr * 0.028, hr * 0.028), 0x2a2030, { pos: [-hr * 0.42 + i * hr * 0.055, eyeY - hr * 0.08 - i * hr * 0.13, eyeZ + hr * 0.04 - i * hr * 0.02], rot: [0, 0, 0.6] });
+    r.part('head', G.box(hr * 0.035, hr * 0.9, hr * 0.035), 0x2a2030, { pos: [-hr * 0.4, eyeY - hr * 0.3, eyeZ + hr * 0.02], rot: [0, 0, 0.5] });
+  }
+  if (ex.includes('stubble')) r.part('head', G.ellipsoid(hr * 0.58, hr * 0.42, hr * 0.46, 10, 6), darken(skin, 0.8), { pos: [0, hc[1] - hr * 0.72, hc[2] + hr * 0.3] });
+  if (ex.includes('piercings')) {
+    for (const sx of [1, -1]) for (let i = 0; i < 2; i++) r.part('head', G.torus(hr * 0.06, hr * 0.018, 4, 8), 0xd8dce4, { pos: [sx * hr * 0.92, hc[1] - hr * (0.2 + i * 0.16), hc[2] - hr * 0.04], rot: [0, Math.PI / 2, 0], glow: 0.3 });
+  }
+  if (ex.includes('secondFace')) {
+    // Heian-era Sukuna: a second face grown over the right side of the head
+    const fx = -hr * 0.72, fz = hc[2] + hr * 0.58;
+    r.part('head', G.ellipsoid(hr * 0.36, hr * 0.5, hr * 0.2, 10, 8), darken(skin, 0.9), { pos: [fx, hc[1] - hr * 0.08, fz], rot: [0, -0.9, 0] });
+    for (const dy of [0.1, -0.06]) r.part('head', G.ellipsoid(hr * 0.12, hr * 0.06, hr * 0.045), 0xff2a3a, { pos: [fx - hr * 0.08, hc[1] + hr * dy, fz + hr * 0.18], rot: [0, -0.9, 0], glow: 1.4 });
+    r.part('head', G.box(hr * 0.28, hr * 0.045, hr * 0.045), 0x4a0a10, { pos: [fx - hr * 0.12, hc[1] - hr * 0.36, fz + hr * 0.16], rot: [0, -0.9, 0] });
+  }
+  if (ex.includes('fourEyes')) {
+    // Tengen: a second, smaller pair of eyes above the first
+    for (const sx of [1, -1]) {
+      r.part('head', G.ellipsoid(hr * 0.13, hr * 0.15, hr * 0.06, 10, 6), 0xf9f7f2, { pos: [sx * eyeX * 0.8, eyeY + hr * 0.5, eyeZ - hr * 0.08], rot: [0, sx * 0.3, 0], smooth: true });
+      r.part('head', G.ellipsoid(hr * 0.07, hr * 0.09, hr * 0.045, 8, 6), 0x2a2a3a, { pos: [sx * eyeX * 0.8, eyeY + hr * 0.5, eyeZ - hr * 0.02], rot: [0, sx * 0.3, 0], glow: 0.2 });
+    }
+  }
+  if (ex.includes('lipScar')) r.part('head', G.box(hr * 0.035, hr * 0.26, hr * 0.04), darken(skin, 0.55), { pos: [hr * 0.09, hc[1] - hr * 0.74, hc[2] + hr * 0.72], rot: [0, 0, -0.2] });
+}
+
+/** Accessories and what a character carries: weapons in hand, the polearm, Toji's worm, a scarf, a stole. */
+function extras(b: Body) {
+  const { r, spec, S, W } = b;
+  const ex = spec.extras ?? [];
+  const c = b.chest;
+  if (ex.includes('backPolearm')) {
+    // Maki: a cursed polearm slung across her back
+    const z = -c.rz - 0.03 * W;
+    r.part('chest', G.cyl(0.014 * S0, 0.014 * S0, 1.55 * S0, 6), 0x5a3a24, { pos: [0, c.y, z], rot: [0, 0, 0.7] });
+    const ux = -Math.sin(0.7), uy = Math.cos(0.7);
+    r.part('chest', G.cone(0.03 * S0, 0.26 * S0, 4), 0xc8ccd4, { pos: [ux * 0.9 * S0, c.y + uy * 0.9 * S0, z], rot: [0, 0, 0.7], glow: 0.08 });
+    r.part('chest', G.box(0.04 * S0, 0.06 * S0, 0.04 * S0), 0x2a2a30, { pos: [ux * 0.74 * S0, c.y + uy * 0.74 * S0, z], rot: [0, 0, 0.7] });
+    // the strap across the chest
+    r.part('chest', G.box(0.026 * W, c.ry * 2.2, 0.012 * S), 0x3a2a20, { pos: [0, c.y + 0.01 * S, chestFront(b, c.y) + 0.006 * S], rot: [-0.1, 0, -0.7] });
+  }
+  if (ex.includes('bandage')) {
+    r.part('armUpL', G.cyl(b.arm[0] * 1.15, b.arm[0] * 1.15, 0.1 * S, 10), 0xf4f0e8, { pos: [0, -0.12 * S, 0] });
+    r.part('armUpL', G.box(0.026 * S0, 0.045 * S0, 0.016 * S0), 0xc02a2a, { pos: [0.018 * S0, -0.1 * S, b.arm[0] * 1.15] });
+  }
+  if (ex.includes('bellyMouth')) {
+    r.part('spine', G.ellipsoid(b.waist[1] * 0.55, 0.045 * S, 0.03 * W, 12, 6), 0x3a0810, { pos: [0, b.SC * 0.35, waistFront(b, b.SC * 0.35)], glow: 0.2 });
+    for (let i = 0; i < 6; i++) r.part('spine', G.cone(0.011 * S0, 0.032 * S0, 4), 0xf4efe0, { pos: [(i - 2.5) * b.waist[1] * 0.16, b.SC * 0.35 + 0.025 * S, waistFront(b, b.SC * 0.35) + 0.01 * S], rot: [Math.PI, 0, 0] });
+  }
+  if (ex.includes('scarf')) {
+    const col = spec.inner ?? 0x8a2a2a;
+    r.part('neck', G.torus(0.06 * S0, 0.026 * S0, 6, 14), col, { pos: [0, -0.01 * S, 0.006 * S], rot: [Math.PI / 2, 0, 0] });
+    r.part('chest', G.box(0.07 * W, 0.24 * S, 0.026 * S), col, { pos: [0.06 * W, b.CS - 0.1 * S, chestFront(b, b.CS - 0.1 * S) + 0.012 * S], rot: [0.12, 0, 0.12] });
+  }
+  if (ex.includes('ring')) r.part('handL', G.torus(0.012 * S0, 0.004 * S0, 4, 8), 0xd8dce4, { pos: [-0.008 * S0, -0.07 * S0, 0.018 * S0], rot: [Math.PI / 2, 0, 0], glow: 0.6 });
+  // held weapons for NPCs and human bosses (the player's weapon is attached separately)
+  if (ex.includes('katana')) {
+    r.part('handR', G.cyl(0.016 * S0, 0.018 * S0, 0.24 * S0, 6), 0x1a1a22, { pos: [0, -0.06 * S0, 0.02 * S0], rot: [Math.PI / 2, 0, 0] });
+    r.part('handR', G.box(0.09 * S0, 0.018 * S0, 0.036 * S0), 0x8a7a4a, { pos: [0, -0.06 * S0, 0.15 * S0], rot: [Math.PI / 2, 0, 0] });
+    r.part('handR', G.box(0.028 * S0, 0.008 * S0, 0.82 * S0), 0xe8ecf4, { pos: [0, -0.06 * S0, 0.57 * S0], glow: 0.15 });
+  }
+  if (ex.includes('gavel')) {
+    r.part('handR', G.cyl(0.016 * S0, 0.02 * S0, 0.5 * S0, 6), 0x5a3a24, { pos: [0, -0.06 * S0, 0.18 * S0], rot: [Math.PI / 2, 0, 0] });
+    r.part('handR', G.cyl(0.065 * S0, 0.065 * S0, 0.22 * S0, 10), 0x7a5232, { pos: [0, -0.06 * S0, 0.44 * S0], rot: [0, 0, Math.PI / 2] });
+    for (const sx of [-1, 1]) r.part('handR', G.cyl(0.07 * S0, 0.07 * S0, 0.022 * S0, 10), 0xd8b04a, { pos: [sx * 0.1 * S0, -0.06 * S0, 0.44 * S0], rot: [0, 0, Math.PI / 2], glow: 0.2 });
+  }
+  if (ex.includes('staff')) {
+    r.part('handR', G.cyl(0.018 * S0, 0.018 * S0, 1.5 * S0, 6), 0x2a3a5a, { pos: [0, -0.06 * S0, 0.1 * S0], rot: [Math.PI / 2, 0, 0] });
+    for (const z of [-0.62, 0.82]) r.part('handR', G.cyl(0.028 * S0, 0.028 * S0, 0.08 * S0, 6), 0x6adfff, { pos: [0, -0.06 * S0, z * S0], rot: [Math.PI / 2, 0, 0], glow: 0.9 });
+  }
+  if (ex.includes('scissors')) {
+    for (const sx of [-1, 1]) r.part('handR', G.box(0.018 * S0, 0.008 * S0, 0.7 * S0), 0xc8ccd4, { pos: [sx * 0.018 * S0, -0.06 * S0, 0.38 * S0], rot: [0, sx * 0.12, 0], glow: 0.1 });
+    r.part('handR', G.torus(0.036 * S0, 0.011 * S0, 5, 10), 0x3a1a1a, { pos: [0, -0.06 * S0, 0.0], rot: [Math.PI / 2, 0, 0] });
+  }
+  if (ex.includes('wormCurse')) {
+    // Toji's inventory curse, coiled around his shoulders
+    for (let i = 0; i < 12; i++) {
+      // round the neck and down across the chest, like a sash
+      const a = -1.5 + i * 0.32;
+      const rr = b.SW * 0.82 + 0.02 * W, y = b.CS + 0.035 * S - Math.max(0, i - 6) * 0.045 * S;
+      r.part('chest', G.sphere((0.036 - i * 0.0012) * S0, 8, 6), i % 2 ? 0x8a6aa0 : 0x7a5a90, { pos: [Math.sin(a) * rr * (i > 6 ? 0.8 : 1), y, Math.cos(a) * c.rz * 1.25 - 0.01 * S], smooth: true });
+    }
+    r.part('chest', G.sphere(0.022 * S0, 6, 4), 0xffd23a, { pos: [Math.sin(-1.5) * (b.SW * 0.82 + 0.02 * W), b.CS + 0.06 * S, Math.cos(-1.5) * c.rz * 1.25 + 0.012 * S], glow: 1.2 });
+  }
+  if (ex.includes('kesa')) {
+    // a monk's stole draped over one shoulder (Geto)
+    r.part('chest', G.box(0.08 * W, c.ry * 2.6, 0.026 * S), spec.accent, { pos: [0.04 * W, c.y + 0.02 * S, chestFront(b, c.y) + 0.012 * S], rot: [0.05, 0, -0.5] });
+    r.part('chest', G.box(0.08 * W, c.ry * 2.3, 0.026 * S), spec.accent, { pos: [-0.02 * W, c.y + 0.02 * S, -c.rz - 0.012 * S], rot: [-0.05, 0, -0.5] });
+  }
 }
 
 // ------------------------------------------------------------------------
@@ -1053,7 +1021,8 @@ export class HumanoidAnimator {
       case 'sit': {
         b.legUpL.rotation.x = -1.5; b.legUpR.rotation.x = -1.5;
         b.legLowL.rotation.x = 1.5; b.legLowR.rotation.x = 1.5;
-        b.hips.position.y -= 0.4;
+        // the seat is about a thigh's length below standing hips
+        b.hips.position.y -= -this.m.rest.legLowL.pos.y * 0.92;
         break;
       }
       case 'die':
