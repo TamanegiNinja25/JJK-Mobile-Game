@@ -22,6 +22,8 @@ export interface PartOpts {
    * camera side are lifted towards white by up to `k`. Used on hair.
    */
   shine?: { y: number; band: number; k: number };
+  /** ink outline width against the model's (1 = full). Small features (eyes, brows) use a finer line. */
+  ink?: number;
 }
 
 /**
@@ -91,7 +93,11 @@ export function bakePart(src: THREE.BufferGeometry, color: number, o: PartOpts =
   if (LOW_POLY.faceted && !o.smooth) facet(g);
   g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   g.setAttribute('glow', new THREE.BufferAttribute(glow, 1));
-  g.applyMatrix4(partMatrix(o));
+  const pm = partMatrix(o);
+  g.applyMatrix4(pm);
+  // the outline's normals turn with the part (applyMatrix4 only turns the standard normal)
+  const sn = g.getAttribute('snormal') as THREE.BufferAttribute;
+  sn.applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(pm));
   if (o.shine) {
     const P = g.getAttribute('position') as THREE.BufferAttribute, N = g.getAttribute('normal') as THREE.BufferAttribute, C = g.getAttribute('color') as THREE.BufferAttribute;
     const { y, band, k } = o.shine;
@@ -102,7 +108,9 @@ export function bakePart(src: THREE.BufferGeometry, color: number, o: PartOpts =
       C.setXYZ(i, C.getX(i) + (1 - C.getX(i)) * t, C.getY(i) + (1 - C.getY(i)) * t, C.getZ(i) + (1 - C.getZ(i)) * t);
     }
   }
-  if (extraMatrix) g.applyMatrix4(extraMatrix);
+  if (extraMatrix) { g.applyMatrix4(extraMatrix); sn.applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(extraMatrix)); }
+  // the outline width rides on the length of the outline normal
+  if (o.ink !== undefined && o.ink !== 1) for (let i = 0; i < sn.count; i++) sn.setXYZ(i, sn.getX(i) * o.ink, sn.getY(i) * o.ink, sn.getZ(i) * o.ink);
   return g;
 }
 

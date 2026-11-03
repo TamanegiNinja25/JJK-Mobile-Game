@@ -118,12 +118,13 @@ export function outlineMaterial(width = 0.022, color = 0x07060c): THREE.MeshBasi
   if (!m) {
     m = new THREE.MeshBasicMaterial({ color, side: THREE.BackSide });
     m.onBeforeCompile = (shader) => {
-      // expand along the smooth normal so faceted models keep an unbroken ink line
+      // expand along the smooth normal so faceted models keep an unbroken ink line; its length is the part's
+      // share of the width (a finer line round eyes and brows, see PartOpts.ink)
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', '#include <common>\nattribute vec3 snormal;')
         .replace(
           '#include <begin_vertex>',
-          `#include <begin_vertex>\nvec3 hullN = dot(snormal, snormal) > 0.0 ? normalize(snormal) : normalize(normal);\ntransformed += hullN * ${width.toFixed(4)};`,
+          `#include <begin_vertex>\nvec3 hullN = dot(snormal, snormal) > 0.0 ? snormal : normalize(normal);\ntransformed += hullN * ${width.toFixed(4)};`,
         );
       injectOcclusion(shader, true);
     };

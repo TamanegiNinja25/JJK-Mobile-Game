@@ -17,6 +17,7 @@ import { samples, SAMPLES, STEPS } from './audio/Samples';
 import { customModels, withCustomModel } from './render/models/imported';
 import { buildCharacter } from './render/models/characters';
 import { wrapHumanoid } from './render/models/model';
+import * as THREE from 'three';
 
 function showFatal(msg: string) {
   const d = document.createElement('div');
@@ -39,4 +40,4 @@ game.start();
 
 // debugging/test hooks
 (window as any).__dbg = { atlas: getAtlas, skillIcon, itemIcon, SKILLS, ITEMS, audio, QUESTS, MAPS, TRAVEL_LIST, ENEMIES, CLASSES, makeItem, confirmDialog, updates, LINES, samples, SAMPLES, STEPS, media, customModels,
-  mk: (id: string) => withCustomModel(id, wrapHumanoid(buildCharacter(id))) };
+  mk: (id: string) => withCustomModel(id, wrapHumanoid(buildCharacter(id))), THREE };

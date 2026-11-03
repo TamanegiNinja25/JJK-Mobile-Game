@@ -12,7 +12,7 @@ import { media } from '../core/CustomMedia';
 
 export type Mood = 'neutral' | 'happy' | 'angry' | 'surprised' | 'sad';
 
-const W = 300, H = 400;
+const W = 384, H = 512;
 /** ids with nobody to draw */
 const NO_ART = new Set(['narrator', 'board']);
 
@@ -118,11 +118,13 @@ export class Busts {
     model.update(0.016);
     const b = model.rig.bones;
     const f = FACE[mood];
+    // brow lifts were tuned on the old chibi head: a face of another size moves its brows in proportion
+    const fk = (model.rig as { faceK?: number }).faceK ?? 1;
     for (const s of ['L', 'R'] as const) {
       const sx = s === 'L' ? 1 : -1;
       b['eye' + s]?.scale.set(1, f[0], 1);
       const brow = b['brow' + s];
-      if (brow) { brow.position.y = model.rig.rest['brow' + s].pos.y + f[1]; brow.rotation.z = sx * f[2]; }
+      if (brow) { brow.position.y = model.rig.rest['brow' + s].pos.y + f[1] * fk; brow.rotation.z = sx * f[2]; }
     }
     // mouth: the open frame drops the jaw a little further for each mood
     b.mouth?.scale.set(f[3] * (open ? 0.85 : 1), f[4] * (open ? 3.1 : 1), 1);
@@ -137,9 +139,18 @@ export class Busts {
     root.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(root);
     const h = box.max.y - Math.max(0, box.min.y);
-    const top = box.max.y + h * 0.07;
-    // humanoids from the waist up; curses come in all shapes, so show more of them
-    const span = h * (creature ? 0.7 : 0.62);
+    let top = box.max.y + h * 0.07;
+    // curses come in all shapes, so show more of them
+    let span = h * (creature ? 0.7 : 0.62);
+    // people (realistic proportions since 2.7.9): head, shoulders and chest, sized from where the head is
+    const hb = !creature ? b.head : undefined;
+    if (hb) {
+      const hy = hb.getWorldPosition(new THREE.Vector3()).y;
+      // the built-in heads know their size; an imported model is measured
+      const head = fk !== 1 ? fk * 0.215 * 2.5 : Math.max(0.12, box.max.y - hy);
+      top = hy + head * 1.12;
+      span = Math.min(span, head * 2.75);
+    }
     const cy = top - span / 2;
     const dist = (span / 2) / Math.tan(THREE.MathUtils.degToRad(this.cam.fov / 2)) * 1.04;
     this.cam.position.set(-0.08 * dist, cy + span * 0.04, dist);

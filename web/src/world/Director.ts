@@ -169,7 +169,8 @@ export class Director {
         this.root.classList.toggle('s2', k > (short ? 0.3 : 0.42));
         const e = ease(k);
         // the face sits a little below centre, clear of the 領域展開 band across the top
-        this.front(caster, h * (1.75 - e * 0.65), h * (0.45 - e * 0.75), h * (0.74 + e * 0.06), h * 0.92);
+        // (realistic proportions since 2.7.9: a smaller head, so the camera comes in closer)
+        this.front(caster, h * (1.4 - e * 0.55), h * (0.36 - e * 0.62), h * (0.8 + e * 0.05), h * 0.9);
         if (!flashed && k > 0.9) { flashed = true; this.game.world.fx.flash(enemy ? '#ff2a3a' : '#ffffff', 0.85, 0.5); }
       },
       end: done,

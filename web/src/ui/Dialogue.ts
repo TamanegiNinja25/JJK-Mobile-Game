@@ -31,7 +31,7 @@ class Stand {
   constructor(side: 'left' | 'right', parent: HTMLElement) {
     this.root = el('div', `vn-stand ${side} empty`);
     this.c = [el('canvas', 'vn-art shut'), el('canvas', 'vn-art open')];
-    for (const c of this.c) { c.width = 300; c.height = 400; this.root.appendChild(c); }
+    for (const c of this.c) { c.width = 384; c.height = 512; this.root.appendChild(c); }
     parent.appendChild(this.root);
   }
 
@@ -41,7 +41,12 @@ class Stand {
     const art = game.busts.get(id, mood);
     if (!art) { this.clear(); return false; }
     const swap = id !== this.id;
-    for (let i = 0; i < 2; i++) { const x = this.c[i].getContext('2d')!; x.clearRect(0, 0, 300, 400); x.drawImage(art[i], 0, 0); }
+    for (let i = 0; i < 2; i++) {
+      // the canvas takes the art's own size (the CSS sets how big it shows)
+      const c = this.c[i];
+      if (c.width !== art[i].width || c.height !== art[i].height) { c.width = art[i].width; c.height = art[i].height; }
+      const x = c.getContext('2d')!; x.clearRect(0, 0, c.width, c.height); x.drawImage(art[i], 0, 0);
+    }
     this.root.style.setProperty('--glow', BG[id]?.[0] ?? '#9a7aff');
     this.root.classList.toggle('own', game.busts.isOwn(id));
     this.root.classList.remove('empty');
