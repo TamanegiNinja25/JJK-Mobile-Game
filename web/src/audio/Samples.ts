@@ -1,5 +1,6 @@
-// Recorded sound effects: Kenney's CC0 packs (Impact Sounds, RPG Audio, Interface Sounds, www.kenney.nl),
-// shipped in www/sfx as small Ogg Opus clips. A named sound the game plays can have a few takes. Each time,
+// Recorded sound effects: Kenney's CC0 packs (Impact Sounds, RPG Audio, Interface Sounds, www.kenney.nl) and
+// CC0 packs from itch.io (ognomo's Retro Horror and Lo-Fi Fantasy SFX, SquigglyFish's Hit & Impact sampler),
+// shipped in www/sfx as small Ogg Opus clips with AAC copies for iPhone and iPad. A named sound the game plays can have a few takes. Each time,
 // one is picked at random (never the same take twice running) and re-pitched a touch. A take either replaces
 // the synthesised sound or plays over a quieter copy of it, so a punch keeps its low thump and gains a real
 // smack. Cursed techniques, domains and music stay synthesised. Settings → Audio → Sound effects switches
@@ -26,15 +27,15 @@ export const SAMPLES: Record<string, SampleDef> = {
   punch: { files: takes('impactPunch_medium_', 5), vol: 0.58, synth: 0.5 },
   hit: { files: takes('impactPunch_medium_', 5), vol: 0.32, synth: 0.55 },
   kick: { files: takes('impactPunch_heavy_', 5), vol: 0.61, synth: 0.5 },
-  crit: { files: takes('impactPunch_heavy_', 5), vol: 1.0, synth: 0.7 },
+  crit: { files: takes('critHit', 5, 1, 1), vol: 0.75, synth: 0.6 },
   slash: { files: ['knifeSlice', 'knifeSlice2', 'chop'], vol: 0.44, synth: 0.55 },
   swing: { files: takes('cloth', 4, 1, 1), vol: 0.15, synth: 0.8, rate: 1.15 },
   swingHeavy: { files: takes('cloth', 4, 1, 1), vol: 0.21, synth: 0.85, rate: 0.8 },
   dash: { files: takes('cloth', 4, 1, 1), vol: 0.19, synth: 0.9, rate: 1.3 },
-  block: { files: [...takes('impactPlate_medium_', 3), ...takes('impactMetal_medium_', 3)], vol: 0.6, synth: 0.45 },
+  block: { files: [...takes('impactPlate_medium_', 3), ...takes('shieldBlock', 5, 1, 1)], vol: 0.55, synth: 0.45 },
   hurt: { files: takes('impactSoft_heavy_', 5), vol: 0.47, synth: 0.75 },
   land: { files: takes('impactSoft_heavy_', 5), vol: 0.66, synth: 0.6, rate: 0.9 },
-  stomp: { files: takes('impactMining_', 5), vol: 0.58, synth: 0.8, rate: 0.85 },
+  stomp: { files: takes('groundSlam', 5, 1, 1), vol: 0.55, synth: 0.7, rate: 0.9 },
   // ---- cursed tools and props ----
   hammer: { files: takes('impactMetal_heavy_', 5), vol: 1.0, synth: 0.8 },
   nail: { files: takes('impactMetal_light_', 5), vol: 0.39, synth: 0.6, rate: 1.1 },
@@ -42,7 +43,14 @@ export const SAMPLES: Record<string, SampleDef> = {
   squish: { files: takes('impactSoft_medium_', 3), vol: 0.78, synth: 0.6 },
   shatter: { files: takes('impactGlass_heavy_', 3), vol: 1.0, synth: 0.8 },
   gavel: { files: takes('impactWood_heavy_', 3), vol: 1.0, synth: 0.9 },
-  explosion: { files: takes('impactMining_', 5), vol: 1.0, synth: 1, rate: 0.7 },
+  explosion: { files: takes('groundSlam', 5, 1, 1), vol: 0.8, synth: 1, rate: 0.75 },
+  shockwave: { files: takes('energyHit', 5, 1, 1), vol: 0.5, synth: 0.8, rate: 0.85 },
+  // ---- cursed spirits (ognomo's CC0 Retro Horror and Lo-Fi Fantasy packs, itch.io) ----
+  growl: { files: takes('monsterGrowl', 4, 1, 1), vol: 0.5, synth: 0.6, rate: 0.85 },
+  roar: { files: takes('ogreRoar', 5, 1, 1), vol: 0.62, synth: 0.8, rate: 0.7 },
+  screech: { files: takes('curseScreech', 6, 1, 1), vol: 0.45, synth: 0.55 },
+  curse: { files: takes('ghostImpact', 4, 1, 1), vol: 0.5, synth: 0.7 },
+  potion: { files: takes('potionUse', 2, 1, 1), vol: 0.45, synth: 0.4 },
   // ---- menus and the world ----
   click: { files: takes('click_', 5, 1), vol: 0.59 },
   tab: { files: takes('select_', 4, 1), vol: 0.21 },
@@ -82,19 +90,31 @@ class SampleBank {
     if (this.started) return;
     this.started = true;
     const all = sampleFiles();
+    // Ogg everywhere it plays (Android); iPhone and iPad get the AAC copies of the same clips
+    let ext = 'ogg';
+    try { if (!new Audio().canPlayType('audio/ogg; codecs="opus"')) ext = 'm4a'; } catch { ext = 'm4a'; }
+    const decode = async (url: string) => {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const data = await r.arrayBuffer();
+      return new Promise<AudioBuffer>((res, rej) => {
+        // the callback form also works on older Android WebViews
+        const p = ctx.decodeAudioData(data, res, rej) as Promise<AudioBuffer> | undefined;
+        p?.catch?.(rej);
+      });
+    };
     let i = 0;
     const worker = async () => {
       while (i < all.length) {
         const f = all[i++];
         try {
-          const r = await fetch(base + f + '.ogg');
-          if (!r.ok) throw new Error('HTTP ' + r.status);
-          const data = await r.arrayBuffer();
-          const buf = await new Promise<AudioBuffer>((res, rej) => {
-            // the callback form also works on older Android WebViews
-            const p = ctx.decodeAudioData(data, res, rej) as Promise<AudioBuffer> | undefined;
-            p?.catch?.(rej);
-          });
+          let buf: AudioBuffer;
+          try { buf = await decode(base + f + '.' + ext); } catch (e) {
+            // a browser that claims Ogg but can't decode it: the AAC copy, and AAC from then on
+            if (ext !== 'ogg') throw e;
+            buf = await decode(base + f + '.m4a');
+            ext = 'm4a';
+          }
           this.bufs.set(f, buf);
           this.loaded++;
         } catch {

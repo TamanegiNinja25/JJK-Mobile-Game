@@ -3,6 +3,56 @@
 All notable changes to Cursed Chronicles. Every release since 1.2.0 installs over the
 previous one and keeps your saves.
 
+## 2.8.0 — One-on-one boss phases, iPhone and iPad, and new street props, sounds and effects
+
+### Boss fights: one on one, in three stages
+- When a boss fight starts, the area's other curses scatter and stand down. None respawn
+  until the fight ends, and none join in. A curse already fighting you backs off.
+- Only bosses that summon (Mahito, Geto, Kenjaku, Dagon, Hanami and a few more) still bring
+  in their own help, and only that help fights alongside them.
+- Every boss now has three stages, marked on its health bar at 50% and 20%. It starts at
+  full strength. At **half health** (PHASE 2) it roars and hits 25% harder, attacks about 18%
+  more often and moves faster. Below **20%** (FINAL PHASE) it hits 50% harder, attacks 40%
+  more often and moves faster still. Each boss's own phases and summons stay as they were.
+
+### iPhone and iPad
+- The game now runs on iPhone and iPad as a home-screen web app. Open
+  **tamanegininja25.github.io/JJK-Mobile-Game** in Safari, tap **Share → Add to Home
+  Screen**, and start it from there. It runs full screen and offline, and keeps its saves on
+  the device.
+- The title screen shows the install steps in Safari. In portrait, a screen asks you to
+  turn the device sideways.
+- The web app updates itself with each release. When the new version has downloaded, the
+  update notice offers **Restart**.
+- iPhone and iPad play the recorded sounds in AAC (Safari may not play Ogg). Sound comes
+  back after a call or Siri, and your own 3D models can be picked from Files.
+- Each release publishes the web app to GitHub Pages along with the APK.
+
+### New street props, sounds and effects (free assets from itch.io)
+- **Japanese back streets** in Kawasaki and around Yasohachi Bridge use the *PSX Japanese
+  Town Kit Free* by heyheythere (CC BY 4.0):
+  - striped utility poles, now strung with wires;
+  - a drinks vending machine and a red post box;
+  - curve mirrors and can bins;
+  - concrete block walls with gateposts.
+
+  If the kit can't be read, the game's own props are used instead.
+- **Effects** from *PVFX Foundry* by nerijs (CC0):
+  - hit sparks and critical-hit flashes;
+  - a ground slam under shockwaves and a red burst in Black Flash;
+  - a skull of cursed energy as a curse is exorcised, and a collapse into the void when a
+    boss falls;
+  - a cursed-energy bloom when a boss enters a new stage.
+- **Recorded sounds** from CC0 packs by ognomo (Retro Horror, Lo-Fi Lo-Fantasy) and
+  SquigglyFish (Hit & Impact). Cursed spirits growl, roar and screech, Geto's spirits land
+  with ghostly impacts, and crits, ground slams, blocks, shockwaves and potions sound
+  heavier. As before, each one is layered over the synthesised sound.
+- Not shipped: fan-made Jujutsu Kaisen character models and sounds taken from the anime.
+  Their owners haven't allowed them to be shared. The same goes for packs whose licence
+  forbids sharing the files themselves, because this repository is public. Characters are
+  still built in the game's own code. You can add your own models, pictures and sounds
+  under **Settings → Your own files**.
+
 ## 2.7.9 — A new look for every character
 
 ### Realistic proportions for every character

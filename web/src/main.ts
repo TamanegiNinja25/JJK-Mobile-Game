@@ -2,6 +2,8 @@
 import { LINES } from './rpg/Reruns';
 import { confirmDialog } from './ui/Confirm';
 import { updates } from './core/Updates';
+import { initWebApp } from './core/Platform';
+import { loadTownKit } from './render/models/townKit';
 import { getAtlas } from './world/atlas';
 import { Game } from './Game';
 import { skillIcon, itemIcon } from './ui/Icons';
@@ -34,9 +36,11 @@ document.addEventListener('gesturestart', (e) => e.preventDefault());
 
 // the player's own pictures, sounds and 3D models load in the background
 void media.init().then(() => customModels.loadAll()).then(() => game.onCustomModels());
+initWebApp();
 const game = new Game();
 (window as any).game = game;
-game.start();
+// the street-prop kit is read before the first map is built (a few small local files; never waits long)
+void Promise.race([loadTownKit(), new Promise(r => setTimeout(r, 4000))]).then(() => game.start());
 
 // debugging/test hooks
 (window as any).__dbg = { atlas: getAtlas, skillIcon, itemIcon, SKILLS, ITEMS, audio, QUESTS, MAPS, TRAVEL_LIST, ENEMIES, CLASSES, makeItem, confirmDialog, updates, LINES, samples, SAMPLES, STEPS, media, customModels,

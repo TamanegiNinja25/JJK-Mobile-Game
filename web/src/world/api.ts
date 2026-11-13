@@ -84,6 +84,8 @@ export interface FxAPI {
   burst(x: number, y: number, z: number, color: number, count?: number, speed?: number, size?: number, life?: number, additive?: boolean): void;
   slash(x: number, z: number, dir: number, radius: number, color: number, arc?: number, tilt?: number, y?: number): void;
   shockwave(x: number, z: number, radius: number, color: number): void;
+  /** a sprite-sheet effect (see render/fxSheets.ts), played once facing the camera */
+  sheet(name: import('../render/fxSheets').FxSheetName, x: number, y: number, z: number, size: number, speed?: number, tint?: number, opacity?: number): void;
   lightning(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, color: number, width?: number): void;
   pillar(x: number, z: number, radius: number, height: number, color: number, dur?: number): void;
   sigil(x: number, z: number, radius: number, color: number, dur?: number): void;

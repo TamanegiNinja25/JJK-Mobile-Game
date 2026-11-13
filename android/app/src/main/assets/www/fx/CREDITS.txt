@@ -1,0 +1,4 @@
+Sprite-sheet effects from PVFX Foundry by nerijs (https://nerijs.itch.io/pvfx-foundry), CC0 1.0.
+hitSpark = impacts/hit-spark, critHit = impacts/crit-hit, groundSlam = impacts/ground-slam, shockRing = impacts/shockwave-ring,
+curseSkull = shadow/curse, voidImplode = shadow/void-implosion, cursedBloom = explosions/arcane-burst, staticBurst = lightning/static-burst
+(the "lit" tier, grid layout, unchanged).

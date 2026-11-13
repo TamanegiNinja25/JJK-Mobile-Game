@@ -47,6 +47,14 @@ jobs:
           npm run typecheck
           npm run build
 
+      - name: Upload the web app
+        # the same files as the APK's, hosted on GitHub Pages as the iPhone/iPad home-screen app
+        uses: actions/upload-artifact@v4
+        with:
+          name: CursedChronicles-web
+          path: android/app/src/main/assets/www
+          if-no-files-found: error
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -117,3 +125,30 @@ jobs:
           prerelease: ${{ inputs.prerelease && 'true' || '' }}
           files: dist/CursedChronicles.apk
           generate_release_notes: ${{ github.event_name == 'push' }}
+
+  web:
+    # Publishes the web app (iPhone/iPad "Add to Home Screen" version) to the gh-pages branch, which
+    # GitHub Pages serves at https://tamanegininja25.github.io/JJK-Mobile-Game/. Runs with each release.
+    if: github.event_name == 'release' || inputs.release_tag != '' || startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: CursedChronicles-web
+          path: site
+
+      - name: Push to gh-pages
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd site
+          touch .nojekyll
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Web app for ${{ github.event.release.tag_name || inputs.release_tag || github.ref_name }}"
+          git push -f "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" gh-pages

@@ -702,7 +702,7 @@ export class Menus {
         <div class="set-label">Quest hints</div>
         <div class="chips">${ch('hints', 'on', 'When I\'m stuck')}${ch('hints', 'off', 'Off')}</div>
         <div class="help">Spoken voices use your phone's text-to-speech engine; if it isn't available the character voices are used. Tap AUTO in a conversation to let lines advance by themselves, or SKIP to fast-forward.</div>
-        <div class="credits">Cursed Chronicles is an unofficial, non-commercial fan game inspired by Jujutsu Kaisen and Zenonia. Models, music and cursed-technique sounds are procedurally generated. Recorded sound effects: Kenney (www.kenney.nl), CC0. Jujutsu Kaisen © Gege Akutami / Shueisha.</div>
+        <div class="credits">Cursed Chronicles is an unofficial, non-commercial fan game inspired by Jujutsu Kaisen and Zenonia. Characters, music and cursed-technique sounds are procedurally generated. Recorded sound effects: Kenney (www.kenney.nl), ognomo and SquigglyFish (itch.io), CC0. Street props: PSX Japanese Town Kit Free by heyheythere - https://heyheythere.itch.io/psx-japanese-town-kit-free - CC BY 4.0. Effects: PVFX Foundry by nerijs (itch.io), CC0. Jujutsu Kaisen © Gege Akutami / Shueisha.</div>
       </div>
     </div>`;
   }

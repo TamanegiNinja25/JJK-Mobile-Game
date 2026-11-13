@@ -30,6 +30,13 @@ abstract class BossBase implements BossScript {
   busy = 0;
   cds: Record<string, number> = {};
   phase = 0;
+  /**
+   * The fight's three stages, the same for every boss: 1 above half health, 2 from half health, 3 (the final
+   * phase) from a fifth. Each hits harder, attacks more often and moves faster than the last.
+   */
+  stage = 1;
+  /** how much faster moves come round in this stage */
+  private rate = 1;
   private fired = new Set<string>();
   intro = true;
 
@@ -48,6 +55,8 @@ abstract class BossBase implements BossScript {
     for (const k in this.cds) this.cds[k] -= dt;
     if (this.busy > 0) { this.busy -= dt; return true; }
     const e = this.e;
+    const stage = this.hpPct > 0.5 ? 1 : this.hpPct > 0.2 ? 2 : 3;
+    if (stage > this.stage) { this.stage = stage; this.enterStage(stage); return true; }
     for (const p of this.phases()) if (this.hpPct <= p.at) this.once(p.id, () => { this.phase++; p.run(); });
     const t = this.t;
     if (!t.alive) return false;
@@ -70,15 +79,28 @@ abstract class BossBase implements BossScript {
         if (VOICES[vk]) voice.bark('boss' + e.id, VOICES[vk], 'kiai', 0.9);
       }
       this.busy = mv.dur;
-      this.cds[mv.id] = mv.cd;
-      e.atkCd = 0.35 / e.enrage;
+      this.cds[mv.id] = mv.cd / this.rate;
+      e.atkCd = 0.35 / e.enrage / this.rate;
       return true;
     }
     // close distance
-    const spd = e.d.speed * (e.slowT > 0 ? e.slowMul : 1) * (e.enrage > 1 ? 1.15 : 1);
+    const spd = e.d.speed * (e.slowT > 0 ? e.slowMul : 1) * (e.enrage > 1 ? 1.15 : 1) * (1 + (this.stage - 1) * 0.1);
     if (dist > 2.2) e.moveToward(t.x, t.z, spd, dt);
     else e.faceTowards(t.x, t.z, dt, 6);
     return true;
+  }
+
+  /** A new stage: the boss roars, the screen says so, and from now on it hits harder and faster. */
+  protected enterStage(stage: number) {
+    const e = this.e;
+    e.stageMul = stage === 2 ? 1.25 : 1.5;
+    this.rate = stage === 2 ? 1.18 : 1.4;
+    this.busy = 0.9;
+    this.anim('castUp', 0.9);
+    this.w.sfx('roar', e.x, e.z, 1, stage === 3 ? 0.8 : 0.95);
+    this.w.fx.ring(e.x, e.z, stage === 3 ? 0xff1a2a : 0xff7a2a, 5, 0.7); this.w.fx.sheet('cursedBloom', e.x, 1.2, e.z, 6, 0.9, stage === 3 ? 0xff6a7a : 0xffffff);
+    this.w.fx.shake(0.45, 0.5);
+    this.w.game.ui.banner(stage === 3 ? 'FINAL PHASE' : 'PHASE 2', e.d.name, stage === 3 ? '#ff1a2a' : '#ff8a3a', 1.8);
   }
 
   // ---------------- helpers ----------------
@@ -207,7 +229,8 @@ abstract class BossBase implements BossScript {
       if (this.w.col.blocked(x, z, 0.6)) continue;
       this.w.fx.sigil(x, z, 1.2, 0x8a2a4a, 0.8);
       this.w.fx.smoke(x, z, 0x2a1a2a, 10);
-      this.w.schedule(0.5, () => { if (e.alive) this.w.spawnEnemy(id, x, z, e.level - 3, true); });
+      // a boss's own summons are the only other curses allowed in the fight
+      this.w.schedule(0.5, () => { if (e.alive) this.w.spawnEnemy(id, x, z, e.level - 3, true).bossAdd = true; });
     }
   }
 

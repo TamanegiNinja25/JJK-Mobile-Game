@@ -218,7 +218,8 @@ export class Hud {
     const bar = el('div', 'boss-track');
     this.bossLag = el('div', 'boss-lag');
     this.bossFill = el('div', 'boss-fill');
-    bar.append(this.bossLag, this.bossFill);
+    // the fight's phase lines: the boss turns harder at half health and again at a fifth
+    bar.append(this.bossLag, this.bossFill, el('div', 'boss-mark m50'), el('div', 'boss-mark m20'));
     this.bossWrap.append(this.bossName, bar);
     this.root.appendChild(this.bossWrap);
   }

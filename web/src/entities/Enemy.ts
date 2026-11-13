@@ -70,6 +70,10 @@ export class Enemy extends Actor {
   boss: BossScript | null = null;
   enrage = 1;
   atkMul = 1;
+  /** a boss's damage in its current stage (see BossBase.stage) */
+  stageMul = 1;
+  /** summoned by the boss in a boss fight: the only curse besides the boss that may fight */
+  bossAdd = false;
   defMul = 1;
   zigT = Math.random() * 10;
   lungeV: { x: number; z: number; t: number } | null = null;
@@ -108,7 +112,7 @@ export class Enemy extends Actor {
     if (def.boss) this.boss = createBoss(def.boss, this);
   }
 
-  get atk() { return this.st.atk * this.enrage * this.atkMul; }
+  get atk() { return this.st.atk * this.enrage * this.atkMul * this.stageMul; }
   get def() { return this.st.def * this.defMul; }
   get gradeColor() { return GRADE_COLOR[this.d.grade]; }
 
@@ -159,6 +163,8 @@ export class Enemy extends Actor {
    */
   pickTarget(range: number, look = true): Actor | null {
     const p = this.world.player;
+    const bf = this.world.bossActive;
+    if (bf && bf.enemy !== this && !this.bossAdd) return null;
     const blind = !this.aggro && !this.isBoss;
     if (blind && !look) return null;
     const sees = (a: Actor, d: number) => !blind || this.notices(a, d, range);
@@ -197,6 +203,9 @@ export class Enemy extends Actor {
       this.runAttack(dt);
       return;
     }
+    // a boss fight is one on one: any other curse (not the boss's own summons) stands down and goes home
+    const bf = this.world.bossActive;
+    if (bf && bf.enemy !== this && !this.bossAdd && this.aggro) { this.aggro = false; this.target = null; this.alertT = 0; }
     this.lookT -= dt;
     const look = this.lookT <= 0;
     if (look) this.lookT = 0.2;

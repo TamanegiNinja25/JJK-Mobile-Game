@@ -9,6 +9,7 @@
 [![Latest release](https://img.shields.io/github/v/release/TamanegiNinja25/JJK-Mobile-Game?label=release&color=8A2BE2)](https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases/latest)
 [![Build APK](https://github.com/TamanegiNinja25/JJK-Mobile-Game/actions/workflows/build-apk.yml/badge.svg)](https://github.com/TamanegiNinja25/JJK-Mobile-Game/actions/workflows/build-apk.yml)
 ![Android 7.0+](https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android&logoColor=white)
+[![iPhone & iPad](https://img.shields.io/badge/iPhone%20%26%20iPad-web%20app-000000?logo=apple&logoColor=white)](https://tamanegininja25.github.io/JJK-Mobile-Game/)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
 ![three.js](https://img.shields.io/badge/three.js-r185-000000?logo=threedotjs&logoColor=white)
 ![Offline](https://img.shields.io/badge/runs-100%25%20offline-8A2BE2)
@@ -17,7 +18,9 @@
 
 ### [⬇ Download CursedChronicles.apk](https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases/latest/download/CursedChronicles.apk)
 
-<sub>Latest release · Android 7.0+ · about 2.3 MB · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a> · <a href="CHANGELOG.md">changelog</a></sub>
+### [▶ Play on iPhone & iPad](https://tamanegininja25.github.io/JJK-Mobile-Game/)
+
+<sub>Latest release · Android 7.0+ · about 3.7 MB · iPhone and iPad as a home-screen web app · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a> · <a href="CHANGELOG.md">changelog</a></sub>
 
 </div>
 
@@ -34,13 +37,19 @@ like a visual novel, with both speakers in large character art and a voice of th
 Domain expansions, boss entrances, chapter clears and the big story moments are staged
 as cutscenes. Every day, three bosses return for farming, each with drops of its own, and
 every chapter you finish can be replayed for growing rewards. Stuck on a quest? After a
-few minutes, whoever gave it offers a hint.
+few minutes, whoever gave it offers a hint. Boss fights are one on one: the area's other
+curses stand back, and the boss grows stronger at half health and again at 20%.
 
-Every model, building, texture, icon, portrait, music track and voice is generated in
-code. The only files the game ships are about a hundred small recorded sound effects from
-[Kenney](https://kenney.nl)'s free CC0 packs, so the APK is about 2 MB and runs without an
-internet connection; the only thing it ever asks the internet is whether a newer version
-is out. If you want, you can add pictures, sounds and **3D character models** from your
+Every character, building, texture, icon, portrait, music track and voice is generated in
+code. The only files the game ships are small free assets that may be shared:
+- recorded sound effects from [Kenney](https://kenney.nl)'s CC0 packs and from CC0 packs
+  on itch.io (creature growls, ghostly impacts and heavy hits);
+- a Japanese street kit from itch.io (utility poles and wires, vending machines, curve
+  mirrors and block walls, CC BY 4.0);
+- pixel-art hit, slam and cursed-energy effects (CC0).
+
+So the APK is about 3.7 MB and runs without an internet connection. The only thing it ever
+asks the internet is whether a newer version is out. If you want, you can add pictures, sounds and **3D character models** from your
 own phone (GLB, glTF, VRM or FBX, Mixamo animations included). They are moved by the
 game's own animations and stay on the phone.
 
@@ -169,7 +178,27 @@ each signed with a one-off key, so moving from those needs one uninstall first. 
 uninstalling anything, you can keep your progress with **System → Copy Save Code** (from
 1.2.0 on) and paste it back under **Transfer Save** on the title screen.
 
-Requirements: Android 7.0 (API 24) or newer with OpenGL ES 3.0. The game plays in
+### iPhone and iPad
+
+The same game runs on iPhone and iPad as a web app that you add to your home screen:
+
+1. In **Safari**, open **[tamanegininja25.github.io/JJK-Mobile-Game](https://tamanegininja25.github.io/JJK-Mobile-Game/)**.
+2. Tap **Share**, then **Add to Home Screen**.
+3. Start it from the home screen. It then runs full screen, in landscape and offline (the
+   first start downloads the whole game, about 4 MB).
+
+Saves stay on the device, in the web app's own storage. Each release updates the web app
+by itself: when a new version has downloaded, the title screen offers **Restart**. Your
+own pictures, sounds and 3D models work there too (pick them from Files). It needs iOS
+or iPadOS 15 or newer. Turn the device sideways to play; in portrait the game asks you to.
+Like any web app, it plays no sound while the ring/silent switch is on.
+
+The APK and the web app are built from the same files, and saves can move between them
+with **System → Copy Save Code** and **Transfer Save** on the title screen.
+
+### Requirements
+
+Android: Android 7.0 (API 24) or newer with OpenGL ES 3.0. The game plays in
 landscape. If the frame rate stays low, it lowers the graphics quality automatically;
 you can also set it under **System**, along with camera distance, screen shake
 (Off / Light / Full), dialogue voices (character voices, spoken with your phone's
@@ -411,7 +440,12 @@ chapter as done.
 
 ### Bosses and domains
 
-28 bosses, each with its own move set, telegraphs, HP phases and summons. Mahito,
+28 bosses, each with its own move set, telegraphs, HP phases and summons. A boss fight
+is **one on one**: when it starts, the area's other curses scatter and stand back, and
+none respawn until it ends. Only a boss that summons can bring in help. Every boss has
+**three stages**, marked on its health bar. It starts at full strength, and at **half
+health** (Phase 2) and **20%** (Final Phase) it roars, hits harder, attacks more often and
+moves faster. Mahito,
 Dagon, Jogo, Sukuna, Kenjaku, Naoya's cursed spirit and Gojo expand their **domains**: everyone inside takes sure-hit
 damage. Survive it, or cast your ultimate inside it to start a **domain clash** and break
 it. A boss expanding its domain also charges your gauge. While any domain is up, a meter
@@ -451,6 +485,14 @@ Some of the later bosses play by their own rules:
   waist and wider hips) and eye shape (round, sharp, narrow or tired, with matching brows).
   Hair is built from layered locks, long hair falls and spiky hair stands, and every style
   catches a band of light across the crown.
+- Japanese back streets dressed with a low-poly street kit
+  ([PSX Japanese Town Kit Free](https://heyheythere.itch.io/psx-japanese-town-kit-free) by
+  heyheythere, CC BY 4.0): striped utility poles strung with wires, drinks vending
+  machines, red post boxes, curve mirrors, can bins and concrete block walls with gateposts.
+- Pixel-art hit sparks, critical hits, ground slams, a skull of cursed energy as a curse
+  is exorcised and a collapse into the void when a boss falls
+  ([PVFX Foundry](https://nerijs.itch.io/pvfx-foundry) by nerijs, CC0), over the game's own
+  particles, slashes and lightning.
 - Day and night lighting, dynamic lights and weather: rain, sakura, falling leaves, ash,
   embers, fireflies and snow.
 - Trees, roofs and walls fade out when they would hide your character.
@@ -458,7 +500,10 @@ Some of the later bosses play by their own rules:
   change with the ground, swings sound on the wind-up and hits on the contact frame, for
   players, curses, shikigami and bosses alike. Blows, blades, footsteps, coins, doors and
   menu taps use recorded takes from Kenney's CC0 packs layered with the game's
-  synthesised sounds; cursed techniques are synthesised. **Sound effects** in Settings
+  synthesised sounds. Cursed spirits growl, roar and screech with recorded creature
+  sounds, and critical hits, slams, blocks and shockwaves have heavier recorded impacts
+  (CC0 packs by [ognomo](https://ognomo.itch.io) and
+  [SquigglyFish](https://squigglyfish.itch.io)). Cursed techniques are synthesised. **Sound effects** in Settings
   on the title screen, or under **System → Audio** in a game, picks **Recorded** or
   **Synthesised**. Sounds fade with distance.
 - A music theme for each area and for bosses, layered over ambience such as rain,
@@ -514,7 +559,9 @@ To work on the game in a desktop browser, run `npm run serve` in `web/` and open
 type-checks, bundles and builds debug and release APKs on every push and pull request.
 To ship a version, publish a release on GitHub (or run **Build APK** by hand from the
 Actions tab with a tag such as `v1.3.0`); the workflow builds the APK and attaches it
-to that release. Pushing a `v*` tag does the same.
+to that release. Pushing a `v*` tag does the same. Each release also pushes the same `www/` files to the
+`gh-pages` branch, which GitHub Pages serves as the iPhone and iPad web app (Settings →
+Pages → Deploy from a branch → `gh-pages`, once).
 
 **Signing:** Android only installs an APK as an update when it carries the same
 signature as the installed one, so every build is signed with one permanent key kept
@@ -526,7 +573,10 @@ without the secrets still work but fall back to a throwaway debug key. Locally, 
 ## How it works
 
 The game is a TypeScript and [three.js](https://threejs.org) app, bundled by esbuild
-into one script. A small Java app shows it in a full-screen `WebView`. It serves the
+into one script. A small Java app shows it in a full-screen `WebView`. On iPhone and iPad the same files run as a home-screen web
+app: a manifest and Apple's web-app tags make it full screen, and a service worker
+(written by the build with every file of the version) keeps it all on the device so it
+starts offline. Sound clips come as Ogg for Android and AAC for Safari. It serves the
 files from the APK's assets over a virtual `https://appassets.androidplatform.net`
 origin, so WebGL, Web Audio and `localStorage` saves behave as in a normal browser,
 offline. There are no third-party Android dependencies. A small bridge lets the game use
@@ -597,17 +647,25 @@ web/                    the game (TypeScript + three.js)
   src/entities/         player, enemies, bosses, summons, projectiles, NPCs
   src/ui/               HUD, menus, visual-novel dialogue, dialogue art, themed confirmations, icons, portraits
   src/data/             quests, dialogue, and the lines Sukuna, Yuta and Toji speak in their own voice
-  static/               index.html, the UI stylesheet, and sfx/ (Kenney's CC0 sound clips, with their credits)
+  static/               index.html, the UI stylesheet, the web app's manifest and icons, and the shipped assets:
+                        sfx/ (CC0 sound clips, Ogg and AAC), models/town/ (street kit, CC BY 4.0),
+                        fx/ (CC0 sprite-sheet effects), each with its CREDITS.txt
 android/                WebView host app (Java), text-to-speech bridge, opening the release page
 docs/                   icon and screenshots for this README
-.github/workflows/      APK build and release
+.github/workflows/      APK build and release, and the web app's deploy to GitHub Pages
 ```
 
 ## License
 
 The game's source code is released into the public domain under the
-[Unlicense](LICENSE). The recorded sound effects in `web/static/sfx` are by
-[Kenney](https://kenney.nl) (Impact Sounds, RPG Audio, Interface Sounds) and are CC0 as
-well; see `web/static/sfx/CREDITS.txt`. Jujutsu Kaisen, its characters and its story belong to Gege
+[Unlicense](LICENSE). The bundled assets keep their own licences:
+- `web/static/sfx`: recorded sound effects by [Kenney](https://kenney.nl) (Impact Sounds,
+  RPG Audio, Interface Sounds), by ognomo (Retro Horror and Lo-Fi Lo-Fantasy SFX packs)
+  and by SquigglyFish (Hit & Impact sampler), all CC0. See `web/static/sfx/CREDITS.txt`.
+- `web/static/models/town`: *PSX Japanese Town Kit Free* by heyheythere -
+  https://heyheythere.itch.io/psx-japanese-town-kit-free - CC BY 4.0. See its
+  `CREDITS.txt` and `LICENSE.txt`.
+- `web/static/fx`: effects from *PVFX Foundry* by nerijs
+  (https://nerijs.itch.io/pvfx-foundry), CC0. Jujutsu Kaisen, its characters and its story belong to Gege
 Akutami, Shueisha and MAPPA. That license covers only the original code in this
 repository, not the franchise.
