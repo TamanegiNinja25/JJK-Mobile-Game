@@ -14,6 +14,8 @@ export interface PropDef {
   shadow?: boolean;
   /** sway in wind (vertex shader not used; just a hint for future) */
   doubleSided?: boolean;
+  /** a texture for props from an asset kit (see townKit.ts); the procedural props are vertex coloured only */
+  map?: THREE.Texture;
 }
 
 type Builder = () => PropDef;
@@ -600,6 +602,11 @@ export const PROP_BUILDERS: Record<string, Builder> = {
 };
 
 const built = new Map<string, PropDef>();
+/** Swaps in another builder for a prop (the town kit's models, once loaded), dropping any built copy. */
+export function setPropBuilder(name: string, b: Builder) {
+  PROP_BUILDERS[name] = b;
+  built.delete(name);
+}
 export function getProp(name: string): PropDef {
   let d = built.get(name);
   if (!d) {

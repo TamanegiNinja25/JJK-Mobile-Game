@@ -407,6 +407,8 @@ export class World implements WorldAPI {
         st.timers = [];
         continue;
       }
+      // nothing new appears during a boss fight; the timers wait for it to end
+      if (this.bossActive || this.bossStarting) continue;
       // conditional spawners populate when they become valid
       if (st.alive.size + st.timers.length < st.def.count) st.timers.push(0.5);
       for (let i = st.timers.length - 1; i >= 0; i--) {
@@ -431,8 +433,8 @@ export class World implements WorldAPI {
     const def = ENEMIES[id];
     const e = new Enemy(this, def, x, z, level);
     e.noLoot = noLoot;
-    // anything that appears mid boss fight (a boss's summons) joins the fight at once
-    if (this.bossActive && this.player) { e.aggro = true; e.target = this.player; }
+    // a boss's summons join the fight at once (they are the only spawns while it lasts; see BossBase.summonAdds)
+    if (this.bossActive && this.player && noLoot) { e.aggro = true; e.target = this.player; }
     this.enemies.push(e);
     if (def.ai !== 'dummy' && this.time > 0.5) { this.fx.smoke(x, z, 0x2a1a3a, 8); }
     return e;
@@ -487,13 +489,19 @@ export class World implements WorldAPI {
     const go = () => {
       this.bossStarting = false;
       this.bossPending = null;
-      // Lesser curses scatter from the arena so the duel isn't buried under trash mobs.
+      // A boss fight is one on one: every lesser curse around the arena scatters, and no more appear until it ends.
+      const scatter = (o: Enemy) => Math.hypot(o.x - b.x, o.z - b.z) < b.r + 16 || o.aggro;
       for (const st of this.spawners) for (const o of st.alive) {
-        if (!o.alive || Math.hypot(o.x - b.x, o.z - b.z) >= b.r + 4) continue;
+        if (!o.alive || !scatter(o)) continue;
         this.fx.smoke(o.x, o.z, 0x1a0a1a, 8);
         o.alive = false; o.dispose();
         st.alive.delete(o);
         st.timers.push(st.def.respawn);
+      }
+      for (const o of this.enemies) {
+        if (!o.alive || o.spawner || o.isBoss || o.d.ai === 'dummy' || o.cacheFlag || !scatter(o)) continue;
+        this.fx.smoke(o.x, o.z, 0x1a0a1a, 8);
+        o.alive = false; o.dispose();
       }
       const def = ENEMIES[b.id];
       this.fx.sigil(b.x, b.z, 3.5, 0x8a0a2a, 1.4);
@@ -973,6 +981,7 @@ export class World implements WorldAPI {
     } else if (!opts.quiet) {
       const hc = target.team === 'enemy' ? (crit ? 0xffe0a0 : 0xffffff) : 0xff4a4a;
       this.fx.burst(target.x, y - 0.4, target.z, hc, crit ? 14 : 7, crit ? 6 : 4, 0.16, 0.3);
+      this.fx.sheet(crit ? 'critHit' : 'hitSpark', target.x, y - 0.4, target.z, crit ? 2.3 : 1.3, crit ? 1.2 : 1.5, target.team === 'enemy' ? 0xffffff : 0xff8a8a);
       if (target.team === 'enemy') this.fx.burst(target.x, y - 0.4, target.z, 0x6a2a8a, 4, 3, 0.25, 0.5, false);
       if (crit) this.fx.hitstop(0.045);
     }
@@ -1019,6 +1028,9 @@ export class World implements WorldAPI {
     const d = e.d;
     this.sfx(d.deathSfx ?? (e.isBoss ? 'bossDie' : 'curseDie'), e.x, e.z, 0.8);
     this.fx.burst(e.x, 1, e.z, 0x9a4aff, e.isBoss ? 80 : 18, e.isBoss ? 9 : 4, 0.3, 0.9);
+    // the curse comes apart: a skull of cursed energy, or for a boss a collapse into the void
+    if (e.isBoss) this.fx.sheet('voidImplode', e.x, 1.6, e.z, 7, 1);
+    else if (d.ai !== 'dummy') this.fx.sheet('curseSkull', e.x, 0.2, e.z, Math.min(4, 2.2 * Math.max(0.8, e.scale)), 1.7);
     this.fx.burst(e.x, 1, e.z, 0x1a0a20, e.isBoss ? 40 : 10, 3, 0.5, 1.0, false);
     void killer;
     if (d.ai !== 'dummy') triggerReactions('kill', this, this.player, ps.d.skills, { x: e.x, z: e.z });

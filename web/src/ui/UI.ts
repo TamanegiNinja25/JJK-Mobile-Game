@@ -13,6 +13,7 @@ import { MAPS } from '../world/maps';
 import { audio } from '../audio/Audio';
 import { confirmDialog, slotCard } from './Confirm';
 import { APP_VERSION, UpdateInfo, openReleasePage, updates, updateStatus } from '../core/Updates';
+import { checkWebUpdate, isAndroidApp, isIOS, isStandalone, onWebUpdate, webUpdateReady } from '../core/Platform';
 import { MediaPanel } from './MediaPanel';
 
 export class UI {
@@ -129,7 +130,10 @@ export class UI {
   private titleUpdate() {
     if (!this.updateHooked) {
       this.updateHooked = true;
+      // the web app fetches its new files as soon as a release is known, and says so once they are in
+      onWebUpdate(() => this.game.toast('A new version is ready. Restart the app to play it.', 'info', 6));
       updates.onChange((u) => {
+        if (u && !isAndroidApp) checkWebUpdate();
         this.titleUpdate();
         // found while playing: one quiet line, the notice waits for the title screen
         if (u && !this.titleEl && this.game.state === 'play') this.game.toast(`Update ${u.version} is out. Get it from Settings on the title screen.`, 'info', 5);
@@ -150,9 +154,12 @@ export class UI {
     const ok = await confirmDialog({
       seal: '新着', title: `Update ${u.version} is out`,
       card: `<div class="upd-card"><div class="upd-ver"><span>v${escapeHtml(APP_VERSION)}</span><i>→</i><b>v${escapeHtml(u.version)}</b></div>${named ? `<div class="upd-name">${escapeHtml(u.name)}</div>` : ''}${news}</div>`,
-      text: 'Download the APK from the release page. It installs over this version and keeps your saves.',
-      yes: 'Get the update', no: 'Later',
+      text: isAndroidApp ? 'Download the APK from the release page. It installs over this version and keeps your saves.'
+        : webUpdateReady ? 'The new version is downloaded. Restart to play it; your saves stay.'
+        : 'The web app downloads the new version by itself while you play. Close and reopen it (or tap Restart) to switch; your saves stay.',
+      yes: isAndroidApp ? 'Get the update' : 'Restart', no: 'Later',
     });
+    if (!isAndroidApp) { if (ok) { this.game.save(false); location.reload(); } return; }
     if (ok && !openReleasePage()) this.game.toast('Open github.com/TamanegiNinja25/JJK-Mobile-Game/releases in your browser.', 'warn', 6);
   }
 
@@ -385,7 +392,7 @@ export class UI {
   /** First screen: needed so the audio context unlocks on a user gesture. */
   showTapToStart(onGo: () => void) {
     const t = el('div', 'title tap');
-    t.innerHTML = `${this.logo()}<div class="tap-hint">TAP TO START</div><div class="title-foot">Best played in landscape · Headphones recommended</div>`;
+    t.innerHTML = `${this.logo()}<div class="tap-hint">TAP TO START</div><div class="title-foot">Best played in landscape · Headphones recommended</div>${isIOS && !isStandalone() ? `<div class="ios-install">To install: tap <b>Share</b> <span class="ios-share"></span> then <b>Add to Home Screen</b>. It then runs full screen and offline.</div>` : ''}`;
     this.root.appendChild(t);
     const go = () => { t.remove(); onGo(); };
     t.addEventListener('click', go, { once: true });

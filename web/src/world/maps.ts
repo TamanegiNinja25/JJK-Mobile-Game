@@ -258,6 +258,7 @@ const kawasaki: MapDef = {
     b.row('streetLampWarm', -30, 10, 30, 10, 10, Math.PI);
     b.prop('carWhite', -14, 6.5, Math.PI / 2).prop('carRed', 18, 2, -Math.PI / 2).prop('van', 26, 6.5, Math.PI / 2).prop('carBlue', -3, -20, 0);
     b.prop('vendingRed', -8, -6, 0).prop('vendingWhite', -6.8, -6, 0).prop('vendingBlue', 9, -6, 0).prop('postBox', -4, -5.5, 0);
+    b.prop('canBin', -9.4, -5.9, 0).prop('curveMirror', 6, -2.6, -Math.PI * 0.75).prop('curveMirror', -6, 10.6, Math.PI / 4);
     b.prop('trafficCone', 2.5, -14).prop('trafficCone', 3.5, -15).prop('barricade', 3, -16.5, 0);
     // park + river
     b.scatter(['roundTree', 'autumnTree'], -20, 22, 24, 16, 9, { minDist: 3 });
@@ -415,6 +416,9 @@ const yasohachi: MapDef = {
     b.scatter(['pine', 'darkTree', 'deadTree'], -20, -18, 26, 12, 8, { minDist: 3.5 });
     b.decor(['grassDry', 'grass'], 0, -18, 70, 16, 60);
     for (const [x, s] of [[-26, 11], [-12, 12], [12, 13], [26, 14]] as const) b.building('house', x, -36, 0, { seed: s });
+    // concrete block walls along the lane, a gate in each
+    for (const x of [-26, -12, 12, 26]) b.wall('blockWall', x - 5, -31.6, x - 1.3, -31.6, 2).wall('blockWall', x + 1.3, -31.6, x + 5, -31.6, 2).prop('gatepost', x - 1.1, -31.6).prop('gatepost', x + 1.1, -31.6);
+    b.prop('curveMirror', 0, -29.6, Math.PI).prop('canBin', 4, -30.4, 0);
     b.row('utilityPole', -32, -26.5, 32, -26.5, 9, 0);
     b.prop('carWhite', -16, 31, Math.PI / 2).prop('van', 18, -30, -Math.PI / 2);
     b.border(['darkTree', 'pine', 'roundTree'], 1.5, 3, 1, [{ x: -35, z: 0, r: 7 }, { x: 35, z: 0, r: 7 }, { x: 0, z: 39, r: 5 }]);

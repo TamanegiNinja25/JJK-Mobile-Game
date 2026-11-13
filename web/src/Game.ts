@@ -101,6 +101,12 @@ export class Game {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { this.save(false); audio.ctx?.suspend(); } else if (this.state !== 'boot') audio.ctx?.resume();
     });
+    // iPhone/iPad stop the sound after a call, Siri or the app switcher ("interrupted") and only let it
+    // start again from a touch, so the next tap brings it back
+    const wake = () => { const c = audio.ctx; if (c && c.state !== 'running' && !document.hidden && this.state !== 'boot') void c.resume().catch(() => {}); };
+    window.addEventListener('touchend', wake, { passive: true });
+    window.addEventListener('pointerdown', wake, { passive: true });
+    window.addEventListener('pagehide', () => this.save(false));
     window.addEventListener('keydown', (e) => {
       if (this.state !== 'play') return;
       const tabs: Record<string, string> = { KeyI: 'bag', KeyK: 'skills', KeyL: 'quests', KeyM: 'map', Escape: 'system', KeyC: 'status' };

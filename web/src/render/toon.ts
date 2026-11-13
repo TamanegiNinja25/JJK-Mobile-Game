@@ -100,6 +100,18 @@ export function toonMaterial(): THREE.MeshToonMaterial {
   return m;
 }
 
+/** toonMaterial with a texture (props from an asset kit: their atlas times their baked vertex shading). */
+export function toonMaterialMap(map: THREE.Texture): THREE.MeshToonMaterial {
+  const key = 'toonMap:' + map.uuid;
+  let m = cache.get(key) as THREE.MeshToonMaterial;
+  if (!m) {
+    m = new THREE.MeshToonMaterial({ vertexColors: true, map, gradientMap: toonGradient() });
+    addGlow(m);
+    cache.set(key, m);
+  }
+  return m;
+}
+
 /** Same as toonMaterial but double sided (thin cloth, leaves, banners). */
 export function toonMaterialDS(): THREE.MeshToonMaterial {
   let m = cache.get('toonDS') as THREE.MeshToonMaterial;

@@ -1,0 +1,4 @@
+PSX Japanese Town Kit Free by heyheythere - https://heyheythere.itch.io/psx-japanese-town-kit-free - CC BY 4.0
+
+atlas.png is the kit's textures/atlas.png cut to its used top 256 rows (the game rescales the UVs to match).
+The Japanese lettering in the atlas is drawn from k8x12 by Num Kadoma (littlelimit.net), free to use and share.

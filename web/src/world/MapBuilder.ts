@@ -1,9 +1,10 @@
 // Turns a declarative map definition into instanced meshes, colliders, lights,
 // spawners, NPCs and portals.
 import * as THREE from 'three';
+import { hasTownKit } from '../render/models/townKit';
 import { getProp } from '../render/models/props';
 import { getBuilding, buildingMesh, waterMaterial, BuildOpts } from '../render/models/buildings';
-import { outlineMaterial, toonMaterial } from '../render/toon';
+import { outlineMaterial, toonMaterial, toonMaterialMap } from '../render/toon';
 import { SplatPainter, TileKind, terrainMaterial } from '../render/textures';
 import { CollisionWorld } from './Collision';
 import { Rng, TAU } from '../core/util';
@@ -127,6 +128,14 @@ export class MapBuilder {
     return this;
   }
 
+  /** A prop with no collider, stretched `sx` along its local X (overhead wires). */
+  stretched(name: string, x: number, z: number, rotY: number, sx = 1) {
+    let a = this.inst.get(name);
+    if (!a) { a = []; this.inst.set(name, a); }
+    a.push(new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotY), new THREE.Vector3(sx, 1, 1)));
+    return this;
+  }
+
   /** Scatter props in a rect, avoiding paths/buildings and each other. */
   scatter(names: string | string[], x: number, z: number, w: number, d: number, count: number, opts: { minDist?: number; scale?: [number, number]; noAvoid?: boolean; seed?: number } = {}) {
     const list = Array.isArray(names) ? names : [names];
@@ -169,10 +178,14 @@ export class MapBuilder {
   row(name: string, x0: number, z0: number, x1: number, z1: number, spacing: number, rotY?: number) {
     const len = Math.hypot(x1 - x0, z1 - z0);
     const n = Math.max(1, Math.round(len / spacing));
-    const rot = rotY ?? Math.atan2(x1 - x0, z1 - z0);
+    // the town kit's poles carry wires to the next pole: they turn so their crossarms cross the line
+    const wired = name === 'utilityPole' && hasTownKit();
+    const ang = Math.atan2(z1 - z0, x1 - x0);
+    const rot = wired ? -ang : rotY ?? Math.atan2(x1 - x0, z1 - z0);
     for (let i = 0; i <= n; i++) {
       const t = i / n;
       this.prop(name, x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, rot);
+      if (wired && i < n) this.stretched('poleWires', x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, -ang, len / n / 8);
     }
     return this;
   }
@@ -298,7 +311,7 @@ export class MapBuilder {
         }
       } else groups.set('', all);
       for (const mats of groups.values()) {
-        const im = new THREE.InstancedMesh(d.geo, toonMaterial(), mats.length);
+        const im = new THREE.InstancedMesh(d.geo, d.map ? toonMaterialMap(d.map) : toonMaterial(), mats.length);
         mats.forEach((m, i) => im.setMatrixAt(i, m));
         im.castShadow = d.shadow !== false && this.quality !== 'low';
         im.receiveShadow = true;

@@ -8,6 +8,7 @@ import { media, ART_SLOTS, SOUND_SLOTS, MUSIC_SLOTS } from '../core/CustomMedia'
 import { customModels, MODEL_MAX_BYTES } from '../render/models/imported';
 import { audio } from '../audio/Audio';
 import { escapeHtml } from '../core/util';
+import { isIOS } from '../core/Platform';
 
 export class MediaPanel {
   private art = 'yuji';
@@ -104,7 +105,9 @@ export class MediaPanel {
         const key = b.dataset.pick!;
         const inp = document.createElement('input');
         inp.type = 'file';
-        inp.accept = b.dataset.accept!;
+        // iPhone/iPad grey out file types they don't know (.glb, .vrm, .fbx): let any file be picked there,
+        // the importer checks what it gets
+        inp.accept = isIOS && key.startsWith('model:') ? '' : b.dataset.accept!;
         inp.multiple = !!b.dataset.multiple;
         // kept in the page while the phone's picker is open (some WebViews ignore detached inputs)
         inp.style.cssText = 'position:fixed;left:-9999px;opacity:0';

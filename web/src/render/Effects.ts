@@ -6,6 +6,7 @@ import { FxAPI } from '../world/api';
 import { G } from './geo';
 import { toonMaterial } from './toon';
 import { TAU, rand } from '../core/util';
+import { FX_SHEETS, FxSheetName } from './fxSheets';
 
 // ---------------------------------------------------------------------------
 // Particles
@@ -256,6 +257,7 @@ export class Effects implements FxAPI {
     this.add = new ParticlePool(1800, true);
     this.norm = new ParticlePool(900, false);
     this.root.add(this.add.points, this.norm.points);
+    this.loadSheets();
     this.slashMat = new THREE.ShaderMaterial({ uniforms: { uColor: { value: new THREE.Color() }, uT: { value: 0 } }, vertexShader: SLASH_VS, fragmentShader: SLASH_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
   }
 
@@ -485,6 +487,7 @@ export class Effects implements FxAPI {
   }
 
   shockwave(x: number, z: number, radius: number, color: number) {
+    this.sheet('groundSlam', x, 0.05, z, Math.min(9, radius * 2.4), 1.3);
     this.ring(x, z, color, radius, 0.45);
     this.ring(x, z, 0xffffff, radius * 0.7, 0.3);
     const g = G.cyl(1, 1, 0.6, 32, true);
@@ -627,12 +630,60 @@ export class Effects implements FxAPI {
       this.norm.spawn(x, y, z, Math.cos(a) * s * 0.6, Math.sin(e) * s * 0.6, Math.sin(a) * s * 0.6, c.setHex(0x050005), rand(0.3, 0.6), 0.9, rand(0.3, 0.6), 0, 5);
     }
     this.ring(x, z, 0xff1a2a, 4, 0.4);
+    this.sheet('critHit', x, y, z, 4.6, 1.1, 0xff3040);
     this.light(x, y, z, 0xff1a2a, 30, 0.35, 14);
     this.flash('#1a0004', 0.55, 0.12);
     this.shake(0.7, 0.35);
     this.hitstop(0.11);
     this.r.pulseBloom(1.2);
     this.text(x, y + 1.6, z, 'BLACK FLASH', '#ff2a3a', 30);
+  }
+
+  private sheets = new Map<FxSheetName, THREE.Texture>();
+  /** Reads the sprite-sheet effects (www/fx, PVFX Foundry, CC0). Until one has loaded it is simply skipped. */
+  private loadSheets() {
+    const loader = new THREE.TextureLoader();
+    for (const name of Object.keys(FX_SHEETS) as FxSheetName[]) {
+      loader.load('fx/' + name + '.png', (t) => {
+        t.colorSpace = THREE.SRGBColorSpace;
+        // crisp pixel-art frames; no mipmaps, which would blur neighbouring cells into each other
+        t.magFilter = THREE.NearestFilter;
+        t.minFilter = THREE.LinearFilter;
+        t.generateMipmaps = false;
+        this.sheets.set(name, t);
+      }, undefined, () => { /* missing: the procedural effects carry on alone */ });
+    }
+  }
+
+  /**
+   * Plays a sprite-sheet effect once, facing the camera, anchored at (x, y, z). `size` is the width of one frame
+   * in metres; `speed` scales its frame rate; `tint` multiplies its colours.
+   */
+  sheet(name: FxSheetName, x: number, y: number, z: number, size: number, speed = 1, tint = 0xffffff, opacity = 1) {
+    const base = this.sheets.get(name);
+    if (!base) return;
+    const d = FX_SHEETS[name];
+    const tex = base.clone();
+    tex.repeat.set(1 / d.cols, 1 / d.rows);
+    const mat = new THREE.SpriteMaterial({ map: tex, color: tint, transparent: true, depthWrite: false, opacity });
+    const sp = new THREE.Sprite(mat);
+    sp.center.set(d.px / d.w, 1 - d.py / d.h);
+    sp.scale.set(size, size * d.h / d.w, 1);
+    sp.position.set(x, y, z);
+    sp.renderOrder = 5;
+    const ends: number[] = [];
+    let acc = 0;
+    for (const ms of d.ms) ends.push(acc += ms / 1000 / speed);
+    const total = acc;
+    let f = -1;
+    this.push(sp, total, (k) => {
+      const t = k * total;
+      let i = 0;
+      while (i < ends.length - 1 && t >= ends[i]) i++;
+      if (i === f) return;
+      f = i;
+      tex.offset.set((i % d.cols) / d.cols, 1 - (Math.floor(i / d.cols) + 1) / d.rows);
+    }, () => { tex.dispose(); mat.dispose(); });
   }
 
   flash(color: string, alpha: number, dur = 0.2) {
