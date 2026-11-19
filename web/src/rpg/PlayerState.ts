@@ -742,48 +742,59 @@ export class PlayerState {
   // Save / load
   // ------------------------------------------------------------------
 
+  /**
+   * Writes the save, keeping the copy it replaces as a backup. The new copy is read back to make sure it landed
+   * whole; if it didn't (storage full, the app killed mid-write), the backup still holds the last good save.
+   */
   save() {
     this.d.uidCounter = getUidCounter();
     this.d.savedAt = Date.now();
+    const key = SAVE_KEY + this.d.slot;
     try {
-      localStorage.setItem(SAVE_KEY + this.d.slot, JSON.stringify(this.d));
-      return true;
+      const json = JSON.stringify(this.d);
+      const prev = localStorage.getItem(key);
+      // only a save that still reads back whole becomes the backup
+      if (prev && prev !== json && parseSave(prev)) localStorage.setItem(key + BACKUP, prev);
+      localStorage.setItem(key, json);
+      return localStorage.getItem(key) === json;
     } catch {
       return false;
     }
   }
 
+  /** set on a save that had to be restored from its backup (the game says so once) */
+  restored = false;
+
   static load(slot: number): PlayerState | null {
+    const got = readSlot(slot);
+    if (!got) return null;
+    const d = got.d;
     try {
-      const raw = localStorage.getItem(SAVE_KEY + slot);
-      if (!raw) return null;
-      const d = JSON.parse(raw) as SaveData;
-      if (!d || !d.cls) return null;
       d.slot = slot;
       // forward compatibility for older saves
       d.quick = d.quick ?? [null, null, null, null, null, null];
       while (d.quick.length < 6) d.quick.push(null);
       d.flags = d.flags ?? {};
       migrate(d);
-      return new PlayerState(d);
+      const ps = new PlayerState(d);
+      ps.restored = got.fromBackup;
+      return ps;
     } catch {
       return null;
     }
   }
 
+  /** A slot's save for the slot list: the main copy, or the backup if the main one is damaged or gone. */
   static peek(slot: number): SaveData | null {
-    try {
-      const raw = localStorage.getItem(SAVE_KEY + slot);
-      return raw ? JSON.parse(raw) as SaveData : null;
-    } catch { return null; }
+    return readSlot(slot)?.d ?? null;
   }
 
   /** A save as a copyable text code, so progress survives reinstalls and moves between devices. */
   static exportCode(slot: number): string | null {
     try {
-      const raw = localStorage.getItem(SAVE_KEY + slot);
-      if (!raw) return null;
-      return 'CC1:' + btoa(unescape(encodeURIComponent(raw)));
+      const got = readSlot(slot);
+      if (!got) return null;
+      return 'CC1:' + btoa(unescape(encodeURIComponent(JSON.stringify(got.d))));
     } catch { return null; }
   }
 
@@ -795,15 +806,41 @@ export class PlayerState {
     try { d = JSON.parse(decodeURIComponent(escape(atob(body.slice(4))))) as SaveData; } catch { return 'The save code is damaged or incomplete.'; }
     if (!d || typeof d !== 'object' || !d.cls || !d.level || !d.quests) return 'The save code is missing data.';
     d.slot = slot;
-    try { localStorage.setItem(SAVE_KEY + slot, JSON.stringify(d)); } catch { return 'Could not write the save.'; }
+    try {
+      const prev = localStorage.getItem(SAVE_KEY + slot);
+      if (prev && parseSave(prev)) localStorage.setItem(SAVE_KEY + slot + BACKUP, prev);
+      localStorage.setItem(SAVE_KEY + slot, JSON.stringify(d));
+    } catch { return 'Could not write the save.'; }
     return null;
   }
 
   static erase(slot: number) {
-    try { localStorage.removeItem(SAVE_KEY + slot); } catch { /* storage unavailable */ }
+    try { localStorage.removeItem(SAVE_KEY + slot); localStorage.removeItem(SAVE_KEY + slot + BACKUP); } catch { /* storage unavailable */ }
   }
 
   static useEnhanceCost = enhanceCost;
+}
+
+/** the key suffix of a slot's backup copy (the save it last replaced) */
+const BACKUP = '.bak';
+
+/** A stored save, if it reads back as one (not cut short, not garbled). */
+function parseSave(raw: string | null): SaveData | null {
+  if (!raw) return null;
+  try {
+    const d = JSON.parse(raw) as SaveData;
+    return d && typeof d === 'object' && d.cls && d.quests ? d : null;
+  } catch { return null; }
+}
+
+/** A slot's save: the main copy, or its backup when the main copy is damaged or missing. */
+function readSlot(slot: number): { d: SaveData; fromBackup: boolean } | null {
+  try {
+    const main = parseSave(localStorage.getItem(SAVE_KEY + slot));
+    if (main) return { d: main, fromBackup: false };
+    const bak = parseSave(localStorage.getItem(SAVE_KEY + slot + BACKUP));
+    return bak ? { d: bak, fromBackup: true } : null;
+  } catch { return null; }
 }
 
 export function objCount(o: Objective) {
