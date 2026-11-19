@@ -130,6 +130,8 @@ export function checkAchievements(ps: PlayerState | null): Achievement[] {
 
 export interface RushState { list: string[]; i: number; start: number; level: number; diff: string }
 export let rush: RushState | null = null;
+/** a clock that keeps running across map loads (the world's resets with every area) */
+const clock = () => performance.now() / 1000;
 
 /** The bosses Boss Rush can use: every daily boss whose story chapter this save has cleared. */
 export function rushPool(ps: PlayerState) {
@@ -137,7 +139,8 @@ export function rushPool(ps: PlayerState) {
 }
 
 /** Starts a gauntlet of up to six bosses, weakest first, at the player's level. */
-export function startRush(ps: PlayerState, now: number): RushState | null {
+export function startRush(ps: PlayerState, _now?: number): RushState | null {
+  const now = clock();
   const pool = rushPool(ps);
   if (pool.length < 3) return null;
   const pick = [...pool].sort(() => Math.random() - 0.5).slice(0, 6).sort((a, b) => (ENEMIES[a]?.level ?? 0) - (ENEMIES[b]?.level ?? 0));
@@ -148,7 +151,8 @@ export function rushBoss() { return rush ? rush.list[rush.i] ?? null : null; }
 export function endRush() { rush = null; }
 
 /** The current rush boss has fallen: true when that was the last one (the time is recorded). */
-export function rushAdvance(now: number): { done: boolean; secs: number; best: boolean } {
+export function rushAdvance(_now?: number): { done: boolean; secs: number; best: boolean } {
+  const now = clock();
   if (!rush) return { done: false, secs: 0, best: false };
   rush.i++;
   const secs = now - rush.start;

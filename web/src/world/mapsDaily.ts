@@ -58,7 +58,8 @@ const rushArena: MapDef = {
   build: (b) => {
     arenaLayout(b);
     const id = rushBoss();
-    if (id && rush) b.boss({ id, x: 0, z: -6, r: 16, repeatable: true, level: rush.level });
+    // only while it is still the gauntlet's current boss: once it falls the arena waits for the next one
+    if (id && rush) b.boss({ id, x: 0, z: -6, r: 16, repeatable: true, level: rush.level, cond: () => rushBoss() === id });
   },
 };
 
