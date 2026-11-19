@@ -73,6 +73,22 @@ game's own animations and stay on the phone.
 
 ## Screenshots
 
+<p align="center"><img src="docs/screenshots/class-select.jpg" width="860" alt="Choosing from sixteen sorcerers"><br><sub><b>3.0: sixteen sorcerers.</b> Gojo, Maki, Todo, Inumaki, Panda, Choso and Hakari join the roster, each with eleven techniques and an ultimate</sub></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/gojo-play.jpg" alt="Playing as Satoru Gojo"><br><sub><b>Satoru Gojo</b>: Hollow Technique: Purple erases a line of the field</sub></td>
+    <td width="50%"><img src="docs/screenshots/boss-phase.jpg" alt="A boss entering Phase 2"><br><sub><b>Every boss changes in its later stages</b>: a pillar of light, a bigger form and a signature move to open Phase 2 and the Final Phase</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/records.jpg" alt="The Records tab"><br><sub><b>Records</b>: Boss Rush, 31 achievements, best boss times and a bestiary</sub></td>
+    <td width="50%"><img src="docs/screenshots/japanese.jpg" alt="The game in Japanese"><br><sub><b>日本語</b>: menus, techniques, quests and every line of dialogue in Japanese</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/iphone.jpg" alt="The game on an iPhone" width="70%"><br><sub><b>On iPhone</b>: the home-screen web app at iPhone size, full screen and offline</sub></td>
+  </tr>
+</table>
+
 <p align="center"><img src="docs/screenshots/cast.jpg" width="860" alt="The cast in the courtyard of Jujutsu High"><br><sub><b>2.7.9: a new look for every character.</b> Nobara, Megumi, Yuji, Gojo, Maki, Yuta, Inumaki and Panda with realistic proportions, long coats with buttons and hoods, and layered hair</sub></p>
 
 <table>
@@ -109,8 +125,7 @@ game's own animations and stay on the phone.
     <td><img src="docs/screenshots/daily.jpg" alt="Daily exorcisms"><br><sub><b>Daily exorcisms</b>: three bosses a day from Akari Nitta, each with drops of its own</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/class-select.jpg" alt="Class select"><br><sub><b>Choose your sorcerer</b>: three first-years and six unlockable sorcerers, each with its own skill tree</sub></td>
-    <td width="50%"><img src="docs/screenshots/jujutsu-high.jpg" alt="Jujutsu High"><br><sub><b>Tokyo Jujutsu High</b>: the hub, with shops, quests and fast travel</sub></td>
+    <td colspan="2" align="center"><img src="docs/screenshots/jujutsu-high.jpg" alt="Jujutsu High" width="50%"><br><sub><b>Tokyo Jujutsu High</b>: the hub, with shops, quests and fast travel</sub></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/interior.jpg" alt="Sugisawa High corridors"><br><sub><b>Enterable buildings</b>: Sugisawa High's corridors, rebuilt on every visit</sub></td>
