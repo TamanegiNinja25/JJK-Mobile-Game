@@ -53,6 +53,15 @@ final class GameBridge {
         return ready;
     }
 
+    /** The language dialogue is read in: "ja-JP" when the game is in Japanese, otherwise US English. */
+    @JavascriptInterface
+    public void ttsLang(String tag) {
+        if (!ready || tts == null) return;
+        Locale want = tag != null && tag.startsWith("ja") ? Locale.JAPAN : Locale.US;
+        int r = tts.setLanguage(want);
+        if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) tts.setLanguage(Locale.getDefault());
+    }
+
     @JavascriptInterface
     public void ttsSpeak(String text, float pitch, float rate, String id) {
         if (!ready || tts == null || text == null) return;

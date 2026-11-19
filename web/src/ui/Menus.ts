@@ -1,12 +1,15 @@
 // Full-screen menus (status, bag, skills, quests, map, system) and the shop,
 // infusion workshop and travel windows.
 import { confirmDialog } from './Confirm';
+import { ACHIEVEMENTS, fmtTime, records, rushBoss, rushPool, startRush } from '../rpg/Records';
+import { DIFFICULTY } from '../core/Difficulty';
+import { haptic } from '../core/Haptics';
 import { LINES, LINE_BY_ID, QuestLine, RERUN_GOAL, lineReward, masteryReward } from '../rpg/Reruns';
 import { drawAreaPreview, mapTextScale } from './AreaPreview';
 import type { Game } from '../Game';
 import { copyText, el, escapeHtml, formatNum } from '../core/util';
 import { itemIcon, skillIcon } from './Icons';
-import { ENEMIES } from '../rpg/enemies';
+import { ENEMIES, GRADE_NAME } from '../rpg/enemies';
 import { BG } from './Portraits';
 import { ITEMS, RARITY_COLOR, RARITY_NAME, itemName, itemStats, formatStat, isGear, sellPrice, enhanceCost, makeItem, ItemBase, uniquesForLevel, SLOT_ORDER, SLOT_NAMES, KIND_NAME, CATEGORIES, sortItems, REFORGE_MAX, reforgeCost, reforgeStep, STAT_DESC, classRewardItem } from '../rpg/items';
 import { Attr, ClassId, ItemInstance, ItemKind, Slot, StatKey, PCT_KEYS, STAT_LABEL } from '../rpg/types';
@@ -23,7 +26,7 @@ import { voice, voiceFor } from '../audio/Voice';
 import { DAILY_BOSSES, SIG_CHANCE, SIG_SEALS, dailyCleared, dailyLevel, dailyRoster, msToReset, setDailyPick } from '../rpg/Daily';
 import { CHEAT_TOGGLES, CHEAT_ACTIONS, cheatOn, toggleCheat, runCheat } from '../rpg/Cheats';
 
-const TABS: [string, string, string][] = [['status', '状', 'Status'], ['bag', '袋', 'Bag'], ['skills', '術', 'Skills'], ['quests', '任', 'Quests'], ['map', '図', 'Map'], ['cheats', '秘', 'Cheats'], ['system', '設', 'System']];
+const TABS: [string, string, string][] = [['status', '状', 'Status'], ['bag', '袋', 'Bag'], ['skills', '術', 'Skills'], ['quests', '任', 'Quests'], ['map', '図', 'Map'], ['records', '録', 'Records'], ['cheats', '秘', 'Cheats'], ['system', '設', 'System']];
 /** Placeholder glyphs shown in empty equipment slots. */
 const SLOT_GLYPH: Record<Slot, string> = { weapon: '武', head: '冠', outfit: '衣', charm: '符', ring: '環', shoes: '靴' };
 
@@ -147,6 +150,7 @@ export class Menus {
       case 'map': this.body.innerHTML = this.renderMap(); this.drawWorldMap(); break;
       case 'cheats': this.body.innerHTML = this.renderCheats(); break;
       case 'system': this.body.innerHTML = this.renderSystem(); this.bindSystem(); break;
+      case 'records': this.body.innerHTML = this.renderRecords(); break;
     }
   }
 
@@ -657,6 +661,39 @@ export class Menus {
   }
 
   // ------------------------------------------------------------------
+  // Records: Boss Rush, achievements, best boss times, the bestiary
+  // ------------------------------------------------------------------
+  private recView: 'ach' | 'boss' | 'beasts' = 'ach';
+  private renderRecords() {
+    const r = records(), ps = this.game.ps!;
+    const pool = rushPool(ps);
+    const got = ACHIEVEMENTS.filter(a => r.ach[a.id]).length;
+    const curses = Object.values(ENEMIES).filter(e => e.ai !== 'dummy');
+    const seen = curses.filter(e => r.beasts[e.id]).length;
+    const tab = (v: string, l: string) => `<button class="chip ${this.recView === v ? 'on' : ''}" data-act="recview" data-v="${v}">${l}</button>`;
+    let list = '';
+    if (this.recView === 'ach') {
+      list = `<div class="rec-grid">${ACHIEVEMENTS.map(a => `<div class="rec-ach ${r.ach[a.id] ? 'got' : ''}"><div class="rec-seal">${escapeHtml(a.jp)}</div><div><b>${escapeHtml(a.name)}</b><div class="help">${escapeHtml(a.desc)}</div></div></div>`).join('')}</div>`;
+    } else if (this.recView === 'boss') {
+      const bosses = curses.filter(e => e.ai === 'boss').sort((a, b) => a.level - b.level);
+      list = `<div class="rec-list">${bosses.map(e => { const b = r.boss[e.id]; return `<div class="rec-row ${b ? '' : 'dim'}"><span>${r.beasts[e.id] ? escapeHtml(e.name) : '???'}</span><span>${b ? `${fmtTime(b.secs)} <small>${escapeHtml(DIFFICULTY[b.diff as keyof typeof DIFFICULTY]?.label ?? '')} · ${escapeHtml(CLASSES[b.cls as keyof typeof CLASSES]?.short ?? '')}</small>` : '—'}</span></div>`; }).join('')}</div>`;
+    } else {
+      list = `<div class="rec-list">${curses.sort((a, b) => a.level - b.level).map(e => { const n = r.beasts[e.id] ?? 0; return `<div class="rec-row ${n ? '' : 'dim'}"><span>${n ? escapeHtml(e.name) : '???'}</span><span>${n ? `${GRADE_NAME[e.grade]} · ×${n}` : ''}</span></div>`; }).join('')}</div>`;
+    }
+    return `<div class="records">
+      <div class="rec-top">
+        <div class="rec-card"><div class="panel-title">Boss Rush</div>
+          <div class="help">Up to six bosses you have already beaten, back to back at your level, against the clock. You keep 40% of your HP between fights; falling ends the run. Best: <b>${r.rush.best !== undefined ? fmtTime(r.rush.best) : '—'}</b>${r.rush.bestDiff ? ` (${escapeHtml(DIFFICULTY[r.rush.bestDiff as keyof typeof DIFFICULTY]?.label ?? '')})` : ''} · cleared ${r.rush.clears}×</div>
+          <button class="btn primary wide" data-act="rush" ${pool.length < 3 || ps.d.level < 20 ? 'disabled' : ''}>${pool.length < 3 || ps.d.level < 20 ? 'Needs level 20 and three bosses beaten in the story' : `Start Boss Rush (${Math.min(6, pool.length)} bosses)`}</button></div>
+        <div class="rec-card"><div class="panel-title">Totals</div>
+          <div class="help">Achievements <b>${got}/${ACHIEVEMENTS.length}</b> · Bestiary <b>${seen}/${curses.length}</b><br>Curses exorcised ${r.n.kills.toLocaleString()} · Boss fights won ${r.n.bosses} · Black Flashes ${r.n.bf} · Domains and ultimates ${r.n.domains}</div></div>
+      </div>
+      <div class="chips">${tab('ach', 'Achievements')}${tab('boss', 'Boss Times')}${tab('beasts', 'Bestiary')}</div>
+      ${list}
+    </div>`;
+  }
+
+  // ------------------------------------------------------------------
   // System
   // ------------------------------------------------------------------
   private renderSystem() {
@@ -665,7 +702,7 @@ export class Menus {
     const q = (v: string, l: string) => `<button class="chip ${s.quality === v ? 'on' : ''}" data-act="quality" data-q="${v}">${l}</button>`;
     const z = (v: number, l: string) => `<button class="chip ${s.zoom === v ? 'on' : ''}" data-act="zoom" data-z="${v}">${l}</button>`;
     const sh = (v: number, l: string) => `<button class="chip ${s.shake === v ? 'on' : ''}" data-act="shake" data-v="${v}">${l}</button>`;
-    const ch = (key: 'voice' | 'textSpeed' | 'cutscenes' | 'hints' | 'barks' | 'sfxStyle', v: string | number, l: string) => `<button class="chip ${(s as any)[key] === v ? 'on' : ''}" data-act="setchip" data-k="${key}" data-v="${v}">${l}</button>`;
+    const ch = (key: 'voice' | 'textSpeed' | 'cutscenes' | 'hints' | 'barks' | 'sfxStyle' | 'difficulty' | 'vibration' | 'uiScale' | 'fxStyle', v: string | number, l: string) => `<button class="chip ${(s as any)[key] === v ? 'on' : ''}" data-act="setchip" data-k="${key}" data-v="${v}">${l}</button>`;
     return `<div class="system">
       <div class="sys-col">
         <div class="panel-title">Game</div>
@@ -674,7 +711,15 @@ export class Menus {
         <button class="btn wide" data-act="exportsave">Copy Save Code</button>
         <div class="help">The save code keeps your progress if you reinstall or change phones. Paste it under <b>Transfer Save</b> on the title screen.</div>
         <div class="help">Your own pictures, sounds and 3D models, and the update check, are in <b>Settings</b> on the title screen (<b>Save &amp; Return to Title</b>).</div>
+        <div class="panel-title">Difficulty</div>
+        <div class="chips">${ch('difficulty', 'easy', 'Easy')}${ch('difficulty', 'normal', 'Normal')}${ch('difficulty', 'hard', 'Hard')}</div>
+        <div class="help">${DIFFICULTY[s.difficulty]?.about ?? ''} Curses already on the map keep their health until they respawn.</div>
         <div class="panel-title">Controls</div>
+        <div class="set-label">Control size</div>
+        <div class="chips">${ch('uiScale', 'auto', 'Auto')}${ch('uiScale', 0.9, 'Small')}${ch('uiScale', 1, 'Normal')}${ch('uiScale', 1.2, 'Large')}${ch('uiScale', 1.4, 'Huge')}</div>
+        <div class="set-label">Vibration</div>
+        <div class="chips">${ch('vibration', 'on', 'On')}${ch('vibration', 'off', 'Off')}</div>
+        <div class="help">Auto makes the buttons larger on tablets. Vibration buzzes the phone (Android) and a controller's rumble.<br>Controller: left stick moves · A attack/talk · B dodge · X, Y, LB, RB, LT skills · RT ultimate · L3/R3 potions · Start menu · Select map. In conversations A advances and B skips back.</div>
         <div class="help">Touch: drag the left half of the screen to move. Tap or hold <b>攻</b> to attack (it becomes <b>話</b> to talk). Skills sit around it, <b>回避</b> dodges, the gold-rimmed button is your Ultimate.<br>Keyboard: WASD move · J/Space attack · 1–5 skills · R ultimate · Shift dodge · Q/E potions · F talk · I/K/L/M menus · Esc close.</div>
       </div>
       <div class="sys-col">
@@ -687,6 +732,8 @@ export class Menus {
         <div class="chips">${q('low', 'Low')}${q('medium', 'Medium')}${q('high', 'High')}</div>
         <div class="panel-title">Camera</div>
         <div class="chips">${z(0.8, 'Near')}${z(1, 'Normal')}${z(1.25, 'Far')}</div>
+        <div class="set-label">Effects</div>
+        <div class="chips">${ch('fxStyle', 'toon', 'Toon')}${ch('fxStyle', 'pixel', 'Pixel')}</div>
         <div class="panel-title">Screen shake</div>
         <div class="chips">${sh(0, 'Off')}${sh(0.5, 'Light')}${sh(1, 'Full')}</div>
         <div class="panel-title">Dialogue</div>
@@ -1015,6 +1062,14 @@ export class Menus {
         audio.play('click', { vol: 0.5 });
         break;
       }
+      case 'recview': this.recView = t.dataset.v as 'ach' | 'boss' | 'beasts'; this.refresh(); break;
+      case 'rush': {
+        if (!startRush(ps, this.game.world.time)) break;
+        this.close();
+        this.game.toast(`Boss Rush: ${rushBoss() ? ENEMIES[rushBoss()!]?.name : ''} first. Good luck.`, 'boss', 3);
+        void this.game.travel('rushArena');
+        return;
+      }
       case 'save': this.game.save(true); break;
       case 'exportsave': {
         this.game.save(false);
@@ -1027,12 +1082,14 @@ export class Menus {
       case 'zoom': this.game.settings.zoom = +t.dataset.z!; this.game.applySettings(); break;
       case 'shake': this.game.settings.shake = +t.dataset.v!; this.game.applySettings(); break;
       case 'setchip': {
-        const k = t.dataset.k as 'voice' | 'textSpeed' | 'cutscenes' | 'hints' | 'barks' | 'sfxStyle';
-        (this.game.settings as any)[k] = k === 'textSpeed' ? +t.dataset.v! : t.dataset.v;
+        const k = t.dataset.k as 'voice' | 'textSpeed' | 'cutscenes' | 'hints' | 'barks' | 'sfxStyle' | 'difficulty' | 'vibration' | 'uiScale' | 'fxStyle';
+        const raw = t.dataset.v!;
+        (this.game.settings as any)[k] = k === 'textSpeed' || (k === 'uiScale' && raw !== 'auto') ? +raw : raw;
         this.game.applySettings();
         if (k === 'voice' && t.dataset.v === 'tts' && !voice.ttsAvailable()) this.game.toast('This device has no text-to-speech voice; character voices will be used.', 'warn', 3);
         if (k === 'voice') { voice.syllable(voiceFor(this.game.ps ? CLASSES[this.game.ps.d.cls].model : 'gojo'), 0.09); }
         if (k === 'sfxStyle') { audio.play('punch'); audio.play('click', { delay: 0.25 }); }
+        if (k === 'vibration' && raw === 'on') haptic('crit');
         this.refresh();
         break;
       }

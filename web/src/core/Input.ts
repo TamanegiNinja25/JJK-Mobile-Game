@@ -18,6 +18,12 @@ export class Input {
   private joyBase: HTMLElement | null = null;
   private joyKnob: HTMLElement | null = null;
   usingTouch = false;
+  /** the HUD's zoom (tablet UI scale): touch positions are divided by it to land under the finger */
+  uiZoom = 1;
+  /** a controller is connected and has been used */
+  usingPad = false;
+  private padPrev: boolean[] = [];
+  private padHeld = new Set<Action>();
 
   private keymap: Record<string, Action> = {
     KeyJ: 'attack', Space: 'attack', Digit1: 'skill1', Digit2: 'skill2', Digit3: 'skill3', Digit4: 'skill4', Digit5: 'skill5', Digit6: 'skill6',
@@ -49,7 +55,8 @@ export class Input {
   bindJoystick(zone: HTMLElement, base: HTMLElement, knob: HTMLElement) {
     this.joyBase = base;
     this.joyKnob = knob;
-    const start = (id: number, x: number, y: number) => {
+    const start = (id: number, x0: number, y0: number) => {
+      const x = x0 / this.uiZoom, y = y0 / this.uiZoom;
       this.joyActive = true;
       this.joyId = id;
       this.joyOrigin = { x, y };
@@ -59,7 +66,8 @@ export class Input {
       base.style.top = y + 'px';
       knob.style.transform = 'translate(-50%, -50%)';
     };
-    const move = (x: number, y: number) => {
+    const move = (x0: number, y0: number) => {
+      const x = x0 / this.uiZoom, y = y0 / this.uiZoom;
       this.joyPos = { x, y };
       let dx = x - this.joyOrigin.x, dy = y - this.joyOrigin.y;
       const d = Math.hypot(dx, dy);
@@ -136,6 +144,8 @@ export class Input {
       const d = Math.hypot(dx, dy);
       if (d > 8) { x = dx / this.joyRadius; z = dy / this.joyRadius; }
     }
+    const pad = this.pollPads();
+    if (pad && Math.hypot(pad.x, pad.z) > Math.hypot(x, z)) { x = pad.x; z = pad.z; }
     const len = Math.hypot(x, z);
     if (len > 1) { x /= len; z /= len; }
     if (!this.enabled) { x = 0; z = 0; }
@@ -158,6 +168,42 @@ export class Input {
     if (this.joyBase) this.joyBase.style.display = 'none';
     void this.joyKnob;
   }
+  /**
+   * Game controllers (standard layout, as Android, iPhone/iPad and desktop browsers report Xbox, PlayStation
+   * and Switch Pro pads): left stick or d-pad moves, A attacks, B dodges, X/Y/LB/RB/LT are the five skills, RT
+   * the ultimate, L3/R3 the potions (A also talks next to someone), Start opens the menu and Select the map. While a
+   * conversation or menu has the controls, A advances (Space) and B goes back (Escape).
+   */
+  private pollPads(): { x: number; z: number } | null {
+    const pads = typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [];
+    const pad = Array.from(pads ?? []).find(p => p && p.connected);
+    if (!pad) return null;
+    const MAP: (Action | null)[] = ['attack', 'dash', 'skill1', 'skill2', 'skill3', 'skill4', 'skill5', 'ultimate', 'map', 'menu', 'potion1', 'potion2', null, null, null, null];
+    const now: boolean[] = pad.buttons.map(b => b.pressed || b.value > 0.5);
+    for (let i = 0; i < now.length; i++) {
+      const down = now[i], was = !!this.padPrev[i];
+      if (down === was) continue;
+      this.usingPad = true;
+      const a = MAP[i] ?? null;
+      if (down) {
+        if (this.enabled) {
+          if (a) { if (!this.held.has(a)) this.pressedQ.add(a); this.held.add(a); this.padHeld.add(a); }
+        } else if (i === 0 || i === 1 || i === 9) {
+          // conversations, cutscenes and menus listen for keys
+          const code = i === 0 ? 'Space' : 'Escape';
+          window.dispatchEvent(new KeyboardEvent('keydown', { code, key: i === 0 ? ' ' : 'Escape' }));
+          window.dispatchEvent(new KeyboardEvent('keyup', { code, key: i === 0 ? ' ' : 'Escape' }));
+        }
+      } else if (a && this.padHeld.has(a)) { this.padHeld.delete(a); this.held.delete(a); }
+    }
+    this.padPrev = now;
+    const dz = (v: number) => (Math.abs(v) < 0.22 ? 0 : (v - Math.sign(v) * 0.22) / 0.78);
+    let x = dz(pad.axes[0] ?? 0), z = dz(pad.axes[1] ?? 0);
+    if (now[14]) x = -1; if (now[15]) x = 1; if (now[12]) z = -1; if (now[13]) z = 1;
+    if (x || z) this.usingPad = true;
+    return { x, z };
+  }
+
   /** Simulate an action press (used by automated tests and UI shortcuts). */
   tap(a: Action) { this.pressedQ.add(a); }
 }

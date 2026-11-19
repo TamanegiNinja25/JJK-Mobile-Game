@@ -1,5 +1,6 @@
 // Cursed spirits: generic AI for every archetype plus hooks for boss scripts.
 import * as THREE from 'three';
+import { difficulty } from '../core/Difficulty';
 import { Actor } from './Actor';
 import type { World } from '../world/World';
 import { EnemyDef, enemyStats, GRADE_COLOR } from '../rpg/enemies';
@@ -91,8 +92,10 @@ export class Enemy extends Actor {
     this.d = def;
     this.st = enemyStats(def, level);
     this.level = this.st.level;
-    this.maxHp = this.st.hp;
-    this.hp = this.st.hp;
+    // the difficulty setting scales what a curse can take (training dummies stay as they are)
+    const hpMul = def.ai === 'dummy' ? 1 : difficulty().hp;
+    this.maxHp = Math.round(this.st.hp * hpMul);
+    this.hp = this.maxHp;
     this.radius = def.radius * def.scale * 0.9;
     this.noKnock = !!def.noKnock;
     this.isBoss = def.ai === 'boss';
@@ -112,7 +115,7 @@ export class Enemy extends Actor {
     if (def.boss) this.boss = createBoss(def.boss, this);
   }
 
-  get atk() { return this.st.atk * this.enrage * this.atkMul * this.stageMul; }
+  get atk() { return this.st.atk * this.enrage * this.atkMul * this.stageMul * difficulty().dmg; }
   get def() { return this.st.def * this.defMul; }
   get gradeColor() { return GRADE_COLOR[this.d.grade]; }
 

@@ -1,5 +1,6 @@
 // Playable sorcerer definitions: base stats, growth and basic-attack combos.
 import { Attr, BaseClassId, ClassId } from './types';
+import type { GuestVoice } from '../data/guestVoice';
 
 export interface ComboHit {
   anim: string;
@@ -26,7 +27,7 @@ export interface ClassDef {
   /** what the CE bar holds: Toji has no cursed energy, so his skills spend stamina */
   resource?: 'stamina';
   /** 'sukuna': borrowed story lines are swapped for his own (data/sukunaVoice.ts); the guests re-voice theirs (data/guestVoice.ts) */
-  voice?: 'sukuna' | 'yuta' | 'toji';
+  voice?: 'sukuna' | GuestVoice;
   /** a guest with no persona still speaks in conversations: this first-year's player lines, in their own words */
   voiceFrom?: BaseClassId;
   /** unlockable sorcerers: what unlocks them, as shown on the select screen */
@@ -199,11 +200,123 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     startGear: ['tojiKnife', 'uniform', 'sneakers'],
     weaponModel: 'blade',
   },
+  gojo: {
+    id: 'gojo', short: 'Gojo', self: 'gojo', voice: 'gojo', voiceFrom: 'yuji', trail: 0x7fdcff, name: 'Satoru Gojo', title: 'The Strongest · Six Eyes', model: 'gojo', stance: 'fist', color: '#7fdcff',
+    unlock: 'Clear "Night Parade of a Hundred Demons" (Chapter 9, the end of the story).',
+    desc: 'The strongest sorcerer alive, with the Limitless and the Six Eyes. Lapse Blue drags curses in, Reversal Red blasts them away, Infinity stops anything that reaches him, and Hollow Purple erases a line of the world. Ultimate: Domain Expansion — Unlimited Void.',
+    base: { hp: 210, hpLv: 30, ce: 140, ceLv: 9, atk: 19, atkLv: 4.6, def: 9, defLv: 1.9 },
+    attrs: { str: 9, dex: 10, vit: 9, ce: 14 },
+    atkScale: { str: 1.2, ce: 1.2 },
+    bfBonus: 0.02,
+    combo: [
+      { anim: 'punch1', dur: 0.26, mult: 1.0, range: 2.0, arc: 1.6, sfx: 'punch', swingSfx: 'swing', lunge: 0.6 },
+      { anim: 'punch2', dur: 0.26, mult: 1.05, range: 2.0, arc: 1.6, sfx: 'punch', swingSfx: 'swing', lunge: 0.6 },
+      { anim: 'kick', dur: 0.42, mult: 1.6, range: 2.4, arc: 2.2, sfx: 'kick', swingSfx: 'swingHeavy', knock: 2.5, lunge: 0.9 },
+    ],
+    startGear: ['gojoBlindfold', 'uniform', 'sneakers'],
+    weaponModel: 'fist',
+  },
+  maki: {
+    id: 'maki', short: 'Maki', self: 'maki', voice: 'maki', voiceFrom: 'nobara', resource: 'stamina', trail: 0x6ac86a, name: 'Maki Zen\'in', title: 'Heavenly Restriction · Cursed Tools', model: 'maki', stance: 'blade', color: '#7ad87a',
+    unlock: 'Clear "Projection Sorcery" (Chapter 6, the Zen\'in Estate).',
+    desc: 'Born with almost no cursed energy, she fights with cursed tools and a body forged by Heavenly Restriction. Long reach with her polearm, Dragon-Bone, Playful Cloud and Split Soul Katana. Her skills spend stamina. Ultimate: Zen\'in Massacre.',
+    base: { hp: 175, hpLv: 27, ce: 80, ceLv: 3.5, atk: 17, atkLv: 4.0, def: 8, defLv: 1.7 },
+    attrs: { str: 11, dex: 11, vit: 9, ce: 1 },
+    atkScale: { str: 1.6, dex: 0.9 },
+    bfBonus: 0,
+    combo: [
+      { anim: 'slash1', dur: 0.26, mult: 1.0, range: 2.8, arc: 2.0, sfx: 'slash', swingSfx: 'swing', lunge: 0.5 },
+      { anim: 'slash2', dur: 0.26, mult: 1.05, range: 2.8, arc: 2.4, sfx: 'slash', swingSfx: 'swing', lunge: 0.5 },
+      { anim: 'thrust', dur: 0.4, mult: 1.6, range: 3.6, arc: 0.8, sfx: 'slash', swingSfx: 'swingHeavy', knock: 2, lunge: 1.1 },
+    ],
+    startGear: ['makiPolearm', 'uniform', 'sneakers'],
+    weaponModel: 'blade',
+  },
+  todo: {
+    id: 'todo', short: 'Todo', self: 'todo', voice: 'todo', voiceFrom: 'yuji', trail: 0xd8a04a, name: 'Aoi Todo', title: 'Boogie Woogie · Kyoto Grade 1', model: 'todo', stance: 'fist', color: '#e8b05a',
+    unlock: 'Clear "My Best Friend" (Chapter 4, the Goodwill Event).',
+    desc: 'A grade 1 brawler with a monster\'s body and a single clap that swaps places with anything holding cursed energy. Boogie Woogie throws curses off balance, and his Black Flash comes easier than anyone\'s but Yuji\'s. Ultimate: Brothers\' Black Flash.',
+    base: { hp: 230, hpLv: 34, ce: 75, ceLv: 4.5, atk: 18, atkLv: 4.4, def: 10, defLv: 2.1 },
+    attrs: { str: 14, dex: 7, vit: 12, ce: 4 },
+    atkScale: { str: 2.1 },
+    bfBonus: 0.04,
+    combo: [
+      { anim: 'punch1', dur: 0.26, mult: 1.05, range: 2.0, arc: 1.6, sfx: 'punch', swingSfx: 'swing', lunge: 0.6 },
+      { anim: 'punch2', dur: 0.26, mult: 1.1, range: 2.0, arc: 1.6, sfx: 'punch', swingSfx: 'swing', lunge: 0.6 },
+      { anim: 'kick', dur: 0.42, mult: 1.7, range: 2.4, arc: 2.2, sfx: 'kick', swingSfx: 'swingHeavy', knock: 2.5, lunge: 0.9 },
+    ],
+    startGear: ['todoWraps', 'uniform', 'sneakers'],
+    weaponModel: 'fist',
+  },
+  inumaki: {
+    id: 'inumaki', short: 'Inumaki', self: 'inumaki', voice: 'inumaki', voiceFrom: 'megumi', trail: 0xb8c8e8, name: 'Toge Inumaki', title: 'Cursed Speech', model: 'inumaki', stance: 'fist', color: '#c8d8f8',
+    unlock: 'Clear "October 31st" (Chapter 5, the Shibuya Incident begins).',
+    desc: 'Heir of the Inumaki clan: his words are curses. "Don\'t move", "Crush", "Blast away" and "Sleep" bend every curse in earshot, at a cost to his throat. Fragile up close, devastating at range. Ultimate: "Die."',
+    base: { hp: 115, hpLv: 18, ce: 120, ceLv: 8, atk: 13, atkLv: 3.2, def: 5, defLv: 1.0 },
+    attrs: { str: 5, dex: 8, vit: 5, ce: 12 },
+    atkScale: { str: 0.8, ce: 1.5 },
+    bfBonus: 0,
+    combo: [
+      { anim: 'punch1', dur: 0.26, mult: 0.85, range: 1.8, arc: 1.6, sfx: 'punch', swingSfx: 'swing', lunge: 0.6 },
+      { anim: 'punch2', dur: 0.26, mult: 0.9, range: 1.8, arc: 1.6, sfx: 'punch', swingSfx: 'swing', lunge: 0.6 },
+      { anim: 'kick', dur: 0.42, mult: 1.35, range: 2.2, arc: 2.2, sfx: 'kick', swingSfx: 'swingHeavy', knock: 2.5, lunge: 0.9 },
+    ],
+    startGear: ['throatSpray', 'uniform', 'sneakers'],
+    weaponModel: 'fist',
+  },
+  panda: {
+    id: 'panda', short: 'Panda', self: 'panda', voice: 'panda', voiceFrom: 'yuji', trail: 0xe8e8e8, name: 'Panda', title: 'Abrupt Mutated Cursed Corpse', model: 'panda', stance: 'fist', color: '#e8e8e8',
+    unlock: 'Clear "Uninvited Bloom" (Chapter 4, the Goodwill Event).',
+    desc: 'A cursed corpse made by Principal Yaga, with three cores inside. The Panda core hits hard and soaks blows, the Gorilla core\'s Drumming Beat goes straight through defense, and the Triceratops core charges like a freight train. Ultimate: Triceratops Core — Stampede.',
+    base: { hp: 260, hpLv: 38, ce: 70, ceLv: 4, atk: 16, atkLv: 3.8, def: 12, defLv: 2.5 },
+    attrs: { str: 12, dex: 5, vit: 15, ce: 4 },
+    atkScale: { str: 1.9 },
+    bfBonus: 0.01,
+    combo: [
+      { anim: 'punch1', dur: 0.26, mult: 1.0, range: 2.1, arc: 1.6, sfx: 'punch', swingSfx: 'swing', lunge: 0.6 },
+      { anim: 'punch2', dur: 0.26, mult: 1.05, range: 2.1, arc: 1.6, sfx: 'punch', swingSfx: 'swing', lunge: 0.6 },
+      { anim: 'kick', dur: 0.42, mult: 1.75, range: 2.5, arc: 2.2, sfx: 'kick', swingSfx: 'swingHeavy', knock: 2.5, lunge: 0.9 },
+    ],
+    startGear: ['pandaPads', 'uniform', 'sneakers'],
+    weaponModel: 'fist',
+  },
+  choso: {
+    id: 'choso', short: 'Choso', self: 'choso', voice: 'choso', voiceFrom: 'yuji', trail: 0xc81a2a, name: 'Choso', title: 'Death Painting · Eldest Brother', model: 'choso', stance: 'fist', color: '#e04a5a',
+    unlock: 'Clear "King of Curses" (Chapter 5, the end of the Shibuya Incident).',
+    desc: 'The eldest of the Death Painting wombs, master of Blood Manipulation. Piercing Blood shoots through lines of curses, Slicing Exorcism spins blood discs, and Flowing Red Scale pushes his body past its limits. Ultimate: Supernova.',
+    base: { hp: 165, hpLv: 25, ce: 110, ceLv: 7.5, atk: 16, atkLv: 3.9, def: 7, defLv: 1.5 },
+    attrs: { str: 8, dex: 9, vit: 8, ce: 10 },
+    atkScale: { str: 1.1, ce: 1.1 },
+    bfBonus: 0,
+    combo: [
+      { anim: 'punch1', dur: 0.26, mult: 0.95, range: 1.8, arc: 1.6, sfx: 'punch', swingSfx: 'swing', lunge: 0.6 },
+      { anim: 'punch2', dur: 0.26, mult: 1.0, range: 1.8, arc: 1.6, sfx: 'punch', swingSfx: 'swing', lunge: 0.6 },
+      { anim: 'kick', dur: 0.42, mult: 1.5, range: 2.2, arc: 2.2, sfx: 'kick', swingSfx: 'swingHeavy', knock: 2.5, lunge: 0.9 },
+    ],
+    startGear: ['chosoWraps', 'uniform', 'sneakers'],
+    weaponModel: 'fist',
+  },
+  hakari: {
+    id: 'hakari', short: 'Hakari', self: 'hakari', voice: 'hakari', voiceFrom: 'yuji', trail: 0x6aff8a, name: 'Kinji Hakari', title: 'Idle Death Gamble', model: 'hakari', stance: 'fist', color: '#7aff9a',
+    unlock: 'Clear "Granite Blast" (Chapter 7, the Culling Game in Sendai).',
+    desc: 'A third-year who lives for the thrill of the bet. Rough cursed energy that stings on contact, pachinko doors that slam shut on curses, and a domain whose jackpot makes him all but immortal. Ultimate: Domain Expansion — Idle Death Gamble.',
+    base: { hp: 185, hpLv: 28, ce: 100, ceLv: 6, atk: 17, atkLv: 4.1, def: 8, defLv: 1.7 },
+    attrs: { str: 11, dex: 9, vit: 9, ce: 7 },
+    atkScale: { str: 1.6, ce: 0.5 },
+    bfBonus: 0.02,
+    combo: [
+      { anim: 'punch1', dur: 0.26, mult: 1.0, range: 1.8, arc: 1.6, sfx: 'punch', swingSfx: 'swing', lunge: 0.6 },
+      { anim: 'punch2', dur: 0.26, mult: 1.0, range: 1.8, arc: 1.6, sfx: 'punch', swingSfx: 'swing', lunge: 0.6 },
+      { anim: 'kick', dur: 0.42, mult: 1.6, range: 2.2, arc: 2.2, sfx: 'kick', swingSfx: 'swingHeavy', knock: 2.5, lunge: 0.9 },
+    ],
+    startGear: ['hakariKnuckles', 'uniform', 'sneakers'],
+    weaponModel: 'fist',
+  },
 };
 
 /** The first three can be picked from the start; the rest are unlocked by play. */
 export const BASE_CLASSES: ClassId[] = ['yuji', 'megumi', 'nobara'];
-export const UNLOCKABLE_CLASSES: ClassId[] = ['sukunaYuji', 'sukunaMegumi', 'heianSukuna', 'moduloYuji', 'yuta', 'toji'];
+export const UNLOCKABLE_CLASSES: ClassId[] = ['sukunaYuji', 'sukunaMegumi', 'heianSukuna', 'moduloYuji', 'yuta', 'toji', 'panda', 'todo', 'inumaki', 'choso', 'maki', 'hakari', 'gojo'];
 
 export const LEVEL_CAP = 100;
 export function expToNext(level: number) {

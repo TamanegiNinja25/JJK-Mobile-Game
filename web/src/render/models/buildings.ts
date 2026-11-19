@@ -225,6 +225,25 @@ function concreteBlock(o: BuildOpts, W: number, D: number, floors: number, col: 
     b.add(G.box(3, 2.4, 3), col, { pos: [W / 2 - 3, H + 1.2, 0] }); // stairwell
   }
   if (opts.ac) for (let i = 0; i < 4; i++) b.add(G.box(1.2, 0.8, 1), 0xc8c8c4, { pos: [-W / 2 + 2 + i * (W - 4) / 3, H + 0.8, rng.range(-D / 4, D / 4)] });
+  // street-level detail (3.0): a darker plinth, corner pilasters, drainpipes, wall air-conditioner units with
+  // their pipes on the side walls, and a water tank and antenna on low roofs
+  b.add(G.box(W + 0.12, 0.6, D + 0.12), darken(col, 0.62), { pos: [0, 0.3, 0] });
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.add(G.box(0.32, H - 0.2, 0.32), darken(col, 0.9), { pos: [sx * (W / 2 - 0.08), H / 2, sz * (D / 2 - 0.08)] });
+  for (const sx of [-1, 1]) b.add(G.cyl(0.07, 0.07, H, 6), 0x6a6e74, { pos: [sx * (W / 2 + 0.12), H / 2, D / 2 - 0.5] });
+  for (let f = 0; f < floors; f++) for (const sx of [-1, 1]) {
+    if (!rng.chance(0.55)) continue;
+    const z = rng.range(-D / 2 + 1, D / 2 - 1), y = f * fh + 1.2;
+    b.add(G.box(0.5, 0.6, 0.8), 0xd8d8d2, { pos: [sx * (W / 2 + 0.28), y, z], topColor: 0xe8e8e2 });
+    b.add(G.cyl(0.18, 0.18, 0.05, 10), 0x5a5e64, { pos: [sx * (W / 2 + 0.54), y, z], rot: [0, 0, Math.PI / 2] });
+    b.add(G.cyl(0.03, 0.03, 1.1, 4), 0xc8c0b0, { pos: [sx * (W / 2 + 0.06), y + 0.7, z + 0.3] });
+  }
+  if (!opts.rooftopFence && floors <= 6) {
+    const tx = rng.range(-W / 4, W / 4), tz = rng.range(-D / 5, D / 5);
+    for (const lx of [-0.6, 0.6]) for (const lz of [-0.6, 0.6]) b.add(G.box(0.1, 1.1, 0.1), 0x5a5e64, { pos: [tx + lx, H + 1.05, tz + lz] });
+    b.add(G.cyl(0.9, 0.9, 1.5, 12), 0xb8c0c8, { pos: [tx, H + 2.3, tz], topColor: 0xd0d8e0 });
+    b.add(G.cyl(0.04, 0.04, 2.6, 4), 0x8a8e94, { pos: [-tx * 0.5, H + 1.8, -tz - 1] });
+    b.add(G.box(1.2, 0.04, 0.04), 0x8a8e94, { pos: [-tx * 0.5, H + 2.8, -tz - 1] });
+  }
   if (opts.clock) {
     b.add(G.cyl(0.9, 0.9, 0.15, 20), 0xf4f4f0, { pos: [0, H - 1.4, D / 2 + 0.1], rot: [Math.PI / 2, 0, 0], glow: o.night ? 0.6 : 0 });
     b.add(G.box(0.08, 0.7, 0.05), 0x111111, { pos: [0, H - 1.15, D / 2 + 0.2] });
@@ -304,6 +323,11 @@ function shopRow(o: BuildOpts): BuildingDef {
     colors.push(rng.pick(SIGN_COLORS));
     // vertical sign post
     b.add(G.box(0.7, 2.6, 0.2), 0x1a1a1e, { pos: [x + SW / 2 - 0.6, 4.6, D / 2 + 0.5] });
+    // a roll-up shutter half down over the shop window, the electricity meter, an outdoor AC unit on the roof
+    b.add(G.box(SW - 0.4, 0.5, 0.14), 0x9aa0a6, { pos: [x, 2.35, D / 2 + 0.08], colorFn: (_xx, yy, _z, c) => { if (Math.floor(yy * 20) % 2) c.setHex(0x8a9096); } });
+    b.add(G.box(0.4, 0.5, 0.15), 0xd8d8d0, { pos: [x - SW / 2 + 0.45, 1.6, D / 2 + 0.08] });
+    b.add(G.box(1.0, 0.7, 0.8), 0xd0d0cc, { pos: [x + rng.range(-1, 1), H + 0.65, rng.range(-1.5, 1.5)], topColor: 0xe0e0dc });
+    if (rng.chance(0.5)) b.add(G.box(SW - 0.8, 1.2, 0.12), rng.pick([0xe84a4a, 0x2a6ae8, 0xf0c030, 0x3ab06a]), { pos: [x, H + 1.0, D / 2 - 0.3], glow: o.night ? 0.8 : 0.1 });
   }
   const extras = () => names.map((n, i) => {
     const s = signPlane(n, 2.6, 0.7, colors[i], 'rgba(10,10,14,0.85)', 'bold 110px sans-serif', !!o.night);
@@ -324,12 +348,24 @@ function theater(o: BuildOpts): BuildingDef {
 }
 
 function apartment(o: BuildOpts): BuildingDef {
+  const rng = new Rng((o.seed ?? 2) * 61 + 3);
   const d = concreteBlock(o, 12, 8, 4, 0xc8c0b4, { ac: true });
   const b = new PartBag();
   b.addBaked(d.geo);
   for (let f = 1; f < 4; f++) {
-    b.add(G.box(11.6, 0.15, 1.2), 0xa8a094, { pos: [0, f * 3.2 + 0.1, 4.6] });
-    b.add(G.box(11.6, 1.0, 0.08), 0x8a8478, { pos: [0, f * 3.2 + 0.65, 5.2] });
+    const y = f * 3.2;
+    b.add(G.box(11.6, 0.15, 1.2), 0xa8a094, { pos: [0, y + 0.1, 4.6] });
+    b.add(G.box(11.6, 1.0, 0.08), 0x8a8478, { pos: [0, y + 0.65, 5.2] });
+    // four flats a floor: frosted dividers between the balconies, sliding glass doors, and washing out to dry
+    for (let u = 0; u < 4; u++) {
+      const x = -4.35 + u * 2.9;
+      if (u) b.add(G.box(0.06, 1.9, 1.15), 0xe8e8e4, { pos: [x - 1.45, y + 1.1, 4.6] });
+      b.add(G.box(2.1, 2.0, 0.06), o.night && rng.chance(0.6) ? 0xffe0a8 : 0x46586a, { pos: [x, y + 1.15, 4.02], glow: o.night ? 0.5 : 0.05 });
+      if (rng.chance(0.45)) {
+        b.add(G.cyl(0.02, 0.02, 2.2, 4), 0xc8c8c8, { pos: [x, y + 1.85, 4.85], rot: [0, 0, Math.PI / 2] });
+        for (let k = 0; k < 3; k++) b.add(G.box(0.4, 0.55, 0.03), rng.pick([0xe8e8f0, 0x7a9ad8, 0xd87a7a, 0xe8d08a]), { pos: [x - 0.7 + k * 0.7, y + 1.55, 4.85] });
+      }
+    }
   }
   return { ...d, geo: b.build() };
 }

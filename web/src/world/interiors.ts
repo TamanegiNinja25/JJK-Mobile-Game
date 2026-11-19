@@ -510,7 +510,12 @@ export const INTERIORS: Record<string, MapDef> = {
       place('trackBed', 0, -3.9, 0);
       for (const x of [-3, 3]) place('stationPillar', x, -1.6);
       const [bx, bz] = toWorld(c, 0, -0.8);
-      b.boss({ id: 'choso', x: bx, z: bz, r: 5.5, quest: 'm11p', intro: [
+      // playing as Choso, he is the one waiting by the tracks, and the boy who killed his brothers walks in
+      b.boss({ id: 'yujiRival', as: 'choso', x: bx, z: bz, r: 5.5, quest: 'm11p', cond: (ps) => ps.d.cls === 'choso', intro: [
+        { who: 'narrator', text: 'B5F, the Fukutoshin Line platform. Choso waits by the tracks. Footsteps come down the frozen escalator.' },
+        { who: 'player', text: 'You. You killed my little brothers, Eso and Kechizu. An older brother protects his siblings. That is all I am.' },
+      ] });
+      b.boss({ id: 'choso', x: bx, z: bz, r: 5.5, quest: 'm11p', cond: (ps) => ps.d.cls !== 'choso', intro: [
         { who: 'narrator', text: 'B5F, the Fukutoshin Line platform. The tiles are cracked in a perfect square where something was sealed away.' },
         { who: 'narrator', text: 'A man in a dark robe waits by the tracks, a stripe of blood across his nose. Two more like him lie still at his feet.' },
         { who: 'choso', text: 'You. You\'re the one who killed my little brothers, Eso and Kechizu.', only: ['yuji'] },

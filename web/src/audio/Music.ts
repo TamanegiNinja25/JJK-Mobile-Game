@@ -149,22 +149,34 @@ class Sequencer {
     }
   }
 
-  private schedule(t: number, spb: number) {
+  /**
+   * One sixteenth step. Since 3.0 a theme plays as a song rather than a loop: 16-bar sections of
+   * verse, verse, chorus and verse (the chorus doubles the melody an octave up, adds a counter-line and
+   * sevenths to the chords), a drum break two bars before each section ends, a fill on the last bar, a
+   * crash where each section starts, and a little swing on the slower themes.
+   */
+  private schedule(t0: number, spb: number) {
     const th = this.theme;
     const a = this.a;
     const s = this.step;
     const chordDeg = th.prog[this.bar % th.prog.length];
     const phraseStep = (this.bar % 4) * 16 + s;
     const variation = Math.floor(this.bar / 4) % 4; // A A' B A
-    // pad at bar start
+    const chorus = variation === 2;
+    const barInSection = this.bar % 16;
+    const brk = barInSection === 12 || barInSection === 13;
+    const fill = barInSection === 15 && s >= 12;
+    // swing: off-beat sixteenths land a touch late on the slower themes
+    const t = th.bpm < 100 && s % 2 === 1 ? t0 + spb * 0.14 : t0;
+    // pad at bar start (with a seventh in the chorus)
     if (s === 0 && th.pad) {
-      const freqs = [0, 2, 4].map(k => this.noteFreq(chordDeg + k, 0));
-      this.pad(t, freqs, spb * 16, th.pad, th.padType ?? 'triangle', th.padCutoff ?? 1000);
+      const freqs = (chorus ? [0, 2, 4, 6] : [0, 2, 4]).map(k => this.noteFreq(chordDeg + k, 0));
+      this.pad(t, freqs, spb * 16, th.pad * (brk ? 1.2 : 1), th.padType ?? 'triangle', th.padCutoff ?? 1000);
     }
-    if (s === 0 && th.choir) this.choir(t, [0, 2, 4].map(k => this.noteFreq(chordDeg + k, 1)), spb * 16, th.choir);
-    if (th.bass && th.bass.pat[s] === 'x') this.bass(t, this.noteFreq(chordDeg, -1), spb * 2, th.bass.vol, th.bass.type ?? 'triangle');
-    if (th.arp && th.arp.pat[s] === 'x') {
-      const k = [0, 2, 4, 2, 5, 4, 2, 0][s % 8];
+    if (s === 0 && th.choir && (chorus || brk || this.bar % 2 === 0)) this.choir(t, [0, 2, 4].map(k => this.noteFreq(chordDeg + k, 1)), spb * 16, th.choir);
+    if (th.bass && th.bass.pat[s] === 'x' && !(brk && s % 8 !== 0)) this.bass(t, this.noteFreq(chordDeg, -1), spb * 2, th.bass.vol, th.bass.type ?? 'triangle');
+    if (th.arp && th.arp.pat[s] === 'x' && !brk) {
+      const k = [0, 2, 4, 2, 5, 4, 2, 0][s % 8] + (chorus && s >= 8 ? 2 : 0);
       this.arp(t, this.noteFreq(chordDeg + k, th.arp.oct), spb * 0.9, th.arp.vol, th.arp.type ?? 'square');
     }
     if (th.bell && th.bell.pat[s] === 'x') a.fm(t, this.noteFreq(chordDeg + 4, 2), 3.5, 2, 2.5, this.out, th.bell.vol);
@@ -173,24 +185,44 @@ class Sequencer {
       if (variation === 2 && deg !== null) deg += 2;
       if (variation === 1 && deg !== null && s % 4 === 0) deg -= 1;
       if (deg !== null && deg !== undefined) {
-        const f = this.noteFreq(deg + chordDeg * 0, th.koto.oct);
-        a.pluck(t, f, this.out, th.koto.vol, 0.62, 1.4);
-        if (th.koto.tremolo) a.pluck(t + spb, f, this.out, th.koto.vol * 0.6, 0.62, 0.8);
+        const f = this.noteFreq(deg, th.koto.oct);
+        // accents on the beat, softer in between
+        const v = th.koto.vol * (s % 4 === 0 ? 1.1 : 0.85);
+        a.pluck(t, f, this.out, v, 0.62, 1.4);
+        if (th.koto.tremolo) a.pluck(t + spb, f, this.out, v * 0.6, 0.62, 0.8);
+        if (chorus) a.pluck(t + 0.012, f * 2, this.out, v * 0.4, 0.5, 0.9);
       }
+      // the chorus's counter-line: a short, bright shamisen figure answering the melody
+      if (chorus && s % 4 === 2 && this.melody[phraseStep - 2] == null) a.pluck(t, this.noteFreq(chordDeg + [4, 2, 5, 4][(s >> 2) % 4], th.koto.oct + 1), this.out, th.koto.vol * 0.45, 0.35, 0.5);
     }
-    if (th.flute && variation !== 0) {
+    if (th.flute && (variation !== 0 || brk)) {
       const deg = this.melody2[phraseStep];
-      if (deg !== null && deg !== undefined) this.flute(t, this.noteFreq(deg, th.flute.oct), spb * 6, th.flute.vol);
+      if (deg !== null && deg !== undefined) this.flute(t, this.noteFreq(deg, th.flute.oct), spb * 6, th.flute.vol * (chorus ? 1.2 : 1));
     }
     const dr = th.drums;
     if (dr) {
-      if (dr.kick?.[s] === 'x') this.kick(t, dr.vol);
-      if (dr.snare?.[s] === 'x') this.snare(t, dr.vol);
-      if (dr.hat?.[s] === 'x') this.hat(t, dr.vol * (s % 4 === 2 ? 1 : 0.6));
-      if (dr.taiko?.[s] === 'x') this.taiko(t, dr.vol, 1);
-      if (dr.taikoHi?.[s] === 'x') this.taiko(t, dr.vol * 0.7, 1.8);
+      if (s === 0 && barInSection % 8 === 0 && this.bar > 0 && (dr.kick || dr.snare)) this.crash(t, dr.vol);
+      if (fill) {
+        // a roll into the next section
+        if (dr.snare || dr.kick) this.snare(t, dr.vol * (0.6 + (s - 12) * 0.12));
+        if (dr.taiko) this.taiko(t, dr.vol * 0.8, 1 + (s - 12) * 0.25);
+      } else if (brk) {
+        if (s === 0 && dr.taiko) this.taiko(t, dr.vol, 1);
+        if (s === 0 && dr.kick) this.kick(t, dr.vol);
+        if (dr.hat?.[s] === 'x' && s % 8 === 2) this.hat(t, dr.vol * 0.5);
+      } else {
+        if (dr.kick?.[s] === 'x') this.kick(t, dr.vol);
+        if (dr.snare?.[s] === 'x') this.snare(t, dr.vol);
+        if (dr.hat?.[s] === 'x') this.hat(t, dr.vol * (s % 4 === 2 ? 1 : 0.6));
+        if (dr.taiko?.[s] === 'x') this.taiko(t, dr.vol, 1);
+        if (dr.taikoHi?.[s] === 'x') this.taiko(t, dr.vol * 0.7, 1.8);
+        // chorus: an extra open hat on the off-beat for lift
+        if (chorus && dr.hat && s % 4 === 2) this.hat(t, dr.vol * 0.45);
+      }
     }
   }
+
+  private crash(t: number, vol: number) { this.a.noiseBurst(t, 1.1, this.out, { type: 'highpass', f0: 5200, vol: 0.12 * vol }); }
 
   // ---- instruments ----
   private pad(t: number, freqs: number[], dur: number, vol: number, type: OscillatorType, cutoff: number) {

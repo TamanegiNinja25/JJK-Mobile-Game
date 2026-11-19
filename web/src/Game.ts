@@ -1,5 +1,8 @@
 // Top-level controller: main loop, state machine, saving, travel, dialogue/quest flow.
 import { LINE_BY_ID, QuestLine } from './rpg/Reruns';
+import { checkAchievements, endRush, noteCount, rush, saveRecords } from './rpg/Records';
+import { Difficulty, setDifficulty } from './core/Difficulty';
+import { haptic, setHaptics } from './core/Haptics';
 import { QuestHints } from './rpg/Hints';
 import { Renderer, Quality } from './render/Renderer';
 import { Overlay2D } from './ui/Overlay2D';
@@ -26,6 +29,7 @@ import { setIconWarmGate, warmIcons } from './ui/Icons';
 import { classSkills } from './rpg/skills';
 import './rpg/skillsUnlock';
 import './rpg/skillsGuest';
+import './rpg/skillsRoster';
 import { formatNum, pick, rand } from './core/util';
 import { Loot } from './entities/Loot';
 import { checkUnlocks, isUnlocked } from './rpg/Unlocks';
@@ -74,10 +78,19 @@ export class Game {
     barks: 'on' as 'on' | 'off',
     /** sound effects: recorded takes (Kenney's CC0 packs) over the synth, or synthesised only */
     sfxStyle: 'recorded' as 'recorded' | 'synth',
+    /** how hard curses hit and how much they take (see core/Difficulty.ts) */
+    difficulty: 'normal' as Difficulty,
+    /** phone vibration and controller rumble */
+    vibration: 'on' as 'on' | 'off',
+    /** size of the on-screen controls: auto (larger on tablets) or a fixed scale */
+    uiScale: 'auto' as 'auto' | number,
+    /** hit sparks, slams and bursts: drawn in the game's toon style, or the pixel-art sheets */
+    fxStyle: 'toon' as 'toon' | 'pixel',
   };
   hints = new QuestHints(this);
   private last = performance.now();
   private autosaveT = 0;
+  private achT = 0;
   private titleT = 0;
   private fpsAcc = 0;
   private fpsN = 0;
@@ -97,16 +110,16 @@ export class Game {
     this.dialogue = new Dialogue(this, this.ui.root);
     this.director = new Director(this, this.ui.root);
     media.onChange = () => { this.ui.hud?.refreshPortrait(); music.refresh(); };
-    window.addEventListener('resize', () => { this.r.resize(); this.overlay.resize(); });
+    window.addEventListener('resize', () => { this.r.resize(); this.overlay.resize(); this.applyUiScale(); });
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) { this.save(false); audio.ctx?.suspend(); } else if (this.state !== 'boot') audio.ctx?.resume();
+      if (document.hidden) { this.save(false); saveRecords(); audio.ctx?.suspend(); } else if (this.state !== 'boot') audio.ctx?.resume();
     });
     // iPhone/iPad stop the sound after a call, Siri or the app switcher ("interrupted") and only let it
     // start again from a touch, so the next tap brings it back
     const wake = () => { const c = audio.ctx; if (c && c.state !== 'running' && !document.hidden && this.state !== 'boot') void c.resume().catch(() => {}); };
     window.addEventListener('touchend', wake, { passive: true });
     window.addEventListener('pointerdown', wake, { passive: true });
-    window.addEventListener('pagehide', () => this.save(false));
+    window.addEventListener('pagehide', () => { this.save(false); saveRecords(); });
     window.addEventListener('keydown', (e) => {
       if (this.state !== 'play') return;
       const tabs: Record<string, string> = { KeyI: 'bag', KeyK: 'skills', KeyL: 'quests', KeyM: 'map', Escape: 'system', KeyC: 'status' };
@@ -185,6 +198,9 @@ export class Game {
       }
       case 'play':
         occlusion.uOccOn.value = 1;
+        // a controller's Start and Select open the menu and the map (keyboard keys are handled on keydown)
+        if (this.input.pressed('menu')) this.ui.openMenu('system');
+        else if (this.input.pressed('map')) this.ui.openMenu('map');
         this.world.update(dt);
         this.ui.hud?.update(dt);
         this.hints.update(dt);
@@ -197,7 +213,8 @@ export class Game {
           if (this.ps?.questState(id)?.state === 'ready' && this.ps.inRerunLine(id)) { this.ps.complete(id); this.world.refreshNpcs(); this.world.refreshGuide(); this.save(false); }
         }
         this.autosaveT += dt;
-        if (this.autosaveT > 60) { this.autosaveT = 0; this.save(false); }
+        if ((this.achT += dt) > 2.5) { this.achT = 0; this.announceAchievements(); }
+        if (this.autosaveT > 60) { this.autosaveT = 0; this.save(false); saveRecords(); }
         break;
       case 'dialogue':
         this.dialogue.update(dt);
@@ -272,7 +289,20 @@ export class Game {
     voice.mode = s.voice;
     voice.volume = s.voiceVol;
     voice.barks = s.barks !== 'off';
+    setDifficulty(s.difficulty);
+    this.world.fx.fxStyle = s.fxStyle === 'pixel' ? 'pixel' : 'toon';
+    setHaptics(s.vibration !== 'off');
+    this.applyUiScale();
     this.saveSettings();
+  }
+
+  /** The HUD's zoom: 1 on phones, larger on tablets (auto), or the player's choice. */
+  applyUiScale() {
+    const s = this.settings.uiScale;
+    const auto = Math.max(1, Math.min(1.5, Math.min(innerWidth / 900, innerHeight / 430)));
+    const z = s === 'auto' ? Math.round(auto * 20) / 20 : +s || 1;
+    document.documentElement.style.setProperty('--hud-zoom', String(z));
+    this.input.uiZoom = z;
   }
 
   saveSettings() {
@@ -377,6 +407,16 @@ export class Game {
     this.announceUnlocks(checkUnlocks(ps.d));
   }
 
+  /** Toasts any achievement just earned (checked every few seconds of play). */
+  announceAchievements() {
+    const fresh = checkAchievements(this.ps);
+    fresh.forEach((a, i) => setTimeout(() => {
+      audio.play('rare');
+      this.toast(`Achievement: ${a.name} — ${a.desc}`, 'good', 4);
+    }, i * 1500));
+    if (fresh.length) saveRecords();
+  }
+
   /** Banner for sorcerers that were just unlocked (several at once when an old save is loaded). */
   private announceUnlocks(ids: ClassId[]) {
     ids.forEach((id, i) => setTimeout(() => {
@@ -463,6 +503,10 @@ export class Game {
 
   onPlayerDeath() {
     this.state = 'dead';
+    haptic('death');
+    noteCount('deaths');
+    // a Boss Rush ends when you fall
+    if (rush) { endRush(); this.toast('Boss Rush failed. Try again from Records.', 'warn', 4); }
     this.input.enabled = false;
     this.input.releaseAll();
     music.push('title');

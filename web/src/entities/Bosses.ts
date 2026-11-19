@@ -1,6 +1,7 @@
 // Boss attack patterns. Each boss is a small move-set with telegraphs, phases
 // and, for the special grades, a domain expansion the player can clash with.
 import { voice, VOICES } from '../audio/Voice';
+import { haptic } from '../core/Haptics';
 import * as THREE from 'three';
 import type { Enemy } from './Enemy';
 import type { Actor } from './Actor';
@@ -37,6 +38,10 @@ abstract class BossBase implements BossScript {
   stage = 1;
   /** how much faster moves come round in this stage */
   private rate = 1;
+  /** the signature move to open the new stage with, once the roar is over */
+  private opener: string | null = null;
+  /** moves this boss leans on from its current stage (see STAGES) */
+  private favored = new Set<string>();
   private fired = new Set<string>();
   intro = true;
 
@@ -57,6 +62,12 @@ abstract class BossBase implements BossScript {
     const e = this.e;
     const stage = this.hpPct > 0.5 ? 1 : this.hpPct > 0.2 ? 2 : 3;
     if (stage > this.stage) { this.stage = stage; this.enterStage(stage); return true; }
+    // the stage's signature move, straight after the roar
+    if (this.opener && this.t.alive) {
+      const mv = this.moves().find(m => m.id === this.opener);
+      this.opener = null;
+      if (mv) { e.faceTowards(this.t.x, this.t.z, 1, 99); mv.run(); this.busy = mv.dur; this.cds[mv.id] = mv.cd / this.rate; return true; }
+    }
     for (const p of this.phases()) if (this.hpPct <= p.at) this.once(p.id, () => { this.phase++; p.run(); });
     const t = this.t;
     if (!t.alive) return false;
@@ -64,13 +75,16 @@ abstract class BossBase implements BossScript {
     if (dist > e.d.aggro * 1.6 && !e.aggro) return false;
     e.aggro = true;
     e.target = t;
+    const favored = this.favored;
     const avail = this.moves().filter(m => (this.cds[m.id] ?? 0) <= 0 && (m.min === undefined || dist >= m.min) && (m.max === undefined || dist <= m.max) && (m.phase === undefined || this.phase >= m.phase));
     if (avail.length && e.atkCd <= 0) {
       let tot = 0;
-      for (const m of avail) tot += m.weight ?? 1;
+      // a stage's favourite moves come up twice as often
+      const wt = (m: Move) => (m.weight ?? 1) * (favored.has(m.id) ? 2 : 1);
+      for (const m of avail) tot += wt(m);
       let r = Math.random() * tot;
       let mv = avail[0];
-      for (const m of avail) { r -= m.weight ?? 1; if (r <= 0) { mv = m; break; } }
+      for (const m of avail) { r -= wt(m); if (r <= 0) { mv = m; break; } }
       e.faceTowards(t.x, t.z, 1, 99);
       mv.run();
       // human bosses shout on their bigger moves, in the voice their dialogue uses
@@ -79,7 +93,7 @@ abstract class BossBase implements BossScript {
         if (VOICES[vk]) voice.bark('boss' + e.id, VOICES[vk], 'kiai', 0.9);
       }
       this.busy = mv.dur;
-      this.cds[mv.id] = mv.cd / this.rate;
+      this.cds[mv.id] = mv.cd / this.rate * (favored.has(mv.id) ? 0.55 : 1);
       e.atkCd = 0.35 / e.enrage / this.rate;
       return true;
     }
@@ -90,17 +104,35 @@ abstract class BossBase implements BossScript {
     return true;
   }
 
-  /** A new stage: the boss roars, the screen says so, and from now on it hits harder and faster. */
+  /**
+   * A new stage: the boss roars, the screen names what it is about to do, and from now on it hits harder and
+   * faster. Each boss then opens with its own signature move, leans on its favourite ones, and some take on a
+   * bigger, more monstrous form (see STAGES).
+   */
   protected enterStage(stage: number) {
     const e = this.e;
+    const sig = STAGES[e.d.boss ?? '']?.[stage === 2 ? 0 : 1];
     e.stageMul = stage === 2 ? 1.25 : 1.5;
     this.rate = stage === 2 ? 1.18 : 1.4;
     this.busy = 0.9;
+    this.opener = sig?.open ?? null;
+    for (const id of sig?.favor ?? []) this.favored.add(id);
     this.anim('castUp', 0.9);
     this.w.sfx('roar', e.x, e.z, 1, stage === 3 ? 0.8 : 0.95);
-    this.w.fx.ring(e.x, e.z, stage === 3 ? 0xff1a2a : 0xff7a2a, 5, 0.7); this.w.fx.sheet('cursedBloom', e.x, 1.2, e.z, 6, 0.9, stage === 3 ? 0xff6a7a : 0xffffff);
+    const col = sig?.aura ?? (stage === 3 ? 0xff1a2a : 0xff7a2a);
+    this.w.fx.ring(e.x, e.z, col, 5, 0.7);
+    this.w.fx.sheet('cursedBloom', e.x, 1.2, e.z, 6, 0.9, stage === 3 ? 0xff6a7a : 0xffffff);
+    this.w.fx.pillar(e.x, e.z, 1.6 * e.scale, 6, col, 0.8);
+    if (sig?.grow && e.model) {
+      // a truer, bigger form: the model and its reach grow
+      e.model.root.scale.multiplyScalar(sig.grow);
+      e.radius *= sig.grow;
+    }
     this.w.fx.shake(0.45, 0.5);
-    this.w.game.ui.banner(stage === 3 ? 'FINAL PHASE' : 'PHASE 2', e.d.name, stage === 3 ? '#ff1a2a' : '#ff8a3a', 1.8);
+    haptic('phase');
+    const vk = String(e.d.model ?? '').replace(/^char:/, '');
+    if (VOICES[vk]) voice.bark('boss' + e.id, VOICES[vk], 'kiai', 1);
+    this.w.game.ui.banner(stage === 3 ? 'FINAL PHASE' : 'PHASE 2', sig?.line ?? e.d.name, stage === 3 ? '#ff1a2a' : '#ff8a3a', 2);
   }
 
   // ---------------- helpers ----------------
@@ -1446,6 +1478,44 @@ class GojoMemory extends BossBase {
     ];
   }
 }
+
+/**
+ * Every boss's Phase 2 and Final Phase: the move it opens the stage with, the line the banner shows, the
+ * moves it leans on from then on (twice as likely, cooldowns about halved), an aura colour, and for some a
+ * bigger form. Move ids are the boss's own (see its moves()).
+ */
+interface StageSig { open?: string; line?: string; favor?: string[]; aura?: number; grow?: number }
+const STAGES: Record<string, [StageSig, StageSig]> = {
+  glutton: [{ open: 'vomit', line: 'It gorges on cursed energy', favor: ['charge'] }, { open: 'slam', line: 'Bloated and frenzied', favor: ['bite', 'slam'], grow: 1.12 }],
+  fingerBearer: [{ open: 'spikes', line: 'The finger awakens', favor: ['claws'] }, { open: 'beam', line: 'Sukuna\'s finger burns', favor: ['beam', 'leap'], aura: 0xff2a3a, grow: 1.1 }],
+  mahito: [{ open: 'spikes', line: 'Idle Transfiguration', favor: ['grab'], aura: 0x7ac0c0 }, { open: 'grab', line: 'Instant Spirit Body of Distorted Killing', favor: ['blade', 'grab', 'dash'], aura: 0x4a8a8a, grow: 1.25 }],
+  todo: [{ open: 'clap', line: 'Boogie Woogie!', favor: ['clap'] }, { open: 'bf', line: 'Black Flash!', favor: ['bf', 'punches'], aura: 0xff1a2a }],
+  hanami: [{ open: 'roots', line: 'The forest rises', favor: ['roots'], aura: 0x6ad86a }, { open: 'sea', line: 'Flower Field', favor: ['bloom', 'seeds'], aura: 0xf0a0c0, grow: 1.1 }],
+  dagon: [{ open: 'wave', line: 'The tide comes in', favor: ['tentacle'], aura: 0x3a8ad8 }, { open: 'geyser', line: 'Death Swarm', favor: ['fish', 'geyser'], aura: 0x2a6ab8 }],
+  jogo: [{ open: 'eruption', line: 'Ember Insects', favor: ['insects'], aura: 0xff6a1a }, { open: 'meteor', line: 'Maximum: Meteor!', favor: ['fireballs', 'eruption'], aura: 0xff3a0a, grow: 1.1 }],
+  sukuna: [{ open: 'dismantle', line: 'Dismantle', favor: ['dismantle'], aura: 0xff2a3a }, { open: 'fuga', line: 'Open: Furnace', favor: ['cleave', 'fuga'], aura: 0xff5a1a }],
+  mahoraga: [{ open: 'quake', line: 'The wheel turns: adapted', favor: ['sword'], aura: 0xe8e0c0 }, { open: 'charge', line: 'Fully adapted', favor: ['sword', 'charge'], aura: 0xffffff, grow: 1.12 }],
+  choso: [{ open: 'convergence', line: 'Convergence', favor: ['piercing'], aura: 0xc81a2a }, { open: 'supernova', line: 'Flowing Red Scale: Stack', favor: ['piercing', 'supernova'], aura: 0xff1a2a }],
+  kechizu: [{ open: 'puddles', line: 'Rot spreads', favor: ['spit'], aura: 0x8ab83a }, { open: 'spit', line: 'Brother, I\'m coming!', favor: ['puddles', 'bite'], aura: 0x6a9a2a, grow: 1.1 }],
+  eso: [{ open: 'rot', line: 'Decay', favor: ['rot'], aura: 0x9aba3a }, { open: 'wing', line: 'Wing King', favor: ['wing', 'rot'], aura: 0x7a9a2a }],
+  yujiRival: [{ open: 'divergent', line: 'Divergent Fist', favor: ['divergent'], aura: 0x9ad0ff }, { open: 'bf', line: 'Black Flash!', favor: ['bf'], aura: 0xff1a2a }],
+  yuta: [{ open: 'rika', line: 'Rika!', favor: ['rika'], aura: 0xe8e8ff }, { open: 'love', line: 'Authentic Mutual Love', favor: ['katana', 'copy'], aura: 0xffffff }],
+  naoya: [{ open: 'frames', line: 'Projection Sorcery', favor: ['frames'], aura: 0xc8e0ff }, { open: 'boom', line: 'Twenty-four frames, faster', favor: ['blink', 'boom'], aura: 0xa0c8ff }],
+  higuruma: [{ open: 'enlarge', line: 'Judgeman watches', favor: ['gavel'], aura: 0xe8c86a }, { open: 'execute', line: 'Executioner\'s Sword', favor: ['execute', 'throw'], aura: 0xffe08a }],
+  kashimo: [{ open: 'discharge', line: 'Lightning discharge', favor: ['bolts'], aura: 0x6ac8ff }, { open: 'amber', line: 'Mythical Beast Amber', favor: ['bolts', 'discharge'], aura: 0x9ae8ff, grow: 1.1 }],
+  ishigori: [{ open: 'barrage', line: 'Output: maximum', favor: ['barrage'], aura: 0xffb04a }, { open: 'granite', line: 'Granite Blast', favor: ['granite', 'stomp'], aura: 0xff8a2a }],
+  uro: [{ open: 'fold', line: 'Sky Manipulation', favor: ['fold'], aura: 0x9ab8ff }, { open: 'breaker', line: 'Thin Ice Breaker', favor: ['breaker', 'kicks'], aura: 0xc8d8ff }],
+  uraume: [{ open: 'calm', line: 'Frost Calm', favor: ['shards'], aura: 0xbfe8ff }, { open: 'icefall', line: 'Ice Formation: Icefall', favor: ['icefall', 'calm'], aura: 0xe0f4ff }],
+  kenjaku: [{ open: 'gravity', line: 'Anti-Gravity System', favor: ['orbs'], aura: 0x8a6aff }, { open: 'uzumaki', line: 'Maximum: Uzumaki', favor: ['uzumaki', 'gravity'], aura: 0x6a3aff }],
+  sukunaTrue: [{ open: 'dogs', line: 'Ten Shadows: Divine Dogs', favor: ['dismantle'], aura: 0xff2a3a }, { open: 'world', line: 'World-Cutting Slash', favor: ['world', 'cleave', 'fuga'], aura: 0xff0a1a }],
+  smallpox: [{ open: 'coffin', line: 'Coffin of the dead', favor: ['pox'], aura: 0x8a6a4a }, { open: 'pox', line: 'The plague spreads', favor: ['coffin', 'wisps'], aura: 0x6a4a3a, grow: 1.1 }],
+  rainbowDragon: [{ open: 'breath', line: 'Rainbow Breath', favor: ['dive'], aura: 0xc8a0ff }, { open: 'coil', line: 'The dragon coils', favor: ['breath', 'coil'], aura: 0xff8ad8, grow: 1.1 }],
+  kuchisake: [{ open: 'question', line: '"Am I pretty?"', favor: ['snip'], aura: 0xd84a5a }, { open: 'scream', line: '"Now am I pretty?!"', favor: ['lunge', 'snip'], aura: 0xff2a3a }],
+  naoyaCurse: [{ open: 'mach', line: 'Sound barrier broken', favor: ['mach'], aura: 0xc8e8ff }, { open: 'frames', line: 'Time Cell Moon Palace', favor: ['frames', 'blink'], aura: 0xa8d0ff, grow: 1.1 }],
+  toji: [{ open: 'chain', line: 'Chain of a Thousand Miles', favor: ['vanish'], aura: 0x6a6a6a }, { open: 'spear', line: 'Inverted Spear of Heaven', favor: ['spear', 'vanish', 'cloud'], aura: 0x4a4a4a }],
+  geto: [{ open: 'dragon', line: 'Rainbow Dragon', favor: ['spirits'], aura: 0x8a6aff }, { open: 'uzumaki', line: 'Maximum: Uzumaki', favor: ['uzumaki', 'orbs'], aura: 0x5a2aff }],
+  gojoMemory: [{ open: 'red', line: 'Reversal: Red', favor: ['blue', 'red'], aura: 0xff3a4a }, { open: 'purple', line: 'Hollow Purple', favor: ['purple', 'blink'], aura: 0xa04aff }],
+};
 
 export function createBoss(id: string, e: Enemy): BossScript | null {
   switch (id) {

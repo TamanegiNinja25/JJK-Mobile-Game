@@ -77,15 +77,25 @@ const TOJI: Record<string, string> = {
   'Kenjaku wore your face for a year and used you for all of it. You don\'t get to talk about carrying things.': 'You and your big speeches. I put you in the ground once already. ...No, that was the other guy. Whatever.',
 };
 
-const FALLBACK: Record<'yuta' | 'toji', string[]> = {
+/** The guests whose own words replace a first-year's in conversations. */
+export type GuestVoice = 'yuta' | 'toji' | 'gojo' | 'maki' | 'todo' | 'inumaki' | 'panda' | 'choso' | 'hakari';
+
+const FALLBACK: Record<GuestVoice, string[]> = {
   yuta: ['Okay. I\'ll handle it.', 'Right. Let\'s go, Rika.', 'Understood. Leave it to me.', 'Sorry. I\'ll do my best.', '...Okay.'],
   toji: ['Tch. Fine.', 'Whatever. Point me at it.', 'Does this pay?', 'Yeah, yeah.', 'Heh.'],
+  gojo: ['Relax. I\'m the strongest.', 'Sure, sure. Leave it to sensei.', 'Oh, this\'ll be fun.', 'Mm-hm. Easy.', 'Don\'t worry. I\'ve got this.'],
+  maki: ['Fine. Hand me something sharp.', 'Tch. Let\'s get it done.', 'Don\'t slow me down.', 'Got it.', 'Watch and learn.'],
+  todo: ['What kind of woman is your type?', 'My best friend asks, so I answer!', 'Hah! Brother, leave it to me!', 'Boring. But fine.', 'I\'ll crush it with one clap.'],
+  inumaki: ['Salmon.', 'Tuna mayo.', 'Kelp.', 'Bonito flakes.', 'Salmon roe.'],
+  panda: ['Sure thing. I\'m a panda.', 'Leave it to the big guy.', 'Got it. Gorilla mode if it gets bad.', 'Heh. Easy.', 'Panda\'s on it.'],
+  choso: ['I\'m the big brother. Leave it to me.', 'Understood.', 'My little brothers are watching.', 'Very well.', '...I\'ll handle it.'],
+  hakari: ['Feeling lucky today.', 'Let\'s roll the dice.', 'The fever\'s kicking in!', 'Sure. What are the odds?', 'Jackpot time.'],
 };
 
-/** A guest's version of one of Megumi's lines ('' drops it). */
-export function guestLine(voice: 'yuta' | 'toji', text: string): string {
-  const map = voice === 'yuta' ? YUTA : TOJI;
-  const own = map[text];
+/** A guest's version of one of a first-year's lines ('' drops it). */
+export function guestLine(voice: GuestVoice, text: string): string {
+  const map = voice === 'yuta' ? YUTA : voice === 'toji' ? TOJI : null;
+  const own = map?.[text];
   if (own !== undefined) return own;
   let h = 0;
   for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) | 0;

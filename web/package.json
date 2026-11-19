@@ -7,11 +7,13 @@
     "build": "node build.mjs",
     "watch": "node build.mjs --watch",
     "typecheck": "tsc --noEmit",
-    "serve": "node build.mjs --serve"
+    "serve": "node build.mjs --serve",
+    "test:e2e": "node tests/run.mjs"
   },
   "devDependencies": {
     "@types/three": "0.185.0",
     "esbuild": "0.28.1",
+    "playwright": "1.63.0",
     "typescript": "5.9.3"
   },
   "dependencies": {
