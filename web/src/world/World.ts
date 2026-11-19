@@ -455,6 +455,9 @@ export class World implements WorldAPI {
     if (this.bossActive) {
       const { def, enemy } = this.bossActive;
       if (!enemy.alive) return;
+      // a boss never leaves its arena (charges and dashes stop at the edge), so following it can't count as fleeing
+      const bd = Math.hypot(enemy.x - def.x, enemy.z - def.z), lim = def.r * 1.8;
+      if (bd > lim) enemy.place(def.x + (enemy.x - def.x) * lim / bd, def.z + (enemy.z - def.z) * lim / bd);
       if (Math.hypot(p.x - def.x, p.z - def.z) > def.r * 2.6) {
         // player fled: the boss withdraws and recovers
         enemy.dispose();
