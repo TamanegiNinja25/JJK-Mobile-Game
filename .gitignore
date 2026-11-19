@@ -37,3 +37,4 @@ google-services.json
 # Web game (npm)
 web/node_modules/
 .DS_Store
+web/dist/

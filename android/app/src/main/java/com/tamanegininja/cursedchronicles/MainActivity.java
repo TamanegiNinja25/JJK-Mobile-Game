@@ -25,6 +25,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+import android.window.OnBackInvokedDispatcher;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -53,6 +54,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        registerBack();
         Window window = getWindow();
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -213,18 +215,32 @@ public class MainActivity extends Activity {
     }
 
     /** Back closes menus/dialogue in-game (sent as Escape); press twice quickly to quit. */
+    private void handleBack() {
+        if (webView == null) { finish(); return; }
+        webView.evaluateJavascript(
+                "window.dispatchEvent(new KeyboardEvent('keydown',{code:'Escape',key:'Escape'}));", null);
+        long now = System.currentTimeMillis();
+        if (now - lastBackPress < 1500) {
+            finish();
+        } else {
+            lastBackPress = now;
+            Toast.makeText(this, R.string.press_back_again, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** Android 13+ (and its predictive back gesture) reports Back through this callback instead of a key press. */
+    private void registerBack() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::handleBack);
+        }
+    }
+
+    /** Back on Android 12 and older. */
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK && webView != null) {
-            webView.evaluateJavascript(
-                    "window.dispatchEvent(new KeyboardEvent('keydown',{code:'Escape',key:'Escape'}));", null);
-            long now = System.currentTimeMillis();
-            if (now - lastBackPress < 1500) {
-                finish();
-            } else {
-                lastBackPress = now;
-                Toast.makeText(this, R.string.press_back_again, Toast.LENGTH_SHORT).show();
-            }
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            handleBack();
             return true;
         }
         return super.onKeyDown(keyCode, event);
@@ -247,6 +263,9 @@ public class MainActivity extends Activity {
             MIME.put("wav", "audio/wav");
             MIME.put("mp3", "audio/mpeg");
             MIME.put("ogg", "audio/ogg");
+            MIME.put("m4a", "audio/mp4");
+            MIME.put("glb", "model/gltf-binary");
+            MIME.put("webmanifest", "application/manifest+json");
             MIME.put("txt", "text/plain");
         }
 

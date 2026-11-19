@@ -372,6 +372,8 @@ export class Game {
     if (!ps) { this.toast('Save data could not be read', 'warn'); return; }
     await this.enterWorld(ps, MAPS[ps.d.map] ? ps.d.map : 'hub', ps.d.x, ps.d.z);
     this.toast(`Welcome back, ${CLASSES[ps.d.cls].name.split(' ')[0]}.`, 'info', 2.5);
+    // the main copy was damaged: the backup (the save before it) was loaded, and is written back as the main one
+    if (ps.restored) { this.toast('Your last save was damaged, so the one before it was restored.', 'warn', 6); this.save(false); }
     this.announceUnlocks(checkUnlocks(ps.d));
   }
 
