@@ -55,7 +55,7 @@ button { font-family: inherit; color: inherit; }
 .pts { background: var(--gold); color: #1a1208; border-radius: 99px; padding: 1px 9px; font-size: 12px; font-family: var(--sans); }
 
 /* ------------------------------------------------------------ HUD */
-.hud { position: fixed; inset: 0; pointer-events: none; }
+.hud { position: fixed; inset: 0; pointer-events: none; zoom: var(--hud-zoom, 1); }
 .hud > * { pointer-events: auto; }
 .hud > .top-left { position: absolute; left: calc(10px + var(--sl)); top: calc(8px + var(--st)); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; z-index: 1; pointer-events: none; }
 .top-left > * { pointer-events: auto; }
@@ -854,3 +854,18 @@ button { font-family: inherit; color: inherit; }
 /* the objective's general location, under the compass */
 .tracker-where { margin-top: 2px; font-size: 10px; color: rgba(255, 240, 200, .78); line-height: 1.25; }
 @media (max-height: 440px) { .tracker-where { font-size: 9px; } }
+
+/* Records tab */
+.records { display: flex; flex-direction: column; gap: 8px; }
+.rec-top { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 700px) { .rec-top { grid-template-columns: 1fr; } }
+.rec-card { background: #ffffff08; border: 1px solid #ffffff14; border-radius: 10px; padding: 8px 10px; }
+.rec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+.rec-ach { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 10px; background: #ffffff06; border: 1px solid #ffffff10; opacity: .45; filter: grayscale(1); }
+.rec-ach.got { opacity: 1; filter: none; border-color: #ffd23a55; background: #ffd23a10; }
+.rec-seal { flex: none; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 900; font-size: 11px; line-height: 1.1; color: #fff; background: radial-gradient(circle at 40% 35%, #ff5a6a, #8a1020); box-shadow: 0 0 0 2px #0006, 0 0 10px #ff3a4a55; }
+.rec-ach:not(.got) .rec-seal { background: #3a3446; box-shadow: none; }
+.rec-list { display: flex; flex-direction: column; gap: 2px; }
+.rec-row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 8px; border-radius: 6px; background: #ffffff06; font-size: 13px; }
+.rec-row.dim { opacity: .45; }
+.rec-row small { color: var(--dim); }

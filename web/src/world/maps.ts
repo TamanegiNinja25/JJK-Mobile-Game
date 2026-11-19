@@ -42,6 +42,7 @@ const sugisawa: MapDef = {
     // gate + perimeter
     b.prop('wallConcrete', -5, 30.5, 0).prop('wallConcrete', 5, 30.5, 0);
     b.wall('wallConcrete', -32, 30.5, -7, 30.5).wall('wallConcrete', 7, 30.5, 32, 30.5);
+    b.prop('curveMirror', -8.5, 31.6, Math.PI).prop('canBin', 9, 31.4, 0).row('utilityPole', -30, 33, -10, 33, 10).row('utilityPole', 10, 33, 30, 33, 10);
     b.wall('wallConcrete', -32, -36, 32, -36).wall('wallConcrete', -32, -36, -32, 30.5).wall('wallConcrete', 32, -36, 32, 30.5);
     b.prop('streetLamp', -4, 28, Math.PI).prop('streetLamp', 4, 28, 0);
     b.row('streetLamp', -14, 18, 14, 18, 7, Math.PI / 2);
@@ -358,7 +359,12 @@ const kyoto: MapDef = {
     b.spawner({ enemies: [{ id: 'rootCurse' }, { id: 'bud', w: 2 }], x: 8, z: 14, w: 30, d: 16, count: 7, respawn: 11, level: [19, 21] });
     b.spawner({ enemies: [{ id: 'bud' }, { id: 'forestHound' }], x: -16, z: -12, w: 22, d: 16, count: 6, respawn: 12, level: [20, 23] });
     b.spawner({ enemies: [{ id: 'rootCurse' }, { id: 'forestHound' }, { id: 'bud' }], x: 14, z: -18, w: 22, d: 18, count: 6, respawn: 12, level: [22, 25] });
-    b.boss({ id: 'todo', x: -14, z: 4, r: 8, quest: 'm9', intro: [
+    // playing as Todo himself, the spar is the other way round: the Tokyo first-year he would call his best friend
+    b.boss({ id: 'yujiRival', as: 'todo', x: -14, z: 4, r: 8, quest: 'm9', cond: (ps) => ps.d.cls === 'todo', intro: [
+      { who: 'player', text: 'So YOU are Tokyo\'s rumoured first-year. Before we fight, answer me one question. What kind of woman is your type?!' },
+      { who: 'narrator', text: 'Pink hair. A grin. Fists already up. It is the answer Todo wanted to hear.' },
+    ] });
+    b.boss({ id: 'todo', x: -14, z: 4, r: 8, quest: 'm9', cond: (ps) => ps.d.cls !== 'todo', intro: [
       { who: 'todo', text: 'So YOU are Tokyo\'s rumoured first-year. Before we fight, answer me one question.', emote: 'pointUp' },
       { who: 'todo', text: 'What kind of woman is your type?!' },
     ] });
@@ -544,6 +550,10 @@ const shibuya: MapDef = {
     b.prop('hachiko', -9, -22, Math.PI);
     b.prop('signPink', -22, -20, 0).prop('signCyan', 22, -20, 0).prop('signGold', -22, 14, Math.PI / 2).prop('signPurple', 22, 14, -Math.PI / 2);
     b.row('streetLamp', -40, 10, -20, 10, 7, Math.PI).row('streetLamp', 20, 10, 40, 10, 7, 0);
+    // back streets off the scramble: wired poles, corner mirrors, can bins (the street kit)
+    b.row('utilityPole', -40, -14, -24, -14, 8).row('utilityPole', 24, -14, 40, -14, 8);
+    b.prop('curveMirror', -23.5, 9, Math.PI * 0.75).prop('curveMirror', 23.5, 9, -Math.PI * 0.75).prop('curveMirror', -23.5, -22, Math.PI / 4);
+    b.prop('canBin', -31, 12, 0).prop('canBin', 31, 12, 0).prop('postBox', -27, 12, 0);
     b.prop('carWhite', -6, 7, 0.3).prop('carRed', 9, -8, 2.0).prop('van', -11, -6, 1.2).prop('carBlack', 12, 10, -0.6).prop('carBlue', 3, 22, 0.1);
     b.scatter(['pumpkin', 'trafficCone', 'barricade', 'crate'], 0, 0, 76, 76, 26, { minDist: 2.5 });
     b.scatter(['vendingRed', 'vendingBlue', 'vendingWhite'], 0, 0, 70, 30, 6);
@@ -635,6 +645,9 @@ const colony1: MapDef = {
     b.building('shopRow', -20, 34, 2, { seed: 11 }).building('apartment', 34, 34, 2);
     for (const x of [-34, -24, -14, 14, 24, 34]) if (Math.abs(x) > 8) b.decal(x, 4, 2, 0.18, 0xd0d0c8);
     b.crosswalk(0, -3, 8, 3, 0).crosswalk(0, 11, 8, 3, 0);
+    // the street before the colony emptied: poles and wires still strung over the ruins
+    b.row('utilityPole', -38, 14, -10, 14, 9).row('utilityPole', 10, 14, 38, 14, 9);
+    b.prop('curveMirror', -7, 14.5, Math.PI / 4).prop('vendingWhite', -18, 16.5, 0).prop('canBin', -16.6, 16.6, 0);
     b.prop('carBlack', -8, 7, 0.4).prop('carWhite', 9, -2, 2.2).prop('van', -10, -8, 1.4).prop('carRed', 14, 9, -0.5).prop('carBlue', 4, 20, 2.8);
     b.scatter(['rubble', 'rubbleBig', 'ruinedWall', 'barricade', 'crate'], 0, 0, 78, 78, 30, { minDist: 3 });
     b.scatter(['fireBarrel'], 0, 0, 70, 70, 7, { minDist: 9 });
@@ -699,6 +712,8 @@ const sendai: MapDef = {
     colonyGate(b, 33);
     for (const [x, z, q, s] of [[-32, -32, 0, 21], [-12, -36, 0, 22], [14, -36, 0, 23], [32, -30, 0, 24], [34, -6, 3, 25], [-34, -6, 1, 26], [32, 24, 3, 27]] as const) b.building('ruinedTower', x, z, q, { seed: s });
     b.building('office', -22, 34, 2).building('shopRow', 22, 34, 2, { seed: 13 });
+    b.row('utilityPole', -38, 26, -12, 26, 8.5).row('utilityPole', 12, 26, 38, 26, 8.5);
+    b.prop('curveMirror', 8, 26.5, -Math.PI / 4).prop('postBox', -9, 27, 0).prop('vendingWhite', 16, 28, 0);
     b.prop('carRed', -8, 13, 0.6).prop('carBlack', 10, 6, -2.4).prop('van', 6, -30, 1.1).prop('carWhite', -14, 2, 2.0);
     b.scatter(['rubble', 'rubbleBig', 'ruinedWall', 'barricade'], 0, 0, 78, 78, 34, { minDist: 3 });
     b.scatter(['fireBarrel'], 0, 0, 70, 70, 8, { minDist: 9 });

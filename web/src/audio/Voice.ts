@@ -3,6 +3,7 @@
 // and grain (curses growl and echo). 'tts' reads the line aloud with the phone's text-to-speech engine
 // (the Android host's bridge, or the browser's speech API), pitched and paced per character.
 import { audio } from './Audio';
+import { currentLang } from '../core/i18n';
 
 export type VoiceMode = 'gen' | 'tts' | 'off';
 
@@ -216,6 +217,7 @@ class VoiceSys {
     audio.noiseBurst(t, dur, out, { type: 'bandpass', f0: v2 * p.formant, q: 2, vol: (0.06 + 0.12 * (p.breath ?? 0.2)) * vol, pink: true });
   }
 
+  private ttsLangSet = '';
   /** Read a whole line aloud with text-to-speech. Returns false if speech isn't available. */
   speak(text: string, p: VoiceProfile): boolean {
     if (this.mode !== 'tts' || audio.muted) return false;
@@ -223,12 +225,14 @@ class VoiceSys {
     const id = ++this.ttsId;
     const a = (window as any).CCAndroid;
     try {
+      const ja = currentLang() === 'ja';
       if (a?.ttsSpeak && a.ttsReady?.()) {
+        if (this.ttsLangSet !== (ja ? 'ja' : 'en')) { this.ttsLangSet = ja ? 'ja' : 'en'; a.ttsLang?.(ja ? 'ja-JP' : 'en-US'); }
         a.ttsSpeak(clean, p.ttsPitch ?? 1, p.ttsRate ?? 1, 'cc' + id);
       } else if (typeof speechSynthesis !== 'undefined') {
         speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(clean);
-        u.lang = 'en-US'; u.pitch = Math.min(2, Math.max(0, p.ttsPitch ?? 1)); u.rate = p.ttsRate ?? 1; u.volume = this.volume * audio.volumes.master;
+        u.lang = ja ? 'ja-JP' : 'en-US'; u.pitch = Math.min(2, Math.max(0, p.ttsPitch ?? 1)); u.rate = p.ttsRate ?? 1; u.volume = this.volume * audio.volumes.master;
         u.onend = u.onerror = () => { if (id === this.ttsId) this.ttsBusy = false; };
         speechSynthesis.speak(u);
       } else return false;

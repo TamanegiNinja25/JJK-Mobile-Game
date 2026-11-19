@@ -1,5 +1,7 @@
 // UI orchestration: HUD, menus, toasts, banners, title / class select, death screen.
 import type { Game } from '../Game';
+import { DIFFICULTY } from '../core/Difficulty';
+import { haptic } from '../core/Haptics';
 import { Hud } from './Hud';
 import { Menus } from './Menus';
 import { copyText, el, escapeHtml, formatNum } from '../core/util';
@@ -343,6 +345,8 @@ export class UI {
     const s = this.game.settings;
     const q = (v: string, l: string) => `<button class="chip ${s.quality === v ? 'on' : ''}" data-q="${v}">${l}</button>`;
     const sx = (v: 'recorded' | 'synth', l: string) => `<button class="chip ${(s.sfxStyle ?? 'recorded') === v ? 'on' : ''}" data-sx="${v}">${l}</button>`;
+    // generic chips for the newer settings: data-k is the setting, data-v its value
+    const gc = (k: 'difficulty' | 'vibration' | 'uiScale', v: string | number, l: string) => `<button class="chip ${(s as any)[k] === v ? 'on' : ''}" data-k="${k}" data-v="${v}">${l}</button>`;
     const u = updates.latest;
     const status = escapeHtml(updateStatus());
     const keep = (t.querySelector('.slots-panel.settings') as HTMLElement | null)?.scrollTop ?? 0;
@@ -352,6 +356,12 @@ export class UI {
       <label class="set"><span>Ambience</span><input type="range" min="0" max="100" value="${Math.round(s.amb * 100)}" data-set="amb"></label>
       <div class="set-label">Sound effects</div><div class="chips">${sx('recorded', 'Recorded')}${sx('synth', 'Synthesised')}</div>
       <div class="panel-title">Graphics</div><div class="chips">${q('low', 'Low')}${q('medium', 'Medium')}${q('high', 'High')}</div>
+      <div class="panel-title">Difficulty</div><div class="chips">${gc('difficulty', 'easy', 'Easy')}${gc('difficulty', 'normal', 'Normal')}${gc('difficulty', 'hard', 'Hard')}</div>
+      <div class="help">${DIFFICULTY[s.difficulty]?.about ?? ''}</div>
+      <div class="panel-title">Controls</div>
+      <div class="set-label">Control size</div><div class="chips">${gc('uiScale', 'auto', 'Auto')}${gc('uiScale', 0.9, 'Small')}${gc('uiScale', 1, 'Normal')}${gc('uiScale', 1.2, 'Large')}${gc('uiScale', 1.4, 'Huge')}</div>
+      <div class="set-label">Vibration</div><div class="chips">${gc('vibration', 'on', 'On')}${gc('vibration', 'off', 'Off')}</div>
+      <div class="help">Game controllers work too: left stick moves, A attacks and talks, B dodges, X/Y/LB/RB/LT are skills, RT the ultimate, Start the menu.</div>
       <div class="panel-title">Your own files</div>
       <button class="btn wide" data-a="media">Your Pictures, Sounds &amp; Models</button>
       <div class="help">Your own character pictures, 3D models, sound effects and music, picked from this phone. They stay on it.</div>
@@ -368,6 +378,8 @@ export class UI {
       if (tgt.closest('[data-back]')) { audio.play('click'); this.titleMain(); return; }
       const qb = tgt.closest('[data-q]') as HTMLElement | null;
       if (qb) { s.quality = qb.dataset.q as any; s.autoQ = false; this.game.applySettings(); this.titleSettings(); return; }
+      const gb = tgt.closest('[data-k]') as HTMLElement | null;
+      if (gb) { const k = gb.dataset.k!, v = gb.dataset.v!; (s as any)[k] = k === 'uiScale' && v !== 'auto' ? +v : v; this.game.applySettings(); audio.play('click'); if (k === 'vibration' && v === 'on') haptic('crit'); this.titleSettings(); return; }
       const sb = tgt.closest('[data-sx]') as HTMLElement | null;
       if (sb) { s.sfxStyle = sb.dataset.sx as 'recorded' | 'synth'; this.game.applySettings(); audio.play('punch'); audio.play('click', { delay: 0.25 }); this.titleSettings(); return; }
       const a = (tgt.closest('[data-a]') as HTMLElement | null)?.dataset.a;

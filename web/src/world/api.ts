@@ -100,7 +100,7 @@ export interface FxAPI {
   light(x: number, y: number, z: number, color: number, intensity: number, dur: number, range?: number): void;
 }
 
-export type DomainKind = 'shrine' | 'shadow' | 'nails' | 'void' | 'coffin' | 'womb' | 'home' | 'moon' | 'love';
+export type DomainKind = 'shrine' | 'shadow' | 'nails' | 'void' | 'coffin' | 'womb' | 'home' | 'moon' | 'love' | 'gamble';
 
 export interface WorldAPI {
   time: number;

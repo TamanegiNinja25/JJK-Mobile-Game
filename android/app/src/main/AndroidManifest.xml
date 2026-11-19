@@ -3,6 +3,8 @@
 
     <!-- only to ask GitHub whether a newer version of the game has been released -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- short buzzes when you take a blow, land a Black Flash or a boss changes phase (Settings: Vibration) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />

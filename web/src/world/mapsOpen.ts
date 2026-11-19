@@ -77,6 +77,9 @@ const outskirts: MapDef = {
     b.building('storehouse', 2, 30, 0);
     b.prop('torii', 2, 36.5, 0).prop('bell', 8, 33, 0).prop('stoneLantern', -1, 35).prop('stoneLantern', 5, 35);
     b.prop('well', -16, 53, 0).prop('bench', -12, 52.5, 0).prop('vendingRed', -24, 47.5, Math.PI / 2).prop('bikeRack', 4, 49.5, 0).prop('postBox', -8, 52, 0);
+    // the village lane: wired poles, a mirror at the bend, block walls round the yards
+    b.row('utilityPole', -30, 44, 10, 44, 8);
+    b.prop('curveMirror', 11, 44.5, -Math.PI / 4).prop('vendingWhite', -22.8, 47.5, Math.PI / 2).prop('canBin', -21.6, 46.2, Math.PI / 2);
     for (const [x, z] of [[-56, 34], [-44, 39.5], [-32, 47], [-20, 48.5]] as const) b.prop('utilityPole', x, z, 0);
     for (const [x, z, w, d] of [[-42, 62, 12, 9], [-26, 70, 11, 8], [-44, 80, 12, 9], [-28, 86, 10, 7], [4, 80, 11, 9]] as const) {
       b.wall('fenceWood', x - w / 2, z - d / 2, x + w / 2, z - d / 2, 2).wall('fenceWood', x - w / 2, z + d / 2, x + w / 2, z + d / 2, 2);
@@ -348,7 +351,12 @@ const lastLesson: MapDef = {
       { who: 'gojo', text: 'Yo! Surprised? Tengen asked me to leave something behind, just in case. So I left the best thing I had: me.' },
       { who: 'gojo', text: 'Last lesson. If you can take a hit from the strongest, you can protect anyone. Ready? No? Too bad!' },
     ] });
-    b.boss({ id: 'gojoMemory', x: 0, z: -4, r: 13, quest: 'm30', intro: [
+    // the strongest can't spar with himself: the memory gives him the one fight he never finished
+    b.boss({ id: 'sukuna', as: 'gojoMemory', x: 0, z: -4, r: 13, quest: 'm30', cond: (ps) => ps.d.cls === 'gojo', intro: [
+      { who: 'sukuna', text: 'Satoru Gojo. The memory of this place wants a rematch. So do I.' },
+      { who: 'player', text: 'Throughout heaven and earth, I alone am the honoured one. Let\'s go.' },
+    ] });
+    b.boss({ id: 'gojoMemory', x: 0, z: -4, r: 13, quest: 'm30', cond: (ps) => ps.d.cls !== 'gojo', intro: [
       { who: 'gojo', text: 'Infinity\'s on. Find a way through it. Hint: hit me REALLY hard, or bring your own domain.' },
     ] });
   },

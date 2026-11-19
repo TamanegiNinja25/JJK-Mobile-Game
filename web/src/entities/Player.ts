@@ -1,5 +1,6 @@
 // The player-controlled sorcerer: movement, combos, skills, potions, dodge.
 import * as THREE from 'three';
+import { noteCount } from '../rpg/Records';
 import { Actor } from './Actor';
 import type { World } from '../world/World';
 import { PlayerState } from '../rpg/PlayerState';
@@ -307,7 +308,7 @@ export class Player extends Actor implements Caster {
     // the sorcerer's own shout on a technique (not every time, or it grates)
     if (s.type === 'ultimate' || Math.random() < 0.6) voice.bark('player', voiceFor(this.ps.cls.model), 'kiai', s.type === 'ultimate' ? 1.1 : 0.85);
     this.ps.d.domain = Math.min(100, this.ps.d.domain + (s.type === 'ultimate' ? 0 : 2));
-    if (s.type === 'ultimate') this.world.onPlayerUltimate(s.id);
+    if (s.type === 'ultimate') { this.world.onPlayerUltimate(s.id); noteCount('domains'); }
     this.world.game.ui.hud?.flashSkill(id);
     return true;
   }

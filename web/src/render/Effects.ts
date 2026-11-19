@@ -7,6 +7,7 @@ import { G } from './geo';
 import { toonMaterial } from './toon';
 import { TAU, rand } from '../core/util';
 import { FX_SHEETS, FxSheetName } from './fxSheets';
+import { TOON_SHEETS, toonSheet } from './toonSheets';
 
 // ---------------------------------------------------------------------------
 // Particles
@@ -659,10 +660,14 @@ export class Effects implements FxAPI {
    * Plays a sprite-sheet effect once, facing the camera, anchored at (x, y, z). `size` is the width of one frame
    * in metres; `speed` scales its frame rate; `tint` multiplies its colours.
    */
+  /** 'toon': effects drawn in the game's cel style (toonSheets.ts); 'pixel': the PVFX Foundry sheets */
+  fxStyle: 'toon' | 'pixel' = 'toon';
+
   sheet(name: FxSheetName, x: number, y: number, z: number, size: number, speed = 1, tint = 0xffffff, opacity = 1) {
-    const base = this.sheets.get(name);
+    const toon = this.fxStyle === 'toon';
+    const base = toon ? toonSheet(name) : this.sheets.get(name);
     if (!base) return;
-    const d = FX_SHEETS[name];
+    const d = toon ? TOON_SHEETS[name] : FX_SHEETS[name];
     const tex = base.clone();
     tex.repeat.set(1 / d.cols, 1 / d.rows);
     const mat = new THREE.SpriteMaterial({ map: tex, color: tint, transparent: true, depthWrite: false, opacity });
@@ -791,8 +796,8 @@ export class Effects implements FxAPI {
     if (kind === 'court') group.add(courtModel(r));
     if (kind === 'love') group.add(swordField(r));
     const intro = 1.1;
-    this.sigil(x, z, 2.5, kind === 'shadow' ? 0x111122 : kind === 'void' || kind === 'moon' ? 0x7fdcff : kind === 'home' ? 0xffa06a : kind === 'love' ? 0xffb0e0 : 0xff2a3a, intro + 0.3);
-    this.flash(kind === 'void' ? '#bfefff' : kind === 'shadow' ? '#000000' : kind === 'home' ? '#ffd0a0' : kind === 'moon' ? '#0a1430' : kind === 'love' ? '#ffe8f4' : '#30000a', 0.65, 0.9);
+    this.sigil(x, z, 2.5, kind === 'shadow' ? 0x111122 : kind === 'void' || kind === 'moon' ? 0x7fdcff : kind === 'home' ? 0xffa06a : kind === 'love' ? 0xffb0e0 : kind === 'gamble' ? 0x6aff8a : 0xff2a3a, intro + 0.3);
+    this.flash(kind === 'void' ? '#bfefff' : kind === 'shadow' ? '#000000' : kind === 'home' ? '#ffd0a0' : kind === 'moon' ? '#0a1430' : kind === 'love' ? '#ffe8f4' : kind === 'gamble' ? '#d8ffe0' : '#30000a', 0.65, 0.9);
     this.r.pulseBloom(1.5);
     const total = dur;
     this.domainActive = { kind, x, z, r, start: this.time, until: this.time + total, obj: group };
@@ -807,7 +812,7 @@ export class Effects implements FxAPI {
       group.children.forEach(c => { if (c.userData.spin) c.rotation.y += dt * c.userData.spin; });
       if (t > intro && Math.random() < 0.3) {
         const a = Math.random() * TAU, rr = Math.random() * r * 0.9;
-        const col = kind === 'shrine' ? 0xff2a2a : kind === 'shadow' ? 0x6a5aff : kind === 'void' ? 0x9ad8ff : kind === 'home' ? 0xffc08a : kind === 'moon' ? 0xe8f0ff : kind === 'love' ? 0xffd0ec : 0xff4a6a;
+        const col = kind === 'shrine' ? 0xff2a2a : kind === 'shadow' ? 0x6a5aff : kind === 'void' ? 0x9ad8ff : kind === 'home' ? 0xffc08a : kind === 'moon' ? 0xe8f0ff : kind === 'love' ? 0xffd0ec : kind === 'gamble' ? 0x7aff9a : 0xff4a6a;
         this.add.spawn(x + Math.cos(a) * rr, 0.1, z + Math.sin(a) * rr, 0, rand(1, 3), 0, this.tmpC.setHex(col), rand(0.1, 0.25), 0, 1.2, -0.3, 0.5);
       }
     }, () => {

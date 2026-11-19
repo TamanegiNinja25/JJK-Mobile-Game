@@ -3,7 +3,8 @@
 /** The three first-years, whose eyes the story is told through. */
 export type BaseClassId = 'yuji' | 'megumi' | 'nobara';
 /** Every playable sorcerer, including the ones unlocked by finishing a character or a quest line. */
-export type ClassId = BaseClassId | 'sukunaYuji' | 'sukunaMegumi' | 'heianSukuna' | 'moduloYuji' | 'yuta' | 'toji';
+export type ClassId = BaseClassId | 'sukunaYuji' | 'sukunaMegumi' | 'heianSukuna' | 'moduloYuji' | 'yuta' | 'toji'
+  | 'gojo' | 'maki' | 'todo' | 'inumaki' | 'panda' | 'choso' | 'hakari';
 export type Attr = 'str' | 'dex' | 'vit' | 'ce';
 export type Slot = 'weapon' | 'head' | 'outfit' | 'charm' | 'ring' | 'shoes';
 export type ItemKind = Slot | 'consumable' | 'material' | 'quest';

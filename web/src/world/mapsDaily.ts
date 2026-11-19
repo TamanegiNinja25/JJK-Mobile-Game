@@ -2,6 +2,7 @@
 // board waits. Rebuilt on every visit, so the boss is whichever one was chosen.
 import { MapDef } from './MapBuilder';
 import { dailyPick, dailyPickLevel, dailyCleared } from '../rpg/Daily';
+import { rush, rushBoss } from '../rpg/Records';
 
 const dailyArena: MapDef = {
   id: 'dailyArena', name: 'Curtain Arena', jp: '帳の修練場', size: [56, 60], night: true,
@@ -20,6 +21,16 @@ const dailyArena: MapDef = {
   surfaces: ['stone', 'dirt', 'stone', 'stone'],
   spawn: { x: 0, z: 22, facing: Math.PI },
   build: (b) => {
+    arenaLayout(b);
+    const pick = dailyPick;
+    if (pick) {
+      b.boss({ id: pick.id, x: 0, z: -4, r: 13, repeatable: true, cond: (ps) => !dailyCleared(ps, pick.id), level: dailyPickLevel });
+    }
+  },
+};
+
+/** The ring, its pillars and lanterns, the gate and the way back (shared by the daily arena and Boss Rush). */
+function arenaLayout(b: Parameters<MapDef['build']>[0]) {
     b.keepClear(0, -4, 34, 34);
     b.wall('wallStone', -28, 30, 28, 30).wall('wallStone', -28, -30, 28, -30).wall('wallStone', -28, -30, -28, 30).wall('wallStone', 28, -30, 28, 30);
     // pillars and lanterns ring the arena
@@ -34,11 +45,21 @@ const dailyArena: MapDef = {
     for (const [x, z] of [[-14, 22], [14, 22], [-22, -20], [22, -20], [-22, 12], [22, 12]]) b.prop('deadTree', x, z, Math.random() * 6);
     b.light(0, 3, -4, 0x9a6aff, 8, 14, true);
     b.portal({ x: 0, z: 26.5, r: 1.8, to: 'hub', toX: 3, toZ: 25, label: 'Back to Jujutsu High' });
-    const pick = dailyPick;
-    if (pick) {
-      b.boss({ id: pick.id, x: 0, z: -4, r: 13, repeatable: true, cond: (ps) => !dailyCleared(ps, pick.id), level: dailyPickLevel });
-    }
+}
+
+/**
+ * Boss Rush: the same arena, rebuilt for each boss of the gauntlet (see rpg/Records.ts). You arrive inside the
+ * ring, so the next fight starts at once.
+ */
+const rushArena: MapDef = {
+  ...dailyArena,
+  id: 'rushArena', name: 'Boss Rush', jp: '連戦の修練場', weather: 'ash',
+  spawn: { x: 0, z: 8, facing: Math.PI },
+  build: (b) => {
+    arenaLayout(b);
+    const id = rushBoss();
+    if (id && rush) b.boss({ id, x: 0, z: -6, r: 16, repeatable: true, level: rush.level });
   },
 };
 
-export const DAILY_MAPS: Record<string, MapDef> = { dailyArena };
+export const DAILY_MAPS: Record<string, MapDef> = { dailyArena, rushArena };

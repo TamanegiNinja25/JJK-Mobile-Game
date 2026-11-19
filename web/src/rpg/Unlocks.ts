@@ -16,6 +16,13 @@ const RULES: Partial<Record<ClassId, (d: SaveData) => boolean>> = {
   moduloYuji: d => done(d, 'm30') || !!d.flags?.finished_yuji || (done(d, 'm26') && d.cls === 'yuji'),
   yuta: d => done(d, 'm15'),
   toji: d => done(d, 'm28'),
+  panda: d => done(d, 'm10'),
+  todo: d => done(d, 'm9'),
+  inumaki: d => done(d, 'm11'),
+  choso: d => done(d, 'm14'),
+  maki: d => done(d, 'm17'),
+  hakari: d => done(d, 'm21'),
+  gojo: d => done(d, 'm29'),
 };
 
 function stored(): Set<ClassId> {

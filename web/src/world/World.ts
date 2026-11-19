@@ -1,6 +1,9 @@
 // The live game world: map loading, entity simulation, combat resolution,
 // bosses, domains, loot and quest hooks.
 import { voice, voiceFor } from '../audio/Voice';
+import { fmtTime, noteBossTime, noteCount, noteKill, rushAdvance, rushBoss } from '../rpg/Records';
+import { haptic } from '../core/Haptics';
+import { difficulty } from '../core/Difficulty';
 import * as THREE from 'three';
 import type { Game } from '../Game';
 import { Renderer } from '../render/Renderer';
@@ -71,6 +74,8 @@ export class World implements WorldAPI {
   map!: MapRuntime;
   mapDef!: MapDef;
   time = 0;
+  /** when the current boss fight began (for best times) */
+  bossStartT = 0;
   private tasks: { t: number; fn: () => void }[] = [];
   hitstopT = 0;
   private lookX = 0;
@@ -516,6 +521,7 @@ export class World implements WorldAPI {
       e.target = this.player;
       e.atkCd = 1.5;
       this.bossActive = { def: b, enemy: e };
+      this.bossStartT = this.time;
       this.updateMusic();
       this.game.ui.hud?.setBoss(e);
       // the boss rises on camera (respawning open-world bosses skip it after the first time)
@@ -554,7 +560,7 @@ export class World implements WorldAPI {
     }
     const open = () => {
       if (!e.alive) return;
-      this.fx.domain(kind, e.x, e.z, r, dur);
+      this.fx.domain(kind, e.x, e.z, r, dur); haptic('domain');
       this.bossDom = { enemy: e, until: this.time + dur, dps: dpsPct, r, x: e.x, z: e.z, tick: 1.2 };
       this.domainOwner = 'enemy';
       this.domainUntil = this.time + dur;
@@ -965,6 +971,9 @@ export class World implements WorldAPI {
     dmg = Math.max(1, Math.round(dmg));
     if (src.team === 'player' && target.team === 'enemy' && ps.d.cheats?.oneHit) dmg = Math.max(dmg, Math.ceil(target.hp));
     target.hp -= dmg;
+    if (bf) { haptic('blackFlash'); if (src === this.player) noteCount('bf'); }
+    else if (target === this.player && !opts.quiet) haptic('hurt');
+    else if (crit && src === this.player) haptic('crit');
 
     // feedback
     const y = target === this.player ? 2.0 : (target.model?.height ?? 1.6) * target.scale * 0.85 + 0.4;
@@ -1041,9 +1050,11 @@ export class World implements WorldAPI {
       return;
     }
     ps.d.kills++;
-    ps.gainExp(e.st.exp);
-    this.overlay.add(e.x, 2.6, e.z, `+${Math.round(e.st.exp * (1 + ps.stats.expBonus))} EXP`, '#b0ffb0', 13);
+    const reward = difficulty().reward;
+    ps.gainExp(Math.round(e.st.exp * reward));
+    this.overlay.add(e.x, 2.6, e.z, `+${Math.round(e.st.exp * reward * (1 + ps.stats.expBonus))} EXP`, '#b0ffb0', 13);
     ps.questProgress('kill', d.id, 1, this.mapDef.id);
+    if (d.ai !== 'dummy') noteKill(d.id, e.isBoss);
     if (e.isBoss) {
       const as = this.bossActive?.enemy === e ? this.bossActive.def.as ?? d.id : d.id;
       ps.questProgress('boss', as, 1);
@@ -1054,6 +1065,9 @@ export class World implements WorldAPI {
         this.bossDom = null;
         this.game.ui.hud?.setBoss(null);
         this.game.ui.banner('EXORCISED', d.name, '#ffd23a');
+        const secs = this.time - this.bossStartT;
+        if (noteBossTime(d.id, secs, ps.d.cls)) this.game.toast(`New best time against ${d.name}: ${fmtTime(secs)}`, 'good', 3.5);
+        if (this.mapDef.id === 'rushArena' && rushBoss() === d.id) this.rushWin(d.name);
         this.game.bossOutro(as);
         if (this.mapDef.id === 'dailyArena' && dailyPick?.id === d.id) this.dailyWin(e, dailyPick);
         this.fx.flash('#ffffff', 0.6, 0.6);
@@ -1065,9 +1079,29 @@ export class World implements WorldAPI {
   }
 
   /** A daily exorcism falls: its own drops, seals, sometimes its signature piece; done for today. */
+  /** A Boss Rush boss falls: on to the next one after a breather, or the gauntlet is cleared. */
+  private rushWin(name: string) {
+    const r = rushAdvance(this.time);
+    const p = this.player;
+    if (!r.done) {
+      const next = ENEMIES[rushBoss() ?? '']?.name ?? '';
+      this.game.toast(`${name} down. Next: ${next}`, 'boss', 3);
+      this.schedule(3.2, () => { p.heal(p.maxHpValue() * 0.4); void this.game.travel('rushArena'); });
+      return;
+    }
+    const ps = this.game.ps!;
+    const pay = 2000 + ps.d.level * 400;
+    ps.d.gold += pay;
+    ps.gainExp(Math.round(expToNext(ps.d.level) * 0.5));
+    this.game.ui.banner('BOSS RUSH CLEARED', `${fmtTime(r.secs)}${r.best ? ' · new best' : ''}`, '#ffd23a', 3.5);
+    this.game.toast(`Boss Rush cleared in ${fmtTime(r.secs)}. +¥${pay.toLocaleString()} and EXP.`, 'good', 5);
+    this.schedule(5, () => void this.game.travel('hub'));
+  }
+
   private dailyWin(e: Enemy, b: DailyBoss) {
     const ps = this.game.ps!;
     markDailyCleared(ps, b.id);
+    noteCount('dailies');
     const drop = (id: string, qty: number, rarity: 0 | 1 | 2 | 3 = 0) => this.loot.push(new Loot(this, e.x + rand(-1.2, 1.2), e.z + rand(-1.2, 1.2), 0, makeItem(id, rarity, qty)));
     for (const dr of b.drops) if (chance(dr.chance)) drop(dr.id, randInt(dr.qty[0], dr.qty[1]));
     drop('seal', randInt(b.seals[0], b.seals[1]));
@@ -1103,7 +1137,7 @@ export class World implements WorldAPI {
     const L = e.level;
     const boss = e.isBoss;
     const n = boss ? 6 : 1;
-    for (let i = 0; i < n; i++) if (boss || chance(0.7)) this.loot.push(new Loot(this, e.x, e.z, Math.round(e.st.gold / n * rand(0.6, 1.4)), null));
+    for (let i = 0; i < n; i++) if (boss || chance(0.7)) this.loot.push(new Loot(this, e.x, e.z, Math.round(e.st.gold * difficulty().reward / n * rand(0.6, 1.4)), null));
     const drops: { id: string; qty: number; rarity: 0 | 1 | 2 | 3 }[] = [];
     if (chance(boss ? 1 : 0.17)) drops.push({ id: 'fragment', qty: boss ? randInt(4, 8) : randInt(1, 2), rarity: 0 });
     if (chance(boss ? 0.8 : e.d.grade <= 1 ? 0.06 : 0.012)) drops.push({ id: 'core', qty: 1, rarity: 0 });
@@ -1219,7 +1253,7 @@ export class World implements WorldAPI {
   domain(kind: DomainKind, x: number, z: number, r: number, dur: number) {
     const name = DOMAIN_NAMES[kind]?.[1] ?? 'Domain Expansion';
     const open = () => {
-      this.fx.domain(kind, x, z, r, dur);
+      this.fx.domain(kind, x, z, r, dur); haptic('domain');
       this.domainOwner = 'player';
       this.domainUntil = this.time + dur;
       this.domainInfo = { kind, name, start: this.time, dur, enemy: false };

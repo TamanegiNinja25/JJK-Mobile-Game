@@ -2,6 +2,7 @@
 // they are talking to on the right). The speaker is lit and moves their mouth in time with a voice of
 // their own; text types out with natural pauses, and Auto / Skip work like any dating sim.
 import { guestLine } from '../data/guestVoice';
+import { tr } from '../core/i18n';
 import type { Game } from '../Game';
 import { Line, Choice, NPC_NAMES, NPC_JP } from '../data/story';
 import { audio } from '../audio/Audio';
@@ -110,6 +111,8 @@ export class Dialogue {
     this.jpEl = el('span', 'vn-jp');
     this.plate.append(this.nameEl, this.jpEl);
     this.textEl = el('div', 'vn-text');
+    // typed out a letter at a time: translated before typing (tr above), not by the page observer
+    this.textEl.setAttribute('data-noi18n', '');
     this.hint = el('div', 'vn-hint', '▼');
     const ctrl = el('div', 'vn-ctrl');
     this.autoBtn = el('button', 'vn-btn', 'AUTO');
@@ -180,7 +183,7 @@ export class Dialogue {
         if (l.who !== 'player' || l.cls) return l;
         if (voice === 'sukuna') return { ...l, text: sukunaLine(l.text) };
         // a guest re-voices only the first-year's own lines; lines written for anyone stay as they are
-        if (voice === 'yuta' || voice === 'toji') return l.only ? { ...l, text: guestLine(voice, l.text) } : l;
+        if (voice) return l.only ? { ...l, text: guestLine(voice, l.text) } : l;
         return l;
       })
       .filter(l => l.text !== '');
@@ -232,7 +235,7 @@ export class Dialogue {
     this.root.classList.toggle('speaker-right', this.talker === this.right);
     this.box.style.setProperty('--plate', BG[who]?.[0] ?? '#8a6aff');
     const first = ps ? CLASSES[ps.d.cls].name.split(' ')[0] : '';
-    this.full = l.text.replace(/\{name\}/g, first);
+    this.full = tr(l.text).replace(/\{name\}/g, tr(first));
     this.shown = 0;
     this.pause = 0;
     this.timer = 0;
