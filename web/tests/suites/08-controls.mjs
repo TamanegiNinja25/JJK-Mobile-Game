@@ -22,8 +22,10 @@ export async function run(t) {
 
   // controller: the stick walks, A attacks, Start opens the menu
   const p0 = await t.eval(() => [window.game.world.player.x, window.game.world.player.z]);
+  // software rendering can run at a few frames a second (each frame's step is capped), so hold the stick until
+  // the player has covered some ground rather than for a fixed time
   await t.eval(() => { window.__pad.axes[0] = 1; });
-  await t.wait(800);
+  await t.page.waitForFunction((x0) => window.game.world.player.x - x0 > 0.8, p0[0], { timeout: 5000 }).catch(() => {});
   await t.eval(() => { window.__pad.axes[0] = 0; });
   const p1 = await t.eval(() => [window.game.world.player.x, window.game.world.player.z]);
   t.check(p1[0] - p0[0] > 0.8, `left stick did not move the player (${(p1[0] - p0[0]).toFixed(2)})`);
