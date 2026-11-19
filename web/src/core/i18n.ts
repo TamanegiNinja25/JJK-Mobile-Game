@@ -15,6 +15,7 @@ let dict: Record<string, string> = {};
 let names: string[] = [];
 let ready: Promise<void> | null = null;
 const seen = new Set<string>();
+const cache = new Map<string, string | null>();
 /** strings shown with no translation (filled while collecting, for building the dictionary) */
 export const missing = new Set<string>();
 export let collecting = false;
@@ -29,6 +30,7 @@ export function setLang(l: Lang): Promise<void> {
   if (lang === 'en') { stopObserver(); return Promise.resolve(); }
   ready ??= fetch('lang/ja.json').then(r => r.json()).then((j: Record<string, string>) => {
     dict = j;
+    cache.clear();
     // names that can sit inside a longer sentence ("Welcome back, Yuji."): the dictionary's short entries
     // that start with a capital, longest first
     names = Object.keys(j).filter(k => k.length >= 3 && k.length <= 32 && /^[A-Z]/.test(k) && !/[.!?:]$/.test(k) && !k.includes('{')).sort((a, b) => b.length - a.length);
@@ -43,7 +45,13 @@ export function tr(s: string): string {
   if (lang === 'en' || !s) return s;
   const t = s.trim();
   if (!t || !/[A-Za-z]/.test(t)) return s;
-  const out = lookup(t, 0);
+  // the HUD rewrites some text every frame, so answers (misses too) are remembered
+  let out = cache.get(t);
+  if (out === undefined) {
+    out = lookup(t, 0);
+    if (cache.size > 4000) cache.clear();
+    cache.set(t, out);
+  }
   if (out !== null) return keepSpace(s, out);
   if (collecting && !seen.has(t)) { seen.add(t); missing.add(normal(t)); }
   return s;

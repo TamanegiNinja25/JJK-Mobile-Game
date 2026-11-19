@@ -26,9 +26,11 @@
 
 Play as Yuji, Megumi or Nobara and fight through the story from the Sugisawa High
 rooftop, through the Shibuya Incident and the Culling Game, to the Shinjuku Showdown and
-the memories in Tengen's barrier. Finish the right chapters and Sukuna (in Yuji's body,
-in Megumi's body and in his Heian form), Yuji decades later, Yuta Okkotsu and Toji
-Fushiguro join as playable sorcerers. Combat is real-time with combos, skills, dodges and Black Flashes, wrapped in a
+the memories in Tengen's barrier. Finish the right chapters and thirteen more sorcerers
+join: Gojo, Maki, Todo, Inumaki, Panda, Choso, Hakari, Yuta Okkotsu, Toji Fushiguro,
+Yuji decades later, and Sukuna in Yuji's body, in Megumi's body and in his Heian form.
+The game can be played in English or **日本語**, with a touch screen, a keyboard or a
+game controller, on Easy, Normal or Hard. Combat is real-time with combos, skills, dodges and Black Flashes, wrapped in a
 classic Zenonia-style RPG loop: quests, loot, stat points, skill trees, gear upgrades and
 boss fights. Past the east gate of Jujutsu High, an open region of forest, villages,
 lakes and ruins connects on foot to the city. Schools, cinemas and stations can be
@@ -185,7 +187,7 @@ The same game runs on iPhone and iPad as a web app that you add to your home scr
 1. In **Safari**, open **[tamanegininja25.github.io/JJK-Mobile-Game](https://tamanegininja25.github.io/JJK-Mobile-Game/)**.
 2. Tap **Share**, then **Add to Home Screen**.
 3. Start it from the home screen. It then runs full screen, in landscape and offline (the
-   first start downloads the whole game, about 4 MB).
+   first start downloads the whole game, about 5 MB).
 
 Saves stay on the device, in the web app's own storage. Each release updates the web app
 by itself: when a new version has downloaded, the title screen offers **Restart**. Your
@@ -208,9 +210,9 @@ one (in a game, **System → Save & Return to Title** gets you there).
 
 ## Features
 
-### Nine sorcerers
+### Sixteen sorcerers
 
-Three first-years from the start, and six more you unlock:
+Three first-years from the start, and thirteen more you unlock:
 
 | | Style | Signature skills | Ultimate |
 |---|---|---|---|
@@ -223,12 +225,23 @@ Three first-years from the start, and six more you unlock:
 | **Modulo Yuji** 🔒 | Yuji decades on, with everything he learned | Divergent Fist · Piercing Blood · Supernova · Dismantle · Soul Strike · Black Flash: The Zone | His own Domain Expansion |
 | **Yuta Okkotsu** 🔒 | Special grade swordsman with Rika and copied techniques | Cursed Edge · Rika · Cursed Speech · Pure Love · Mimicry · Full Manifestation · Reverse Cursed Technique | Domain Expansion: Authentic Mutual Love |
 | **Toji Fushiguro** 🔒 | No cursed energy: stamina, speed and cursed tools | Inverted Spear of Heaven · Playful Cloud · Chain of a Thousand Miles · Split Soul Katana · Heavenly Speed · Sorcerer Killer | Sorcerer Killer: Unbound |
+| **Satoru Gojo** 🔒 | The Limitless at range, Infinity up close | Lapse: Blue · Reversal: Red · Instant Transmission · Hollow Technique: Purple · Maximum Output: Blue · Infinity | Domain Expansion: Unlimited Void |
+| **Maki Zen'in** 🔒 | Heavenly Restriction: stamina and a rack of cursed tools | Polearm Sweep · Piercing Thrust · Dragon-Bone · Playful Cloud · Split Soul Katana · Heavenly Restriction | Zen'in Massacre |
+| **Aoi Todo** 🔒 | Boogie Woogie swaps and huge Black Flash odds | Boogie Woogie · Brotherly Haymaker · Boulder Toss · Takada-chan Rush · Black Flash · My Best Friend | Brothers' Black Flash |
+| **Toge Inumaki** 🔒 | Cursed Speech: commands that stun, crush and blast | "Don't Move." · "Crush." · "Blast Away." · "Sleep." · "Twist." · Throat Medicine | "Die." |
+| **Panda** 🔒 | Three cores: a brawler, a gorilla and a triceratops | Panda Punch · Drumming Beat · Panda Roll · Triceratops Charge · Gorilla Mode: Earthshaker · Gorilla Core | Triceratops Core: Stampede |
+| **Choso** 🔒 | Blood Manipulation at every range | Piercing Blood · Slicing Exorcism · Flowing Red Scale · Convergence · Wing King · Supernova | Flowing Red Scale: Stack |
+| **Kinji Hakari** 🔒 | Rough energy and gambling: jackpots refund the cost | Rough Energy Rush · Pachinko Doors · Rough Energy Ball · Fever Combo · Jackpot Strike · Fever Mode | Domain Expansion: Idle Death Gamble |
 
 The locked six show on the select screen with what unlocks them: clearing the Shibuya
 Incident (Sukuna in Yuji's body), clearing "Shinjuku Showdown" (Sukuna in Megumi's body),
 finishing the story (Heian Sukuna), finishing the story as Yuji or clearing the Memories
 chapter (Modulo Yuji), clearing "The Executioner" (Yuta) and clearing "Hidden Inventory"
-(Toji). Unlocks belong to the phone, so they work in every slot.
+(Toji). The seven added in 3.0 unlock along the story: Panda ("Uninvited Bloom") and Todo
+("My Best Friend") in Chapter 4, Inumaki ("October 31st") and Choso ("King of Curses") in
+Chapter 5, Maki ("Projection Sorcery") in Chapter 6, Hakari ("Granite Blast") in Chapter 7
+and Gojo ("Night Parade of a Hundred Demons") at the end of the story. Unlocks belong to
+the phone, so they work in every slot.
 
 Yuta and Toji replay the story as themselves. Everyone talks about the first-years in the
 third person, their own lines are written in their voice, and when the story reaches the
@@ -469,6 +482,36 @@ Some of the later bosses play by their own rules:
 - **Gojo** turns on Infinity: only a Black Flash or a domain gets through. Then Hollow
   Purple and Unlimited Void.
 
+### Records, achievements and Boss Rush
+
+The **Records** tab (録) keeps what belongs to the phone rather than to one save:
+
+- **Boss Rush:** up to six bosses you have already beaten, back to back in the Curtain
+  Arena at your level, against the clock. You keep 40% of your health between fights, and
+  falling ends the run.
+- **31 achievements**, from your first exorcism to clearing Boss Rush on Hard.
+- **Best times** for every boss, with the difficulty and sorcerer you won with.
+- A **bestiary** of every curse you have exorcised, and how many times.
+
+### Difficulty, controllers and tablets
+
+- **Difficulty:** Easy (curses hit 40% softer, 25% less health), Normal, or Hard (45%
+  harder, 35% more health, 25% more experience and yen). Change it any time in the System
+  tab or Settings on the title screen.
+- **Game controllers** (Bluetooth or USB) work on Android and in the web app. See
+  [Controls](#controls).
+- **Vibration** on hits, criticals, Black Flashes, domains, boss stages and defeat, on the
+  phone and on controllers that rumble.
+- **Control size:** Auto makes the buttons, HUD and joystick bigger on tablets. Small,
+  Normal, Large and Huge are there too.
+
+### 日本語
+
+Everything can be read in Japanese: menus, HUD, quests, items, techniques, every line of
+dialogue and the cutscenes, about 2,900 strings. Pick **日本語** under **Language** in
+Settings or the System tab. A phone set to Japanese starts in Japanese, and spoken voices
+use a Japanese text-to-speech voice where the phone has one.
+
 ### Look and sound
 
 - Characters with realistic anime proportions (since 2.7.9), about seven heads tall.
@@ -531,7 +574,20 @@ the Cheats tab is in the main menu. Walk into a lit doorway to enter or leave a 
 | <kbd>I</kbd> <kbd>K</kbd> <kbd>L</kbd> <kbd>M</kbd> <kbd>C</kbd> | Bag, skills, quests, map, status |
 | <kbd>Esc</kbd> | Close menu / open the system menu |
 
-On Android, **Back** closes menus. Press it twice quickly to quit.
+**Game controller** (standard layout, Bluetooth or USB):
+
+| Button | Action |
+|---|---|
+| Left stick / d-pad | Move |
+| A | Attack · continue in dialogue and menus |
+| B | Dodge · close |
+| X, Y, LB, RB, LT | Skills 1–5 |
+| RT | Ultimate |
+| Start / Back | System menu / map |
+| Click a stick | HP / CE potion |
+
+On Android, **Back** (or the back gesture) closes menus and opens the System menu. Press
+it twice quickly to quit.
 
 ## Building from source
 
@@ -555,11 +611,24 @@ without Node.
 To work on the game in a desktop browser, run `npm run serve` in `web/` and open
 <http://localhost:8080>. It rebuilds on save, with source maps.
 
+The build writes two copies: `android/app/src/main/assets/www/` for the APK, and
+`web/dist/` for the web app, which adds the AAC sounds, icons, manifest and offline
+service worker.
+
+**Tests:** `npm run test:e2e` in `web/` plays the built game in headless Chromium (the
+`playwright` dev dependency; run `npx playwright install chromium` once): start-up, saves
+and their backups, every sorcerer's techniques, boss fights and stages, all 24 maps,
+sounds, the web app offline, controllers, difficulty and tablet sizing, Boss Rush, and the
+Japanese text. `node tests/run.mjs smoke bosses` runs only those suites, `--list` names
+them, and `CLASSES=yuji,gojo` limits the sorcerers. A failing suite saves a screenshot in
+`web/tests/`.
+
 **CI:** [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml)
-type-checks, bundles and builds debug and release APKs on every push and pull request.
+type-checks, bundles and builds debug and release APKs on every push and pull request,
+and runs the tests (with a sample of six sorcerers); a release is only published if they pass.
 To ship a version, publish a release on GitHub (or run **Build APK** by hand from the
 Actions tab with a tag such as `v1.3.0`); the workflow builds the APK and attaches it
-to that release. Pushing a `v*` tag does the same. Each release also pushes the same `www/` files to the
+to that release. Pushing a `v*` tag does the same. Each release also pushes `web/dist/` to the
 `gh-pages` branch, which GitHub Pages serves as the iPhone and iPad web app (Settings →
 Pages → Deploy from a branch → `gh-pages`, once).
 
@@ -639,17 +708,19 @@ painted once in idle time before menus need them.
 
 ```
 web/                    the game (TypeScript + three.js)
-  src/core/             input, math, noise, your own pictures and sounds (IndexedDB), the update check
+  src/core/             input (touch, keyboard, controllers), difficulty, vibration, the Japanese text, your own pictures and sounds (IndexedDB), the update check
   src/render/           renderer, toon shaders, rigs, models (and your own imported ones), effects, weather, textures
   src/audio/            synthesized and recorded SFX, music sequencer, ambience, character voices
-  src/rpg/              stats, classes, skills (and the unlockable sorcerers'), items, enemies, unlocks, daily exorcisms, reruns, quest hints, player state
+  src/rpg/              stats, classes, skills (and the unlockable sorcerers'), items, enemies, unlocks, daily exorcisms, reruns, quest hints, records and Boss Rush, player state
   src/world/            maps (story areas, open regions, interiors, the daily arena), map builder, collision, world simulation, cutscenes
-  src/entities/         player, enemies, bosses, summons, projectiles, NPCs
-  src/ui/               HUD, menus, visual-novel dialogue, dialogue art, themed confirmations, icons, portraits
-  src/data/             quests, dialogue, and the lines Sukuna, Yuta and Toji speak in their own voice
+  src/entities/         player, enemies, bosses (machinery, stage moves and three files of boss scripts), summons, projectiles, NPCs
+  src/ui/               HUD, menus (and the Records tab), visual-novel dialogue, dialogue art, themed confirmations, icons, portraits
+  src/data/             quests (in three parts), dialogue, and the lines the unlockable sorcerers speak in their own voice
   static/               index.html, the UI stylesheet, the web app's manifest and icons, and the shipped assets:
                         sfx/ (CC0 sound clips, Ogg and AAC), models/town/ (street kit, CC BY 4.0),
-                        fx/ (CC0 sprite-sheet effects), each with its CREDITS.txt
+                        fx/ (CC0 sprite-sheet effects), each with its CREDITS.txt, and lang/ja/ (the Japanese text)
+  tests/                end-to-end tests (run.mjs, helpers.mjs, suites/)
+  tools/                dev tools that list the strings to translate
 android/                WebView host app (Java), text-to-speech bridge, opening the release page
 docs/                   icon and screenshots for this README
 .github/workflows/      APK build and release, and the web app's deploy to GitHub Pages

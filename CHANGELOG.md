@@ -3,6 +3,99 @@
 All notable changes to Cursed Chronicles. Every release since 1.2.0 installs over the
 previous one and keeps your saves.
 
+## 3.0.0 — Seven new sorcerers, Japanese, Boss Rush and records, difficulty and controllers
+
+### Seven new sorcerers
+Gojo, Maki, Todo, Inumaki, Panda, Choso and Hakari join the roster, so there are now
+sixteen. Each has eleven techniques of its own, four weapons, voiced lines for the whole
+story and an ultimate:
+
+| | Unlocked by clearing | Ultimate |
+|---|---|---|
+| **Panda** | "Uninvited Bloom" (Chapter 4) | Triceratops Core: Stampede |
+| **Aoi Todo** | "My Best Friend" (Chapter 4) | Brothers' Black Flash |
+| **Toge Inumaki** | "October 31st" (Chapter 5) | "Die." |
+| **Choso** | "King of Curses" (Chapter 5) | Flowing Red Scale: Stack |
+| **Maki Zen'in** | "Projection Sorcery" (Chapter 6) | Zen'in Massacre |
+| **Kinji Hakari** | "Granite Blast" (Chapter 7) | Domain Expansion: Idle Death Gamble |
+| **Satoru Gojo** | "Night Parade of a Hundred Demons" (Chapter 9) | Domain Expansion: Unlimited Void |
+
+- Maki fights on stamina instead of cursed energy, like Toji.
+- Hakari's techniques gamble: Jackpot Strike has a 1 in 4 chance of a jackpot that deals
+  triple damage and refunds its cursed energy, and his domain is a slot machine.
+- Some fights change for them: as Todo, the Goodwill duel is against Yuji; as Choso, the
+  Shibuya fight with his brothers' killer is against Yuji; as Gojo, the last battle is
+  against Sukuna.
+
+### Every boss fights differently in its later stages
+- Phase 2 and the Final Phase now differ for each of the 29 bosses. A boss opens each
+  stage with a signature move, the banner names it ("Maximum: Meteor!", "Twenty-four
+  frames, faster"), and it then leans on its two or three strongest moves, which come
+  round almost twice as often. Many grow a size bigger, wrapped in an aura of their colour.
+- A boss now opens the fight with a signature move straight after its roar.
+
+### Records, achievements and Boss Rush
+- A new **Records** tab (録):
+  - **Boss Rush**: up to six bosses you have already beaten, one after another in the
+    Curtain Arena, at your level and against the clock. You keep 40% of your health
+    between fights; falling ends the run.
+  - **31 achievements**, from your first exorcism to clearing Boss Rush on Hard.
+  - **Best times** for every boss, with the difficulty and sorcerer you won with.
+  - A **bestiary** of every curse you have exorcised, and how many.
+- Records belong to the phone, like unlocked sorcerers, so they count in every slot.
+
+### Difficulty
+- **Easy**, **Normal** or **Hard**, in the System tab or Settings on the title screen, and
+  changeable at any time. Easy: curses hit 40% softer and have 25% less health. Hard: they
+  hit 45% harder and have 35% more health, and pay 25% more experience and yen.
+
+### Controllers, vibration and tablets
+- **Game controllers** work (Bluetooth or USB, on Android and in the web app): left stick
+  or d-pad to move, A attack, B dodge, X/Y/LB/RB/LT techniques, RT the ultimate, Start the
+  menu, Back the map, and clicking either stick drinks a potion. In menus and dialogue, A
+  continues and B closes.
+- **Vibration** on hits, critical hits, Black Flashes, domains, boss stages and defeat, on
+  the phone and on controllers that rumble. It can be turned off in the System tab.
+- **Control size**: Auto (default) makes the buttons, HUD and joystick bigger on tablets.
+  Small, Normal, Large and Huge are also offered.
+
+### 日本語 (Japanese)
+- The whole game can be played in Japanese: menus, HUD, quests, items, techniques, every
+  line of dialogue, cutscenes and tutorials (about 2,900 strings). Pick **日本語** under
+  **Language** in Settings or the System tab.
+- A phone whose language is Japanese starts in Japanese.
+- Spoken voices use a Japanese text-to-speech voice when the phone has one.
+
+### Looks and sound
+- **Effects**: the hit, slam and cursed-energy effects are redrawn in the game's own cel
+  style (flat colour with an ink outline). The pixel-art set is still under **Effects →
+  Pixel**.
+- **Street props** now furnish Shibuya, Tokyo Colony No. 1, the Sendai colony, Sugisawa
+  and the village in the Tokyo Outskirts as well.
+- **Buildings**: concrete blocks gain plinths, pilasters, drainpipes, air-conditioner units,
+  water tanks and antennas; apartments get balcony dividers, sliding doors and laundry; shop
+  rows get shutters, meters, rooftop units and signs.
+- **Music** follows a song structure: verses and choruses, a counter-melody, breaks, drum
+  fills, crashes on the downbeat and seventh chords.
+
+### Safety
+- Each save keeps the copy it replaces as a backup and is read back after writing. If a save
+  is ever damaged, the one before it is restored and the game says so.
+- **Back on Android 13 and later**, including the back gesture, now closes menus and opens
+  the System menu as the Back button does on older phones; pressing it twice quickly quits.
+- The APK no longer carries the web app's files (its icons, manifest, offline worker and
+  AAC sounds), which only the iPhone and iPad version uses.
+- Uploaded folders of anime and game sound effects and a 3D model, which were never part of
+  the game, were removed from the repository.
+
+### For developers
+- The game's tests are now in the repository (`web/tests`, `npm run test:e2e`). They play
+  the built game in headless Chromium: start-up, saves and backups, every sorcerer's
+  techniques, boss fights and stages, all 24 maps, sounds, the web app offline, controllers
+  and difficulty, Boss Rush, and the Japanese text. CI runs them before every release.
+- `Bosses.ts` and `story.ts` are split into smaller files (boss machinery, stage moves and
+  three files of boss scripts; quests in three parts), and the Records tab has its own file.
+
 ## 2.8.0 — One-on-one boss phases, iPhone and iPad, and new street props, sounds and effects
 
 ### Boss fights: one on one, in three stages
