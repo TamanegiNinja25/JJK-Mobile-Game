@@ -43,38 +43,65 @@ export function tr(s: string): string {
   if (lang === 'en' || !s) return s;
   const t = s.trim();
   if (!t || !/[A-Za-z]/.test(t)) return s;
+  const out = lookup(t, 0);
+  if (out !== null) return keepSpace(s, out);
+  if (collecting && !seen.has(t)) { seen.add(t); missing.add(normal(t)); }
+  return s;
+}
+
+/** the dictionary key a string would be filed under (numbers as {n}, known names as {s}) */
+function normal(t: string) {
+  let k = t.replace(NUM, '{n}');
+  for (const n of names) { const i = k.indexOf(n); if (i >= 0 && edge(k, i, n.length)) k = k.slice(0, i) + '{s}' + k.slice(i + n.length); }
+  return k;
+}
+const edge = (k: string, i: number, len: number) => !/[A-Za-z]/.test(k[i - 1] ?? ' ') && !/[A-Za-z]/.test(k[i + len] ?? ' ');
+
+function lookup(t: string, depth: number): string | null {
   const hit = dict[t];
-  if (hit !== undefined) return keepSpace(s, hit);
+  if (hit !== undefined) return hit;
   // numbers as placeholders
   const nums: string[] = [];
   const keyN = t.replace(NUM, (m) => { nums.push(m); return '{n}'; });
   if (nums.length) {
     const v = dict[keyN];
-    if (v !== undefined) return keepSpace(s, fill(v, nums));
+    if (v !== undefined) return fill(v, nums);
   }
-  // names as placeholders too
-  const found: string[] = [];
+  // names as placeholders too, longest first, trying the dictionary after each one (so a label that is
+  // itself in the dictionary, like "Quest accepted", isn't swallowed as a name)
+  const found: { n: string; p: number }[] = [];
   let keyS = keyN;
   for (const n of names) {
     if (found.length > 3) break;
     const i = keyS.indexOf(n);
-    if (i >= 0 && !/[A-Za-z]/.test(keyS[i - 1] ?? ' ') && !/[A-Za-z]/.test(keyS[i + n.length] ?? ' ')) {
-      keyS = keyS.slice(0, i) + '{s}' + keyS.slice(i + n.length);
-      found.push(n);
-    }
-  }
-  if (found.length) {
-    // names were replaced in the order they were found, which may not be their order in the sentence
-    const order = found.map(n => t.indexOf(n)).map((p, i) => ({ p, i })).sort((a, b) => a.p - b.p).map(o => found[o.i]);
+    if (i < 0 || !edge(keyS, i, n.length)) continue;
+    keyS = keyS.slice(0, i) + '{s}' + keyS.slice(i + n.length);
+    found.push({ n, p: t.indexOf(n) });
     const v = dict[keyS];
     if (v !== undefined) {
       let out = fill(v, nums);
-      for (const n of order) out = out.replace('{s}', dict[n] ?? n);
-      return keepSpace(s, out);
+      // fill the names in the order they appear in the sentence
+      for (const f of [...found].sort((a, b) => a.p - b.p)) out = out.replace('{s}', dict[f.n] ?? f.n);
+      return out;
     }
   }
-  if (collecting && !seen.has(t)) { seen.add(t); missing.add(nums.length && !found.length ? keyN : t); }
-  return s;
+  if (depth > 3) return null;
+  // pieces: "Name · Lv 3", "Label: value", "📍 Place · south, near ▣ Door"
+  const part = (x: string) => (/[A-Za-z]/.test(x) ? lookup(x.trim(), depth + 1) ?? null : x);
+  const join = (bits: string[], sep: string) => {
+    const tb = bits.map(part);
+    if (tb.every(b => b === null)) return null;
+    if (collecting) bits.forEach((b, i) => { if (tb[i] === null && !seen.has(b.trim())) { seen.add(b.trim()); missing.add(normal(b.trim())); } });
+    return tb.map((b, i) => b ?? bits[i]).join(sep);
+  };
+  if (t.includes(' · ')) return join(t.split(' · '), '・');
+  const sym = /^([^A-Za-z0-9"'(]+)(.+)$/.exec(t);
+  if (sym) { const r = part(sym[2]); return r === null ? null : sym[1] + r; }
+  const near = /^(.+), near (.+)$/.exec(t);
+  if (near) { const a = part(near[1]), b = part(near[2]); if (a !== null || b !== null) return `${a ?? near[1]}・${b ?? near[2]}の近く`; }
+  const lab = /^([A-Z][\w' ]{1,24}): (.+)$/.exec(t);
+  if (lab) { const a = part(lab[1]), b = part(lab[2]); if (a !== null || b !== null) return `${a ?? lab[1]}：${b ?? lab[2]}`; }
+  return null;
 }
 
 function fill(v: string, nums: string[]) {

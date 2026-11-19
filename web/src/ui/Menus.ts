@@ -3,6 +3,7 @@
 import { confirmDialog } from './Confirm';
 import { ACHIEVEMENTS, fmtTime, records, rushBoss, rushPool, startRush } from '../rpg/Records';
 import { DIFFICULTY } from '../core/Difficulty';
+import { setLang } from '../core/i18n';
 import { haptic } from '../core/Haptics';
 import { LINES, LINE_BY_ID, QuestLine, RERUN_GOAL, lineReward, masteryReward } from '../rpg/Reruns';
 import { drawAreaPreview, mapTextScale } from './AreaPreview';
@@ -711,6 +712,8 @@ export class Menus {
         <button class="btn wide" data-act="exportsave">Copy Save Code</button>
         <div class="help">The save code keeps your progress if you reinstall or change phones. Paste it under <b>Transfer Save</b> on the title screen.</div>
         <div class="help">Your own pictures, sounds and 3D models, and the update check, are in <b>Settings</b> on the title screen (<b>Save &amp; Return to Title</b>).</div>
+        <div class="panel-title">Language · 言語</div>
+        <div class="chips" data-noi18n><button class="chip ${s.lang !== 'ja' ? 'on' : ''}" data-act="lang" data-v="en">English</button><button class="chip ${s.lang === 'ja' ? 'on' : ''}" data-act="lang" data-v="ja">日本語</button></div>
         <div class="panel-title">Difficulty</div>
         <div class="chips">${ch('difficulty', 'easy', 'Easy')}${ch('difficulty', 'normal', 'Normal')}${ch('difficulty', 'hard', 'Hard')}</div>
         <div class="help">${DIFFICULTY[s.difficulty]?.about ?? ''} Curses already on the map keep their health until they respawn.</div>
@@ -1060,6 +1063,16 @@ export class Menus {
         const st = ps.questState(this.selQuest);
         if (st && st.state !== 'done') { ps.track(this.selQuest); this.game.world.refreshGuide(); }
         audio.play('click', { vol: 0.5 });
+        break;
+      }
+      case 'lang': {
+        const l = t.dataset.v === 'ja' ? 'ja' : 'en';
+        this.game.settings.lang = l;
+        this.game.save(false);
+        this.game.saveSettings();
+        // back to English: reload, since the page was rewritten in place
+        if (l === 'en') { location.reload(); return; }
+        void setLang('ja').then(() => this.refresh());
         break;
       }
       case 'recview': this.recView = t.dataset.v as 'ach' | 'boss' | 'beasts'; this.refresh(); break;

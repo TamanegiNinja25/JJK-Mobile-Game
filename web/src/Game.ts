@@ -1,5 +1,6 @@
 // Top-level controller: main loop, state machine, saving, travel, dialogue/quest flow.
 import { LINE_BY_ID, QuestLine } from './rpg/Reruns';
+import { Lang, currentLang, setLang } from './core/i18n';
 import { checkAchievements, endRush, noteCount, rush, saveRecords } from './rpg/Records';
 import { Difficulty, setDifficulty } from './core/Difficulty';
 import { haptic, setHaptics } from './core/Haptics';
@@ -86,6 +87,8 @@ export class Game {
     uiScale: 'auto' as 'auto' | number,
     /** hit sparks, slams and bursts: drawn in the game's toon style, or the pixel-art sheets */
     fxStyle: 'toon' as 'toon' | 'pixel',
+    /** English or Japanese (see core/i18n.ts) */
+    lang: 'en' as Lang,
   };
   hints = new QuestHints(this);
   private last = performance.now();
@@ -101,6 +104,7 @@ export class Game {
     const canvas = document.getElementById('gl') as HTMLCanvasElement;
     this.r = new Renderer(canvas);
     this.loadSettings();
+    if (this.settings.lang === 'ja') void setLang('ja');
     this.r.setQuality(this.settings.quality);
     this.overlay = new Overlay2D(document.getElementById('overlay') as HTMLCanvasElement, this.r);
     this.world = new World(this, this.r, this.overlay);
@@ -257,6 +261,8 @@ export class Game {
         // pick a sensible default for phones
         const mobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
         if (mobile) this.settings.quality = 'medium';
+        // first launch on a Japanese phone: Japanese
+        if (/^ja/i.test(navigator.language ?? '')) this.settings.lang = 'ja';
       }
     } catch { /* storage unavailable */ }
   }
@@ -290,6 +296,7 @@ export class Game {
     voice.volume = s.voiceVol;
     voice.barks = s.barks !== 'off';
     setDifficulty(s.difficulty);
+    if (currentLang() !== s.lang) void setLang(s.lang);
     this.world.fx.fxStyle = s.fxStyle === 'pixel' ? 'pixel' : 'toon';
     setHaptics(s.vibration !== 'off');
     this.applyUiScale();

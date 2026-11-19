@@ -855,7 +855,7 @@ reg({
 
 reg({
   id: 'hk_jackpot', cls: 'hakari', name: 'Jackpot Strike', type: 'active', req: 15, max: 5, prereq: ['hk_combo', 2], color: '#ffd84a',
-  desc: lv => `Spin the reels: one strike for ${pct(m(2.4, lv))} ATK, with a 1-in-4 chance of a jackpot that deals ×3 and refunds the CE.`,
+  desc: lv => `Spin the reels: one strike for ${pct(m(2.4, lv))} ATK, with a 1 in 4 chance of a jackpot that deals ×3 and refunds the CE.`,
   ce: lv => 20 + lv * 2, cd: () => 9, anim: 'uppercut', animDur: 0.45, range: 3,
   cast: (w, c, lv, t, dx, dz) => {
     const a = aim(c, t, dx, dz);

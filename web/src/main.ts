@@ -4,6 +4,7 @@ import { confirmDialog } from './ui/Confirm';
 import { updates } from './core/Updates';
 import { initWebApp } from './core/Platform';
 import { records, rush } from './rpg/Records';
+import * as i18n from './core/i18n';
 import { loadTownKit } from './render/models/townKit';
 import { getAtlas } from './world/atlas';
 import { Game } from './Game';
@@ -44,5 +45,5 @@ const game = new Game();
 void Promise.race([loadTownKit(), new Promise(r => setTimeout(r, 4000))]).then(() => game.start());
 
 // debugging/test hooks
-(window as any).__dbg = { records, get rush() { return rush; }, atlas: getAtlas, skillIcon, itemIcon, SKILLS, ITEMS, audio, QUESTS, MAPS, TRAVEL_LIST, ENEMIES, CLASSES, makeItem, confirmDialog, updates, LINES, samples, SAMPLES, STEPS, media, customModels,
+(window as any).__dbg = { i18n, records, get rush() { return rush; }, atlas: getAtlas, skillIcon, itemIcon, SKILLS, ITEMS, audio, QUESTS, MAPS, TRAVEL_LIST, ENEMIES, CLASSES, makeItem, confirmDialog, updates, LINES, samples, SAMPLES, STEPS, media, customModels,
   mk: (id: string) => withCustomModel(id, wrapHumanoid(buildCharacter(id))), THREE };

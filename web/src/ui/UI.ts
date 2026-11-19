@@ -1,6 +1,7 @@
 // UI orchestration: HUD, menus, toasts, banners, title / class select, death screen.
 import type { Game } from '../Game';
 import { DIFFICULTY } from '../core/Difficulty';
+import { setLang } from '../core/i18n';
 import { haptic } from '../core/Haptics';
 import { Hud } from './Hud';
 import { Menus } from './Menus';
@@ -351,6 +352,7 @@ export class UI {
     const status = escapeHtml(updateStatus());
     const keep = (t.querySelector('.slots-panel.settings') as HTMLElement | null)?.scrollTop ?? 0;
     t.innerHTML = `<div class="slots-panel settings"><div class="panel-title">Settings</div>
+      <div class="set-label">Language · 言語</div><div class="chips" data-noi18n><button class="chip ${s.lang !== 'ja' ? 'on' : ''}" data-lang="en">English</button><button class="chip ${s.lang === 'ja' ? 'on' : ''}" data-lang="ja">日本語</button></div>
       <label class="set"><span>Music</span><input type="range" min="0" max="100" value="${Math.round(s.music * 100)}" data-set="music"></label>
       <label class="set"><span>Effects</span><input type="range" min="0" max="100" value="${Math.round(s.sfx * 100)}" data-set="sfx"></label>
       <label class="set"><span>Ambience</span><input type="range" min="0" max="100" value="${Math.round(s.amb * 100)}" data-set="amb"></label>
@@ -378,6 +380,8 @@ export class UI {
       if (tgt.closest('[data-back]')) { audio.play('click'); this.titleMain(); return; }
       const qb = tgt.closest('[data-q]') as HTMLElement | null;
       if (qb) { s.quality = qb.dataset.q as any; s.autoQ = false; this.game.applySettings(); this.titleSettings(); return; }
+      const lb = tgt.closest('[data-lang]') as HTMLElement | null;
+      if (lb) { s.lang = lb.dataset.lang === 'ja' ? 'ja' : 'en'; audio.play('click'); this.game.saveSettings(); void setLang(s.lang).then(() => { this.game.applySettings(); this.titleSettings(); }); if (s.lang === 'en') location.reload(); return; }
       const gb = tgt.closest('[data-k]') as HTMLElement | null;
       if (gb) { const k = gb.dataset.k!, v = gb.dataset.v!; (s as any)[k] = k === 'uiScale' && v !== 'auto' ? +v : v; this.game.applySettings(); audio.play('click'); if (k === 'vibration' && v === 'on') haptic('crit'); this.titleSettings(); return; }
       const sb = tgt.closest('[data-sx]') as HTMLElement | null;

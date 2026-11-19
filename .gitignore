@@ -38,3 +38,4 @@ google-services.json
 web/node_modules/
 .DS_Store
 web/dist/
+web/tests/fail-*.png
