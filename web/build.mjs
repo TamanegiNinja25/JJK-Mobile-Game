@@ -35,6 +35,16 @@ for (const dir of ['models', 'fx']) {
   rmSync(join(outDir, dir), { recursive: true, force: true });
   cpSync(join(here, 'static', dir), join(outDir, dir), { recursive: true });
 }
+// Japanese: static/lang/ja/*.json merged into one dictionary (read only when Japanese is picked)
+{
+  const ja = {};
+  const dir = join(here, 'static', 'lang', 'ja');
+  for (const f of readdirSync(dir).filter(f => f.endsWith('.json')).sort()) Object.assign(ja, JSON.parse(readFileSync(join(dir, f), 'utf8')));
+  rmSync(join(outDir, 'lang'), { recursive: true, force: true });
+  mkdirSync(join(outDir, 'lang'), { recursive: true });
+  writeFileSync(join(outDir, 'lang', 'ja.json'), JSON.stringify(ja));
+  console.log(`lang: ${Object.keys(ja).length} Japanese strings`);
+}
 
 // Recorded sound effects (Kenney's CC0 packs): the folder is mirrored, and every clip src/audio/Samples.ts
 // names must be there, so a renamed or missing file fails the build instead of going quiet in the game.

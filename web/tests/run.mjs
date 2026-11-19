@@ -63,7 +63,8 @@ for (const s of todo) {
     await page.waitForFunction(() => window.game && document.getElementById('boot') === null, null, { timeout: 60000 });
     await s.run(t);
   } catch (e) {
-    t.fail('threw: ' + (e?.message ?? e).split('\n')[0]);
+    t.fail('threw: ' + (e?.message ?? e).split('\n').slice(0, 3).join(' / '));
+    try { await page.screenshot({ path: join(here, `fail-${s.name}.png`) }); } catch { /* closed */ }
   }
   for (const e of errors) t.fail('page error: ' + e.split('\n')[0]);
   const secs = ((Date.now() - start) / 1000).toFixed(0);

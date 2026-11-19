@@ -1,0 +1,13 @@
+{
+"{s}'s Body": "{s}の体", "Select an item": "アイテムを選択", "All": "すべて", "{s} Techniques": "{s}の術式", "{n} SP": "{n} SP", "{n}/{n} learned": "{0}/{1} 習得",
+"Select a technique to see what it does, learn it, or put it in a quick slot.": "術式を選ぶと、効果の確認、習得、クイックスロットへの設定ができる。",
+"再 Reruns": "再 周回", "Reruns": "周回", "◎ Tracking": "◎ 追跡中", "Tracking": "追跡中", "None yet": "まだない", "Main story": "メインストーリー", "From {s}": "依頼主：{s}", "{n} EXP": "{n} 経験値",
+"助言 Hint": "助言", "Hint": "ヒント", "Japan": "日本", "◆ your quest": "◆ クエスト", "You are here": "現在地", "{n}/{n} open": "{0}/{1} 解放", "Tracked objective": "追跡中の目標", "Open world": "オープンワールド",
+"{n} Level": "{n}レベル", "{n} Levels": "{n}レベル", "+{n} Level": "+{n}レベル", "+{n} Levels": "+{n}レベル",
+"The game as designed. Curses already on the map keep their health until they respawn.": "本来の難易度。すでにマップにいる呪いは、再出現するまで体力が変わらない。",
+"Small": "小", "Large": "大", "Huge": "特大", "On": "オン", "Off": "オフ", "Recorded": "録音", "Synthesised": "合成", "Low": "低", "Medium": "中", "High": "高", "Near": "近い", "Far": "遠い", "Light": "弱", "Full": "強",
+"Character voices": "キャラクターボイス", "Spoken (phone TTS)": "読み上げ（端末の音声）", "Blips": "効果音のみ", "Voice volume": "ボイス音量", "Slow": "遅い", "Fast": "速い", "Short": "短く", "When I'm stuck": "詰まった時",
+"Spoken voices use your phone's text-to-speech engine; if it isn't available the character voices are used. Tap {s} in a conversation to let lines advance by themselves, or SKIP to fast-forward.": "読み上げは端末の音声合成エンジンを使います。使えない場合はキャラクターボイスになります。会話中に{s}をタップすると自動で進み、SKIPで早送りします。",
+"· cleared {n}×": "・{n}回クリア", "cleared {n}×": "{n}回クリア", "Needs level {n} and three bosses beaten in the story": "レベル{n}と、物語でボス三体の撃破が必要",
+"Start Boss Rush ({n} bosses)": "ボスラッシュ開始（ボス{n}体）", "Auto": "自動", "Skip": "スキップ", "AUTO": "オート", "SKIP": "スキップ"
+}
