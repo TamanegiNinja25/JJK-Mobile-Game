@@ -106,7 +106,7 @@ jobs:
     # Plays the built game in headless Chromium (tests/run.mjs in web/): start-up, saves, every sorcerer's
     # techniques, boss fights, every map, sounds and the web app. A release is only published if it passes.
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -129,10 +129,11 @@ jobs:
 
       - name: Play the game
         working-directory: web
-        # a runner is slow at software WebGL, so CI casts the techniques of a sample of sorcerers (one of
-        # each resource and fighting style); npm run test:e2e locally covers all of them
+        # a runner is slow at software WebGL (and some are twice as slow as others), so CI casts the
+        # techniques of a sample of sorcerers: a brawler, a summoner, one on stamina and a gambler;
+        # npm run test:e2e locally covers all of them
         env:
-          CLASSES: yuji,megumi,nobara,maki,gojo,hakari
+          CLASSES: yuji,megumi,maki,hakari
         run: npm run test:e2e
 
   release:

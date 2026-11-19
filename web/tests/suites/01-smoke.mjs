@@ -6,7 +6,10 @@ export async function run(t) {
   t.check(await t.newGame('yuji') === 'yuji', 'new game did not start as Yuji');
   t.check(await t.eval(() => window.game.state) === 'play', 'not in play after the opening');
   const p0 = await t.eval(() => [window.game.world.player.x, window.game.world.player.z]);
-  await t.page.keyboard.down('KeyW'); await t.wait(900); await t.page.keyboard.up('KeyW');
+  // held until the player has moved (software rendering can run at a few frames a second), up to 5 s
+  await t.page.keyboard.down('KeyW');
+  await t.page.waitForFunction(([x, z]) => Math.hypot(window.game.world.player.x - x, window.game.world.player.z - z) > 0.5, p0, { timeout: 5000 }).catch(() => {});
+  await t.page.keyboard.up('KeyW');
   const p1 = await t.eval(() => [window.game.world.player.x, window.game.world.player.z]);
   t.check(Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 0.5, 'W did not move the player');
   for (const tab of ['bag', 'skills', 'quests', 'map', 'status', 'system']) {
