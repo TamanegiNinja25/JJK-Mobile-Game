@@ -49,6 +49,24 @@ export function saveRecords() {
   try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* storage full: kept in memory */ }
 }
 
+/** Merges records from another device (a save code or backup file): the better of each. */
+export function mergeRecords(o: Partial<RecordsData> | null | undefined) {
+  if (!o || typeof o !== 'object') return;
+  const r = records();
+  for (const [k, t] of Object.entries(o.ach ?? {})) if (typeof t === 'number' && (!r.ach[k] || t < r.ach[k])) r.ach[k] = t;
+  for (const [k, n] of Object.entries(o.beasts ?? {})) if (typeof n === 'number' && n > (r.beasts[k] ?? 0)) r.beasts[k] = n;
+  for (const [k, b] of Object.entries(o.boss ?? {})) if (b && typeof b.secs === 'number' && (!r.boss[k] || b.secs < r.boss[k].secs)) r.boss[k] = b;
+  const ru = o.rush;
+  if (ru) {
+    if (typeof ru.best === 'number' && (r.rush.best === undefined || ru.best < r.rush.best)) { r.rush.best = ru.best; r.rush.bestDiff = ru.bestDiff; }
+    r.rush.clears = Math.max(r.rush.clears, ru.clears ?? 0);
+    r.rush.hardClears = Math.max(r.rush.hardClears, ru.hardClears ?? 0);
+  }
+  for (const [k, n] of Object.entries(o.n ?? {})) if (typeof n === 'number' && k in r.n) (r.n as Record<string, number>)[k] = Math.max((r.n as Record<string, number>)[k], n);
+  touch();
+  saveRecords();
+}
+
 // ---------------------------------------------------------------- events
 
 export function noteKill(enemyId: string, isBoss: boolean) {

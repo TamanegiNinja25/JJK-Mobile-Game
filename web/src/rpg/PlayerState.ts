@@ -1,5 +1,7 @@
 // Persistent player progression: stats, inventory, equipment, skills, quests and saving.
 import { Attr, ClassId, ItemInstance, QuestState, RerunData, RosterEntry, SaveData, Slot, Stats, StatKey } from './types';
+import { unlockList, addUnlocks } from './Unlocks';
+import { records, mergeRecords } from './Records';
 import { LINE_BY_ID, RERUN_GOAL, masteryReward, rerunFloor, rerunMult } from './Reruns';
 import { CLASSES, LEVEL_CAP, expToNext } from './classes';
 import { REFORGE_MAX, reforgeCost, ITEMS, makeItem, itemStats, isGear, enhanceCost, getUidCounter, setUidCounter, classRewardItem } from './items';
@@ -789,29 +791,56 @@ export class PlayerState {
     return readSlot(slot)?.d ?? null;
   }
 
-  /** A save as a copyable text code, so progress survives reinstalls and moves between devices. */
+  /**
+   * A save as a copyable text code, so progress survives reinstalls and moves between devices. Since 3.1 (CC2)
+   * the code also carries the phone's unlocked sorcerers and records, which belong to the device, not the save.
+   */
   static exportCode(slot: number): string | null {
     try {
       const got = readSlot(slot);
       if (!got) return null;
-      return 'CC1:' + btoa(unescape(encodeURIComponent(JSON.stringify(got.d))));
+      return 'CC2:' + toB64(JSON.stringify({ v: 2, save: got.d, unlocks: unlockList(), records: records() }));
     } catch { return null; }
   }
 
-  /** Writes a save code into a slot. Returns an error message, or null on success. */
+  /** Writes a save code (CC1 or CC2) into a slot. Returns an error message, or null on success. */
   static importCode(code: string, slot: number): string | null {
     const body = code.trim().replace(/\s+/g, '');
-    if (!body.startsWith('CC1:')) return 'That is not a Cursed Chronicles save code.';
-    let d: SaveData;
-    try { d = JSON.parse(decodeURIComponent(escape(atob(body.slice(4))))) as SaveData; } catch { return 'The save code is damaged or incomplete.'; }
-    if (!d || typeof d !== 'object' || !d.cls || !d.level || !d.quests) return 'The save code is missing data.';
+    const ver = body.startsWith('CC2:') ? 2 : body.startsWith('CC1:') ? 1 : 0;
+    if (!ver) return 'That is not a Cursed Chronicles save code.';
+    let got: any;
+    try { got = JSON.parse(fromB64(body.slice(4))); } catch { return 'The save code is damaged or incomplete.'; }
+    const d = (ver === 2 ? got?.save : got) as SaveData;
+    if (!validSave(d)) return 'The save code is missing data.';
     d.slot = slot;
-    try {
-      const prev = localStorage.getItem(SAVE_KEY + slot);
-      if (prev && parseSave(prev)) localStorage.setItem(SAVE_KEY + slot + BACKUP, prev);
-      localStorage.setItem(SAVE_KEY + slot, JSON.stringify(d));
-    } catch { return 'Could not write the save.'; }
+    if (!writeSlot(slot, d)) return 'Could not write the save.';
+    if (ver === 2) { addUnlocks(got.unlocks); mergeRecords(got.records); }
     return null;
+  }
+
+  /**
+   * Everything on this device in one file: the three slots, unlocked sorcerers, records and settings. Restoring
+   * it replaces the slots it holds (each replaced save is kept as that slot's backup) and merges the rest.
+   */
+  static exportAll(settings: unknown): string {
+    const saves = [0, 1, 2].map(i => readSlot(i)?.d ?? null);
+    return JSON.stringify({ app: 'cursed-chronicles', kind: 'backup', v: 1, made: new Date().toISOString(), saves, unlocks: unlockList(), records: records(), settings }, null, 1);
+  }
+
+  /** Restores a backup file. Returns an error message, or the settings it carried. */
+  static importAll(text: string): { error: string } | { settings: unknown; slots: number } {
+    let got: any;
+    try { got = JSON.parse(text); } catch { return { error: 'That file is not a Cursed Chronicles backup.' }; }
+    if (!got || got.app !== 'cursed-chronicles' || got.kind !== 'backup' || !Array.isArray(got.saves)) return { error: 'That file is not a Cursed Chronicles backup.' };
+    let slots = 0;
+    got.saves.slice(0, 3).forEach((d: SaveData | null, i: number) => {
+      if (!validSave(d)) return;
+      d!.slot = i;
+      if (writeSlot(i, d!)) slots++;
+    });
+    addUnlocks(got.unlocks);
+    mergeRecords(got.records);
+    return { settings: got.settings ?? null, slots };
   }
 
   static erase(slot: number) {
@@ -823,6 +852,20 @@ export class PlayerState {
 
 /** the key suffix of a slot's backup copy (the save it last replaced) */
 const BACKUP = '.bak';
+
+const toB64 = (t: string) => btoa(unescape(encodeURIComponent(t)));
+const fromB64 = (t: string) => decodeURIComponent(escape(atob(t)));
+const validSave = (d: unknown): d is SaveData => !!d && typeof d === 'object' && !!(d as SaveData).cls && !!(d as SaveData).level && !!(d as SaveData).quests;
+
+/** Writes a save into a slot, keeping the save it replaces as the slot's backup. */
+function writeSlot(slot: number, d: SaveData) {
+  try {
+    const prev = localStorage.getItem(SAVE_KEY + slot);
+    if (prev && parseSave(prev)) localStorage.setItem(SAVE_KEY + slot + BACKUP, prev);
+    localStorage.setItem(SAVE_KEY + slot, JSON.stringify(d));
+    return true;
+  } catch { return false; }
+}
 
 /** A stored save, if it reads back as one (not cut short, not garbled). */
 function parseSave(raw: string | null): SaveData | null {

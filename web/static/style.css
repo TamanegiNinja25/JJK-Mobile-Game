@@ -642,6 +642,7 @@ button { font-family: inherit; color: inherit; }
 .slot.xfer { gap: 8px; }
 .slot.xfer .slot-info { flex: 1; }
 .save-code { width: 100%; min-height: 64px; margin: 8px 0 4px; background: rgba(0, 0, 0, .35); color: #e8e4ff; border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: 11px/1.4 ui-monospace, monospace; resize: vertical; word-break: break-all; }
+.xfer-files { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
 .xfer-msg { font-size: 13px; color: #b8ffcf; margin: 4px 0; }
 
 /* Two-column menus: each column scrolls by itself so the frame never moves */

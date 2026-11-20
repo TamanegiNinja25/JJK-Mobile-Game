@@ -49,3 +49,51 @@ export function initWebApp() {
 
 /** Ask for a newer copy of the web app now (the update check found a release). */
 export function checkWebUpdate() { try { void reg?.update(); } catch { /* offline */ } }
+
+/**
+ * Saves a text file the game made (a backup): into Downloads or the share sheet on Android, the share sheet on
+ * iPhone and iPad (Save to Files), or an ordinary download in a desktop browser. Resolves to where it went.
+ */
+export async function saveTextFile(name: string, text: string): Promise<'downloads' | 'shared' | 'downloaded' | ''> {
+  const bridge = (window as unknown as { CCAndroid?: { saveText?: (n: string, t: string) => string } }).CCAndroid;
+  if (bridge?.saveText) {
+    try { return (bridge.saveText(name, text) as 'downloads' | 'shared' | '') ?? ''; } catch { return ''; }
+  }
+  const file = typeof File !== 'undefined' ? new File([text], name, { type: 'application/json' }) : null;
+  const n = navigator as Navigator & { canShare?: (d: unknown) => boolean };
+  if (file && isIOS && n.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); return 'shared'; } catch { /* cancelled: fall back to a download */ }
+  }
+  try {
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return 'downloaded';
+  } catch { return ''; }
+}
+
+/** Lets the player pick a text file (a backup) and resolves to its contents, or null if none was picked. */
+export function pickTextFile(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json,text/plain';
+    input.style.display = 'none';
+    input.onchange = () => {
+      const f = input.files?.[0];
+      input.remove();
+      if (!f) { resolve(null); return; }
+      if (f.size > 8_000_000) { resolve(null); return; }
+      f.text().then(resolve, () => resolve(null));
+    };
+    document.body.appendChild(input);
+    input.click();
+  });
+}
+
+/** A backup file name with today's date, e.g. cursed-chronicles-backup-2026-11-20.json */
+export function backupName() {
+  const d = new Date(), p = (n: number) => String(n).padStart(2, '0');
+  return `cursed-chronicles-backup-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.json`;
+}

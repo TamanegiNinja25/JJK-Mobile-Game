@@ -1,15 +1,20 @@
 package com.tamanegininja.cursedchronicles;
 
 import android.content.ActivityNotFoundException;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 /**
@@ -81,6 +86,41 @@ final class GameBridge {
             return true;
         } catch (ActivityNotFoundException | SecurityException e) {
             return false;
+        }
+    }
+
+    /**
+     * Saves a backup file the game made. On Android 10+ it goes straight into Downloads (no permission needed);
+     * older phones get the share sheet, so it can be kept in Drive, Files or a message. Returns "downloads",
+     * "shared" or "" on failure. Only plain text named like the game's own backups is accepted.
+     */
+    @JavascriptInterface
+    public String saveText(String name, String text) {
+        if (name == null || text == null || !name.matches("cursed-chronicles-[A-Za-z0-9._-]{1,60}\\.json") || text.length() > 8_000_000) return "";
+        if (Build.VERSION.SDK_INT >= 29) {
+            try {
+                ContentValues v = new ContentValues();
+                v.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+                v.put(MediaStore.MediaColumns.MIME_TYPE, "application/json");
+                Uri uri = app.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                if (uri != null) {
+                    try (OutputStream out = app.getContentResolver().openOutputStream(uri)) {
+                        if (out != null) { out.write(text.getBytes(StandardCharsets.UTF_8)); return "downloads"; }
+                    }
+                }
+            } catch (Exception e) { /* fall through to sharing */ }
+        }
+        try {
+            Intent send = new Intent(Intent.ACTION_SEND);
+            send.setType("text/plain");
+            send.putExtra(Intent.EXTRA_SUBJECT, name);
+            send.putExtra(Intent.EXTRA_TEXT, text);
+            Intent chooser = Intent.createChooser(send, name);
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            app.startActivity(chooser);
+            return "shared";
+        } catch (ActivityNotFoundException | SecurityException e) {
+            return "";
         }
     }
 

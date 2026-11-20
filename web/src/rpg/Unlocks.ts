@@ -64,3 +64,14 @@ export function checkUnlocks(d: SaveData): ClassId[] {
   if (fresh.length) store(s);
   return fresh;
 }
+
+/** The unlocked sorcerers as stored (for save codes and backup files). */
+export function unlockList(): ClassId[] { return [...unlockedClasses()].filter(id => UNLOCKABLE_CLASSES.includes(id)); }
+
+/** Adds sorcerers unlocked on another device. */
+export function addUnlocks(list: unknown) {
+  if (!Array.isArray(list)) return;
+  const s = stored();
+  for (const id of list) if (UNLOCKABLE_CLASSES.includes(id as ClassId)) s.add(id as ClassId);
+  store(s);
+}

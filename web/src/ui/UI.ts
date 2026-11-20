@@ -16,7 +16,7 @@ import { MAPS } from '../world/maps';
 import { audio } from '../audio/Audio';
 import { confirmDialog, slotCard } from './Confirm';
 import { APP_VERSION, UpdateInfo, openReleasePage, updates, updateStatus } from '../core/Updates';
-import { checkWebUpdate, isAndroidApp, isIOS, isStandalone, onWebUpdate, webUpdateReady } from '../core/Platform';
+import { backupName, checkWebUpdate, isAndroidApp, isIOS, isStandalone, onWebUpdate, pickTextFile, saveTextFile, webUpdateReady } from '../core/Platform';
 import { MediaPanel } from './MediaPanel';
 
 export class UI {
@@ -212,13 +212,36 @@ export class UI {
     t.innerHTML = `${this.logo()}<div class="slots-panel"><div class="panel-title">Transfer save</div>
       <div class="help">Copy a slot's save code and keep it somewhere safe (a note or a message to yourself). After reinstalling, or on another phone, paste it below and choose a slot.</div>
       ${rows}
-      <textarea class="save-code" placeholder="Paste a save code here (starts with CC1:)" spellcheck="false"></textarea>
+      <textarea class="save-code" placeholder="Paste a save code here (starts with CC2: or CC1:)" spellcheck="false"></textarea>
       ${msg ? `<div class="xfer-msg">${escapeHtml(msg)}</div>` : ''}
+      <div class="panel-title">Backup file</div>
+      <div class="help">One file with all three slots, your unlocked sorcerers, records and settings. Save codes carry the unlocks and records too.</div>
+      <div class="xfer-files"><button class="btn small primary" data-bk="save">Save backup file</button><button class="btn small" data-bk="load">Restore from file</button></div>
       <button class="tbtn back" data-back="1">Back</button></div>`;
     const area = t.querySelector('.save-code') as HTMLTextAreaElement;
     t.onclick = async (e) => {
       const tgt = e.target as HTMLElement;
       if (tgt.closest('[data-back]')) { audio.play('click'); this.titleMain(); return; }
+      const bk = tgt.closest('[data-bk]') as HTMLElement | null;
+      if (bk?.dataset.bk === 'save') {
+        const where = await saveTextFile(backupName(), PlayerState.exportAll(this.game.settings));
+        audio.play(where ? 'save' : 'error');
+        this.saveTransferMsg(t, where === 'downloads' ? 'Backup saved in Downloads.' : where === 'shared' ? 'Backup ready: choose where to keep it.' : where === 'downloaded' ? 'Backup file downloaded.' : 'The backup file could not be saved.');
+        return;
+      }
+      if (bk?.dataset.bk === 'load') {
+        const text = await pickTextFile();
+        if (text === null) return;
+        if (PlayerState.peek(0) || PlayerState.peek(1) || PlayerState.peek(2)) {
+          if (!await confirmDialog({ seal: '復元', title: 'Restore this backup?', text: 'Each slot in the file replaces the slot on this phone (the replaced save is kept as that slot\'s backup). Unlocks and records are merged.', yes: 'Hold to restore', no: 'Cancel', danger: true, hold: 1100 })) return;
+        }
+        const res = PlayerState.importAll(text);
+        if ('error' in res) { audio.play('error'); this.saveTransfer(res.error); return; }
+        if (res.settings && typeof res.settings === 'object') { Object.assign(this.game.settings, res.settings); this.game.applySettings(); this.game.saveSettings(); }
+        audio.play('questDone');
+        this.saveTransfer(`Backup restored: ${res.slots} slot${res.slots === 1 ? '' : 's'}.`);
+        return;
+      }
       const cp = tgt.closest('[data-copy]') as HTMLElement | null;
       if (cp) {
         const code = PlayerState.exportCode(+cp.dataset.copy!);

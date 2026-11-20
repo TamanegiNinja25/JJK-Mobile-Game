@@ -1,6 +1,7 @@
 // Full-screen menus (status, bag, skills, quests, map, system) and the shop,
 // infusion workshop and travel windows.
 import { confirmDialog } from './Confirm';
+import { backupName, saveTextFile } from '../core/Platform';
 import { renderRecords, RecView } from './recordsTab';
 import { ACHIEVEMENTS, fmtTime, records, rushBoss, rushPool, startRush } from '../rpg/Records';
 import { DIFFICULTY } from '../core/Difficulty';
@@ -681,7 +682,7 @@ export class Menus {
         <div class="panel-title">Game</div>
         <button class="btn primary wide" data-act="save">Save Game</button>
         <button class="btn wide" data-act="title">Save &amp; Return to Title</button>
-        <button class="btn wide" data-act="exportsave">Copy Save Code</button>
+        <button class="btn wide" data-act="exportsave">Copy Save Code</button><button class="btn wide" data-act="backupfile">Save backup file</button>
         <div class="help">The save code keeps your progress if you reinstall or change phones. Paste it under <b>Transfer Save</b> on the title screen.</div>
         <div class="help">Your own pictures, sounds and 3D models, and the update check, are in <b>Settings</b> on the title screen (<b>Save &amp; Return to Title</b>).</div>
         <div class="panel-title">Language · 言語</div>
@@ -1060,6 +1061,11 @@ export class Menus {
         this.game.save(false);
         const code = PlayerState.exportCode(ps.d.slot);
         if (code) copyText(code).then(ok => this.game.toast(ok ? 'Save code copied to the clipboard.' : 'Could not reach the clipboard.', ok ? 'good' : 'warn', 2.2));
+        break;
+      }
+      case 'backupfile': {
+        this.game.save(false);
+        void saveTextFile(backupName(), PlayerState.exportAll(this.game.settings)).then(w => this.game.toast(w === 'downloads' ? 'Backup saved in Downloads.' : w === 'shared' ? 'Backup ready: choose where to keep it.' : w === 'downloaded' ? 'Backup file downloaded.' : 'The backup file could not be saved.', w ? 'good' : 'warn', 2.4));
         break;
       }
       case 'title': this.game.save(false); this.close(); this.game.toTitle(); return;

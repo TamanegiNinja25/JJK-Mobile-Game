@@ -27,4 +27,31 @@ export async function run(t) {
   await t.eval(() => window.game.loadGame(1)); await t.wait(2500); await t.skip();
   t.check(await t.eval(() => !!document.querySelector('.toast') || true), 'no toast');
   t.check(await t.eval(() => localStorage.getItem('cursedChronicles.save.1')?.startsWith('{"')), 'restored save was not written back');
+
+  // CC2 codes and backup files carry the device's unlocks and records; CC1 codes still import
+  const x = await t.eval(() => {
+    const PS = window.game.ps.constructor, R = window.__dbg.records();
+    localStorage.setItem('cursedChronicles.unlocks', JSON.stringify(['gojo', 'maki']));
+    R.ach.firstBlood = 1000; R.beasts.crawler = 7; R.rush.best = 300; R.n.kills = 42;
+    const code = PS.exportCode(1);
+    const legacy = 'CC1:' + btoa(unescape(encodeURIComponent(localStorage.getItem('cursedChronicles.save.1'))));
+    const file = PS.exportAll({ lang: 'en' });
+    // a fresh phone: no unlocks, no records
+    localStorage.removeItem('cursedChronicles.unlocks');
+    delete R.ach.firstBlood; delete R.beasts.crawler; R.rush.best = undefined; R.n.kills = 0;
+    const e1 = PS.importCode(code, 0);
+    const un = JSON.parse(localStorage.getItem('cursedChronicles.unlocks') ?? '[]');
+    const rec = { ach: R.ach.firstBlood, beast: R.beasts.crawler, rush: R.rush.best, kills: R.n.kills };
+    const e2 = PS.importCode(legacy, 0);
+    PS.erase(0);
+    const restored = PS.importAll(file);
+    const bad = PS.importAll('{"hello":1}');
+    PS.erase(0);
+    return { pre: code.slice(0, 4), e1, un, rec, e2, restored: restored.slots, settings: restored.settings?.lang, bad: bad.error };
+  });
+  t.check(x.pre === 'CC2:' && x.e1 === null, `CC2 code: ${x.pre} ${x.e1}`);
+  t.check(x.un.includes('gojo') && x.un.includes('maki'), `unlocks not carried: ${JSON.stringify(x.un)}`);
+  t.check(x.rec.ach === 1000 && x.rec.beast === 7 && x.rec.rush === 300 && x.rec.kills === 42, `records not carried: ${JSON.stringify(x.rec)}`);
+  t.check(x.e2 === null, `CC1 code no longer imports: ${x.e2}`);
+  t.check(x.restored >= 1 && x.settings === 'en' && !!x.bad, `backup file round trip: ${JSON.stringify(x)}`);
 }
