@@ -115,15 +115,15 @@ jobs:
       matrix:
         include:
           - part: game
-            suites: smoke saves world sound webapp controls endgame japanese
+            suites: smoke saves bosses world sound webapp controls endgame japanese models
           - part: sorcerers 1
             suites: classes
             classes: yuji,megumi,nobara,sukunaYuji,sukunaMegumi,heianSukuna,moduloYuji,yuta
           - part: sorcerers 2
             suites: classes
             classes: toji,gojo,maki,todo,inumaki,panda,choso,hakari
-          - part: bosses and devices
-            suites: bosses devices
+          - part: phones and tablets
+            suites: devices
     steps:
       - uses: actions/checkout@v6
 

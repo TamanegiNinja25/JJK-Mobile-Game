@@ -18,13 +18,15 @@ export async function run(t) {
     const ctx = await browser.newContext({ ...spec });
     // record vibration requests (a desktop browser has no vibrator)
     await ctx.addInitScript(() => { window.__buzz = []; navigator.vibrate = (p) => { window.__buzz.push(p); return true; }; });
+    // a CI runner draws in software and can be several times slower than a desktop: generous limits
+    ctx.setDefaultTimeout(120000); ctx.setDefaultNavigationTimeout(120000);
     const page = await ctx.newPage();
     const errs = [];
     page.on('pageerror', e => errs.push(e.message));
     const tag = dev.replace(' landscape', '');
     try {
       await page.goto(t.url);
-      await page.waitForFunction(() => window.game && document.getElementById('boot') === null, null, { timeout: 90000 });
+      await page.waitForFunction(() => window.game && document.getElementById('boot') === null, null, { timeout: 180000 });
       const { width: W, height: H } = spec.viewport;
       // the title screen opens with a tap, and a new game starts with taps
       await page.evaluate(() => { for (const k of ['cursedChronicles.save.2', 'cursedChronicles.save.2.bak']) localStorage.removeItem(k); });
@@ -37,7 +39,7 @@ export async function run(t) {
       };
       const tap = async (sel) => {
         const loc = page.locator(sel).first();
-        await loc.waitFor({ state: 'visible', timeout: 30000 });
+        await loc.waitFor({ state: 'visible', timeout: 120000 });
         await loc.scrollIntoViewIfNeeded();
         const b = await loc.boundingBox();
         t.check(b && b.y >= 0 && b.y + b.height <= H + 1 && b.x >= 0 && b.x + b.width <= W + 1, `${tag}: ${sel} is outside the screen`);
@@ -47,7 +49,7 @@ export async function run(t) {
       await tapAt(W / 2, H / 2);
       await tap('[data-a="new"]'); await tap('[data-s="2"]');
       await tap('[data-c="yuji"]'); await tap('[data-go="1"]');
-      await page.waitForFunction(() => window.game.state !== 'title', null, { timeout: 30000 });
+      await page.waitForFunction(() => window.game.state !== 'title', null, { timeout: 120000 });
       await page.waitForTimeout(2500);
       // taps through dialogue and cutscenes until the game has stayed in play for a moment (an intro can start
       // a little after the opening, so this runs again before each check)
@@ -88,7 +90,7 @@ export async function run(t) {
       const fx = W * 0.22, fy = H * 0.65;
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: fx, y: fy, id: 1 }] });
       for (let i = 1; i <= 6; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: fx + i * 12, y: fy, id: 1 }] }); await page.waitForTimeout(40); }
-      await page.waitForFunction((p0) => Math.hypot(window.game.world.player.x - p0[0], window.game.world.player.z - p0[1]) > 0.6, p0, { timeout: 6000 }).catch(() => {});
+      await page.waitForFunction((p0) => Math.hypot(window.game.world.player.x - p0[0], window.game.world.player.z - p0[1]) > 0.6, p0, { timeout: 25000 }).catch(() => {});
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
       const p1 = await page.evaluate(() => [window.game.world.player.x, window.game.world.player.z]);
       const moved = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
@@ -98,7 +100,7 @@ export async function run(t) {
       await settle();
       const box = await page.locator('.act.attack').boundingBox();
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2, id: 2 }] });
-      await page.waitForFunction(() => window.game.world.player.attackT > 0, null, { timeout: 4000 }).catch(() => {});
+      await page.waitForFunction(() => window.game.world.player.attackT > 0, null, { timeout: 15000 }).catch(() => {});
       const swung = await page.evaluate(() => window.game.world.player.attackT > 0 || window.game.world.player.comboIdx > 0);
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
       t.check(swung, `${tag}: tapping 攻 did not attack`);
@@ -141,9 +143,10 @@ export async function run(t) {
 
   // held upright, a phone asks to be turned sideways
   const ctx = await browser.newContext({ ...devices['iPhone 15'] });
+  ctx.setDefaultTimeout(120000); ctx.setDefaultNavigationTimeout(120000);
   const page = await ctx.newPage();
   await page.goto(t.url);
-  await page.waitForFunction(() => window.game && document.getElementById('boot') === null, null, { timeout: 90000 });
+  await page.waitForFunction(() => window.game && document.getElementById('boot') === null, null, { timeout: 180000 });
   const rot = await page.evaluate(() => { const r = document.getElementById('rotate'); return !!r && getComputedStyle(r).display !== 'none'; });
   t.check(rot, 'iPhone 15 upright: no "turn your phone" screen');
   await ctx.close();
