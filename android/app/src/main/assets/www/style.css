@@ -884,3 +884,19 @@ button { font-family: inherit; color: inherit; }
 @media (max-height: 360px) {
   .title .logo-sub, .title .logo-jp { display: none; }
 }
+
+/* text size (System → Text size): --ts is 1.15 or 1.3, set on <html> with the class ts */
+html.ts .vn-text { font-size: calc(17px * var(--ts)); }
+html.ts .vn-choice { font-size: calc(15px * var(--ts)); }
+html.ts .vn-name { font-size: calc(15px * var(--ts)); }
+html.ts .help { font-size: calc(13px * var(--ts)); }
+html.ts .id-sub { font-size: calc(12px * var(--ts)); }
+html.ts .toast { font-size: calc(13px * var(--ts)); }
+html.ts .tracker-name { font-size: calc(12px * var(--ts)); }
+html.ts .tracker-text, html.ts .tracker-guide, html.ts .tracker-where { font-size: calc(11px * var(--ts)); }
+@media (max-height: 460px) {
+  html.ts .vn-text { font-size: calc(15px * var(--ts)); }
+  html.ts .vn-name { font-size: calc(13px * var(--ts)); }
+  html.ts .tracker-name { font-size: calc(11px * var(--ts)); }
+  html.ts .tracker-text, html.ts .tracker-guide, html.ts .tracker-where { font-size: calc(10px * var(--ts)); }
+}

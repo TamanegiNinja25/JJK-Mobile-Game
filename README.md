@@ -519,6 +519,16 @@ The **Records** tab (録) keeps what belongs to the phone rather than to one sav
   phone and on controllers that rumble.
 - **Control size:** Auto makes the buttons, HUD and joystick bigger on tablets. Small,
   Normal, Large and Huge are there too.
+- **Text size** (Normal, Large, Larger) for dialogue, menus, the tracker and messages, and
+  **Reduce flashing**, which softens screen flashes and the light from effects.
+
+### Moving to a new phone
+
+**Transfer Save** on the title screen copies a slot as a save code, which also carries the
+phone's unlocked sorcerers and records. **Save backup file** writes everything (all three
+slots, unlocks, records and settings) to one file: into Downloads on Android 10 and later, or
+through the share sheet on older Android, iPhone and iPad. **Restore from file** brings it all
+back on the new phone.
 
 ### 日本語
 
@@ -633,14 +643,16 @@ service worker.
 **Tests:** `npm run test:e2e` in `web/` plays the built game in headless Chromium (the
 `playwright` dev dependency; run `npx playwright install chromium` once): start-up, saves
 and their backups, every sorcerer's techniques, boss fights and stages, all 24 maps,
-sounds, the web app offline, controllers, difficulty and tablet sizing, Boss Rush, and the
-Japanese text. `node tests/run.mjs smoke bosses` runs only those suites, `--list` names
+sounds, the web app offline, controllers, difficulty, tablet sizing, text size and reduced
+flashing, Boss Rush, the Japanese text, FBX and GLB models, and real phone and tablet screens
+with touch (layout, joystick, buttons, vibration, Back, a slowed CPU). `node tests/run.mjs smoke bosses` runs only those suites, `--list` names
 them, and `CLASSES=yuji,gojo` limits the sorcerers. A failing suite saves a screenshot in
 `web/tests/`.
 
 **CI:** [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml)
 type-checks, bundles and builds debug and release APKs on every push and pull request,
-and runs the tests (with a sample of six sorcerers); a release is only published if they pass.
+and runs the tests in four parallel jobs that cover all 16 sorcerers; a release is only
+published if they pass.
 To ship a version, publish a release on GitHub (or run **Build APK** by hand from the
 Actions tab with a tag such as `v1.3.0`); the workflow builds the APK and attaches it
 to that release. Pushing a `v*` tag does the same. Each release also pushes `web/dist/` to the

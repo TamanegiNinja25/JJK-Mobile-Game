@@ -49,11 +49,16 @@ export async function run(t) {
       await tap('[data-c="yuji"]'); await tap('[data-go="1"]');
       await page.waitForFunction(() => window.game.state !== 'title', null, { timeout: 30000 });
       await page.waitForTimeout(2500);
-      for (let calm = 0, i = 0; calm < 8 && i < 600; i++) {
-        const st = await page.evaluate(() => window.game.state);
-        if (st === 'play') { calm++; await page.waitForTimeout(250); continue; }
-        calm = 0; await tapAt(W / 2, H * 0.4); await page.waitForTimeout(120);
-      }
+      // taps through dialogue and cutscenes until the game has stayed in play for a moment (an intro can start
+      // a little after the opening, so this runs again before each check)
+      const settle = async () => {
+        for (let calm = 0, i = 0; calm < 8 && i < 600; i++) {
+          const st = await page.evaluate(() => window.game.state);
+          if (st === 'play') { calm++; await page.waitForTimeout(250); continue; }
+          calm = 0; await tapAt(W / 2, H * 0.4); await page.waitForTimeout(120);
+        }
+      };
+      await settle();
       t.check(await page.evaluate(() => window.game.state) === 'play', `${tag}: taps did not get through the opening`);
       await page.evaluate(() => window.game.cheatToggle('god'));
 
@@ -78,6 +83,7 @@ export async function run(t) {
       t.check(!lay.small.length, `${tag}: buttons under 36 px: ${lay.small.join(', ')}`);
 
       // the touch joystick walks the player (a finger dragged on the left half)
+      await settle();
       const p0 = await page.evaluate(() => [window.game.world.player.x, window.game.world.player.z]);
       const fx = W * 0.22, fy = H * 0.65;
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: fx, y: fy, id: 1 }] });
@@ -89,6 +95,7 @@ export async function run(t) {
       t.check(moved > 0.6 && p1[0] > p0[0], `${tag}: joystick moved the player ${moved.toFixed(2)} m`);
 
       // tapping the attack button swings
+      await settle();
       const box = await page.locator('.act.attack').boundingBox();
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2, id: 2 }] });
       await page.waitForFunction(() => window.game.world.player.attackT > 0, null, { timeout: 4000 }).catch(() => {});
@@ -97,11 +104,14 @@ export async function run(t) {
       t.check(swung, `${tag}: tapping 攻 did not attack`);
 
       // getting hit asks the phone to vibrate
-      await page.evaluate(() => { const w = window.game.world; const e = w.spawnEnemy('crawler', w.player.x + 3, w.player.z, 5, true); w.applyDamageRaw(e, w.player, 5, { kind: 'melee' }); });
+      await settle();
+      // (god mode is off for the hit: it cancels damage before the phone is asked to buzz)
+      await page.evaluate(() => { const g = window.game, w = g.world; g.cheatToggle('god'); w.player.invulnT = 0; const e = w.spawnEnemy('crawler', w.player.x + 3, w.player.z, 5, true); w.applyDamageRaw(e, w.player, 5, { kind: 'melee' }); g.cheatToggle('god'); });
       await page.waitForTimeout(300);
       t.check(await page.evaluate(() => window.__buzz.length > 0), `${tag}: no vibration when hit`);
 
       // Android's Back (the app sends Escape): opens the System menu, and again closes it
+      await settle();
       await page.keyboard.press('Escape'); await page.waitForTimeout(400);
       const opened = await page.evaluate(() => window.game.state);
       await page.keyboard.press('Escape'); await page.waitForTimeout(400);
@@ -109,12 +119,15 @@ export async function run(t) {
       t.check(opened === 'menu' && closed === 'play', `${tag}: Back went ${opened} then ${closed}`);
 
       // frame cost: the game's own update time per frame, on a slowed CPU for the low-end phones
+      await settle();
       if (SLOW.has(dev)) await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
       await page.evaluate(() => { window.__perf = []; });
       await page.waitForTimeout(4000);
       const perf = await page.evaluate(() => { const p = window.__perf; window.__perf = undefined; return p; });
       if (SLOW.has(dev)) await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
-      const upd = perf.length ? perf.reduce((s, f) => s + f[0], 0) / perf.length : 0;
+      // the median frame: one hitch (a model built, a texture uploaded) doesn't speak for the game's pace
+      const sorted = perf.map(f => f[0]).sort((a, b) => a - b);
+      const upd = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
       // only the game's logic is judged: drawing here is done by a software GPU, far slower than any phone's
       t.check(perf.length > 0 && upd < 40, `${tag}: game update ${upd.toFixed(1)} ms per frame`);
       results.push(`${tag} ${W}x${H}${SLOW.has(dev) ? ' (CPU ÷4)' : ''}: zoom ${lay.zoom || 1}, update ${upd.toFixed(1)} ms`);

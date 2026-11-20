@@ -3,6 +3,54 @@
 All notable changes to Cursed Chronicles. Every release since 1.2.0 installs over the
 previous one and keeps your saves.
 
+## 3.1.0 — Backups that carry everything, phone fixes, accessibility and a lighter download
+
+### Moving to a new phone
+- **Save codes now carry the phone's unlocked sorcerers and records** (achievements, best boss
+  times, the bestiary and Boss Rush). Importing one merges them with what the phone has. Codes
+  from earlier versions (CC1) still import.
+- **Backup file:** one file with all three slots, unlocked sorcerers, records and settings.
+  **Transfer Save → Save backup file** (or **System → Save backup file** in a game). Android 10
+  and later save it straight to Downloads; older Android phones, iPhone and iPad open the share
+  sheet, so it can go to Files, Drive or a message. **Restore from file** brings everything
+  back.
+
+### Phones and tablets
+- On short phone screens held sideways (about 320 px tall, like a Galaxy S9+), the title logo
+  took half the screen and pushed the save slots and the Back button off the bottom. The logo is
+  now compact there, and the title screen scrolls when it has to.
+
+### Accessibility
+- **Text size:** Normal, Large or Larger, for dialogue, menus, the quest tracker and messages.
+- **Reduce flashing:** screen flashes become faint and slow, and the light from effects is
+  dimmer. Both are in Settings on the title screen and the System tab.
+
+### Looks
+- A boss's Phase 2 and Final Phase entrance no longer hides the boss behind a white flash: the
+  pillar of light is thinner and see-through, and takes the boss's colour.
+- Crates have planks, a frame and cross braces; the game's own vending machines are no longer
+  bare boxes from behind.
+
+### Japanese
+- Uraume's Icefall is 直瀑 (it was given Frost Calm's name, 霜凪).
+- The new buttons, settings and messages are translated.
+
+### A lighter download
+- The game script is about 150 KB smaller (1.93 MB → 1.78 MB).
+- The FBX reader is its own small file, loaded only when you pick an FBX model.
+
+### For developers
+- New test suites:
+  - `devices` plays on real phone and tablet screen sizes with touch: HUD layout, the
+    joystick, the attack button, vibration, Back, the "turn your phone" screen and a CPU slowed
+    to a low-end phone's.
+  - `models` loads an FBX and a GLB model.
+- CI runs the tests in four parallel jobs that cover all 16 sorcerers, on action versions that
+  run on Node 24.
+- Smaller files: `creatures.ts` is split into four, enemy defeat and rewards moved out of
+  `World.ts` into `worldRewards.ts`, and the System tab out of `Menus.ts` into `systemTab.ts`.
+- The repository history no longer contains the uploaded folders removed in 3.0.0.
+
 ## 3.0.0 — Seven new sorcerers, Japanese, Boss Rush and records, difficulty and controllers
 
 ### Seven new sorcerers
