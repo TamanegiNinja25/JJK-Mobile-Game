@@ -125,8 +125,9 @@ export abstract class BossBase implements BossScript {
     this.w.sfx('roar', e.x, e.z, 1, stage === 3 ? 0.8 : 0.95);
     const col = sig?.aura ?? (stage === 3 ? 0xff1a2a : 0xff7a2a);
     this.w.fx.ring(e.x, e.z, col, 5, 0.7);
-    this.w.fx.sheet('cursedBloom', e.x, 1.2, e.z, 6, 0.9, stage === 3 ? 0xff6a7a : 0xffffff);
-    this.w.fx.pillar(e.x, e.z, 1.6 * e.scale, 6, col, 0.8);
+    // tinted with the boss's colour and kept translucent: the boss must stay visible through it
+    this.w.fx.sheet('cursedBloom', e.x, 1.2, e.z, 4.5, 0.8, col);
+    this.w.fx.pillar(e.x, e.z, 1.1 * e.scale, 6, col, 0.8, 0.32, 4);
     if (sig?.grow && e.model) {
       // a truer, bigger form: the model and its reach grow
       e.model.root.scale.multiplyScalar(sig.grow);

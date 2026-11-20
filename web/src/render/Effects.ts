@@ -550,7 +550,7 @@ export class Effects implements FxAPI {
     this.light((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, color, 8, 0.15, 8);
   }
 
-  pillar(x: number, z: number, radius: number, height: number, color: number, dur = 0.6) {
+  pillar(x: number, z: number, radius: number, height: number, color: number, dur = 0.6, peak = 0.8, glow = 12) {
     const g = G.cyl(radius, radius, height, 20, true);
     g.translate(0, height / 2, 0);
     const m = new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
@@ -558,9 +558,9 @@ export class Effects implements FxAPI {
     mesh.position.set(x, 0, z);
     this.push(mesh, dur, (k) => {
       mesh.scale.set(1 + k * 0.4, 1, 1 + k * 0.4);
-      m.opacity = Math.sin(k * Math.PI) * 0.8;
+      m.opacity = Math.sin(k * Math.PI) * peak;
     }, () => { g.dispose(); m.dispose(); });
-    this.light(x, height * 0.4, z, color, 12, dur, 10);
+    this.light(x, height * 0.4, z, color, glow, dur, 10);
   }
 
   sigil(x: number, z: number, radius: number, color: number, dur = 1) {

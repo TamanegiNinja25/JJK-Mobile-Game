@@ -153,6 +153,14 @@ function vending(color = 0xd84040): PropDef {
     b.add(G.cyl(0.05, 0.05, 0.18, 6), [0x3a8ad8, 0xe8c040, 0x40b060, 0xe05a5a, 0xf0f0f0][c], { pos: [-0.32 + c * 0.16, 0.95 + r * 0.3, 0.37], glow: 0.25 });
   }
   b.add(G.box(0.5, 0.15, 0.06), 0x111111, { pos: [0, 0.35, 0.38] });
+  // seen from behind or the side it isn't a bare box: a white band with a stripe, a vent grille, a power cable
+  for (const sx of [-0.505, 0.505]) {
+    b.add(G.box(0.02, 0.5, 0.6), 0xf2f2ee, { pos: [sx, 1.35, 0] });
+    b.add(G.box(0.025, 0.08, 0.6), lighten(color, 0.7), { pos: [sx, 1.2, 0] });
+  }
+  for (let i = 0; i < 6; i++) b.add(G.box(0.7, 0.03, 0.02), 0x222228, { pos: [0, 0.35 + i * 0.09, -0.385] });
+  b.add(G.box(0.86, 0.12, 0.02), lighten(color, 1.25), { pos: [0, 1.75, -0.385] });
+  b.add(G.cyl(0.02, 0.02, 0.4, 5), 0x111111, { pos: [0.3, 0.12, -0.45], rot: [Math.PI / 2, 0, 0] });
   return { geo: b.build(), collide: { box: [1.0, 0.8] }, outline: 0.012, shadow: true, light: { y: 1.3, color: 0xcfe8ff, intensity: 2, range: 4 } };
 }
 
@@ -300,7 +308,21 @@ function pumpkinProp(): PropDef {
 
 function crate(): PropDef {
   const b = new PartBag();
-  b.add(G.box(1, 1, 1), 0x9a7448, { pos: [0, 0.5, 0], colorFn: (x, y, z, c) => { if (Math.abs(x) > 0.42 || Math.abs(y) > 0.42 || Math.abs(z) > 0.42) c.setHex(0x6a4a2a); } });
+  const wood = 0x9a7448, dark = 0x6a4a2a;
+  b.add(G.box(0.96, 0.96, 0.96), wood, { pos: [0, 0.5, 0] });
+  // plank seams, a frame on every edge and a cross brace on each side
+  for (let i = 1; i < 4; i++) for (const [ax, sgn] of [[0, 1], [0, -1], [2, 1], [2, -1]] as const) {
+    const pos: [number, number, number] = ax === 0 ? [sgn * 0.485, i * 0.24, 0] : [0, i * 0.24, sgn * 0.485];
+    b.add(G.box(ax === 0 ? 0.01 : 0.94, 0.015, ax === 0 ? 0.94 : 0.01), dark, { pos });
+  }
+  for (const y of [0.04, 0.96]) for (const sx of [-1, 1]) {
+    b.add(G.box(1.0, 0.08, 0.08), dark, { pos: [0, y, sx * 0.48] });
+    b.add(G.box(0.08, 0.08, 1.0), dark, { pos: [sx * 0.48, y, 0] });
+  }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.add(G.box(0.08, 1.0, 0.08), dark, { pos: [sx * 0.48, 0.5, sz * 0.48] });
+  for (const [r, sx, sz] of [[0, 0, 0.49], [0, 0, -0.49], [Math.PI / 2, 0.49, 0], [Math.PI / 2, -0.49, 0]] as const) {
+    b.add(G.box(1.25, 0.08, 0.03), dark, { pos: [sx, 0.5, sz], rot: [0, r, Math.PI / 4] });
+  }
   return { geo: b.build(), collide: { box: [1, 1] }, outline: 0.01, shadow: true };
 }
 
