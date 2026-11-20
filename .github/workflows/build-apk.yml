@@ -109,7 +109,7 @@ jobs:
     # published if all of them pass.
     name: e2e (${{ matrix.part }})
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:

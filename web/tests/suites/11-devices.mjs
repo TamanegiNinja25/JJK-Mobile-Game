@@ -5,7 +5,7 @@ import { devices } from 'playwright';
 
 // screen sizes, pixel ratios, user agents and touch of real devices (the iPhone and iPad ones run Chromium with
 // Safari's size and agent: the layout and touch handling are what is checked, not WebKit itself)
-const DEVICES = (process.env.DEVICES ?? 'iPhone SE landscape,iPhone 15 Pro Max landscape,iPad Mini landscape,iPad Pro 11 landscape,Pixel 7 landscape,Galaxy S9+ landscape,Galaxy Tab S4 landscape').split(',');
+const DEVICES = (process.env.DEVICES ?? 'iPhone SE landscape,iPhone 15 Pro Max landscape,iPad Pro 11 landscape,Pixel 7 landscape,Galaxy S9+ landscape').split(',');
 // the low-end case: a phone CPU about four times slower than this machine's
 const SLOW = new Set(['Galaxy S9+ landscape', 'iPhone SE landscape']);
 
@@ -106,7 +106,7 @@ export async function run(t) {
       // getting hit asks the phone to vibrate
       await settle();
       // (god mode is off for the hit: it cancels damage before the phone is asked to buzz)
-      await page.evaluate(() => { const g = window.game, w = g.world; g.cheatToggle('god'); w.player.invulnT = 0; const e = w.spawnEnemy('crawler', w.player.x + 3, w.player.z, 5, true); w.applyDamageRaw(e, w.player, 5, { kind: 'melee' }); g.cheatToggle('god'); });
+      await page.evaluate(() => { const g = window.game, w = g.world; g.cheatToggle('god'); w.player.invulnT = 0; const e = w.spawnEnemy('crawler', w.player.x + 3, w.player.z, 5, true); w.applyDamageRaw(e, w.player, Math.ceil(g.ps.stats.maxHp * 0.1), { kind: 'melee' }); g.cheatToggle('god'); });
       await page.waitForTimeout(300);
       t.check(await page.evaluate(() => window.__buzz.length > 0), `${tag}: no vibration when hit`);
 

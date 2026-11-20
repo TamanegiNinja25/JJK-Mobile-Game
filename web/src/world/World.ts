@@ -932,8 +932,11 @@ export class World implements WorldAPI {
     if (target === this.player) dmg = Math.round(dmg * (1 - this.player.ps.stats.dmgReduce));
     target.hp -= dmg;
     this.overlay.add(target.x, 1.9, target.z, String(dmg), opts.color ?? (target === this.player ? '#ff5a5a' : '#ffffff'), 14);
-    if (target === this.player) this.player.onHit(dmg, src instanceof Actor ? src : null);
-    else target.onHit(dmg, src as Actor);
+    if (target === this.player) {
+      this.player.onHit(dmg, src instanceof Actor ? src : null);
+      // fixed damage (techniques, sure-hit domains) buzzes too; small ticks of damage over time don't
+      if (!opts.quiet && dmg >= this.player.ps.stats.maxHp * 0.02) haptic('hurt');
+    } else target.onHit(dmg, src as Actor);
     if (target.hp <= 0) this.onZero(target, src as Actor);
     return dmg;
   }
