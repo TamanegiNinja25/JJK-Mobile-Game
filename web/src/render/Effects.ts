@@ -691,9 +691,13 @@ export class Effects implements FxAPI {
     }, () => { tex.dispose(); mat.dispose(); });
   }
 
+  /** reduce flashing (a setting): screen flashes become faint and slow, dynamic lights dimmer */
+  calm = false;
+
   flash(color: string, alpha: number, dur = 0.2) {
     const el = this.flashEl;
     if (!el) return;
+    if (this.calm) { alpha = Math.min(alpha, 0.18); dur = Math.max(dur, 0.6); }
     el.style.transition = 'none';
     el.style.background = color;
     el.style.opacity = String(alpha);
@@ -707,6 +711,7 @@ export class Effects implements FxAPI {
   text(x: number, y: number, z: number, txt: string, color: string, size = 18) { this.onText?.(x, y, z, txt, color, size); }
 
   light(x: number, y: number, z: number, color: number, intensity: number, dur: number, range = 8) {
+    if (this.calm) intensity *= 0.4;
     this.dynLights.push({ x, y, z, color, intensity, range, t: 0, dur });
     if (this.dynLights.length > 6) this.dynLights.shift();
   }

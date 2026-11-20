@@ -38,6 +38,7 @@ import { music } from '../audio/Music';
 import { Weather } from '../render/Weather';
 import { occlusion } from '../render/toon';
 import { angleDiff, chance, clamp, pick, rand, randInt } from '../core/util';
+import { killEnemy } from './worldRewards';
 
 const _occV = new THREE.Vector3();
 
@@ -1029,143 +1030,7 @@ export class World implements WorldAPI {
     else if (target instanceof Summon) { target.alive = false; }
   }
 
-  kill(e: Enemy, killer: Actor | null) {
-    if (!e.alive) return;
-    e.alive = false;
-    e.hp = 0;
-    e.state = 'dead';
-    e.model?.die();
-    e.spawner?.onDeath(e);
-    const ps = this.game.ps!;
-    const d = e.d;
-    this.sfx(d.deathSfx ?? (e.isBoss ? 'bossDie' : 'curseDie'), e.x, e.z, 0.8);
-    this.fx.burst(e.x, 1, e.z, 0x9a4aff, e.isBoss ? 80 : 18, e.isBoss ? 9 : 4, 0.3, 0.9);
-    // the curse comes apart: a skull of cursed energy, or for a boss a collapse into the void
-    if (e.isBoss) this.fx.sheet('voidImplode', e.x, 1.6, e.z, 7, 1);
-    else if (d.ai !== 'dummy') this.fx.sheet('curseSkull', e.x, 0.2, e.z, Math.min(4, 2.2 * Math.max(0.8, e.scale)), 1.7);
-    this.fx.burst(e.x, 1, e.z, 0x1a0a20, e.isBoss ? 40 : 10, 3, 0.5, 1.0, false);
-    void killer;
-    if (d.ai !== 'dummy') triggerReactions('kill', this, this.player, ps.d.skills, { x: e.x, z: e.z });
-    if (d.id === 'treasure') { this.dropCache(e); return; }
-    if (d.ai === 'dummy' && d.id === 'dummy') {
-      ps.questProgress('kill', 'dummy', 1, this.mapDef.id);
-      ps.gainExp(6);
-      return;
-    }
-    ps.d.kills++;
-    const reward = difficulty().reward;
-    ps.gainExp(Math.round(e.st.exp * reward));
-    this.overlay.add(e.x, 2.6, e.z, `+${Math.round(e.st.exp * reward * (1 + ps.stats.expBonus))} EXP`, '#b0ffb0', 13);
-    ps.questProgress('kill', d.id, 1, this.mapDef.id);
-    if (d.ai !== 'dummy') noteKill(d.id, e.isBoss);
-    if (e.isBoss) {
-      const as = this.bossActive?.enemy === e ? this.bossActive.def.as ?? d.id : d.id;
-      ps.questProgress('boss', as, 1);
-      if (this.bossActive?.enemy === e) {
-        const wb = this.bossActive.def.world;
-        if (wb) { ps.d.flags['wb_' + d.id] = ps.d.playTime + wb; this.game.toast(`${d.name} will rise again in about ${Math.round(wb / 60)} minutes.`, 'info', 3.5); }
-        this.bossActive = null;
-        this.bossDom = null;
-        this.game.ui.hud?.setBoss(null);
-        this.game.ui.banner('EXORCISED', d.name, '#ffd23a');
-        const secs = this.time - this.bossStartT;
-        if (noteBossTime(d.id, secs, ps.d.cls)) this.game.toast(`New best time against ${d.name}: ${fmtTime(secs)}`, 'good', 3.5);
-        if (this.mapDef.id === 'rushArena' && rushBoss() === d.id) this.rushWin(d.name);
-        this.game.bossOutro(as);
-        if (this.mapDef.id === 'dailyArena' && dailyPick?.id === d.id) this.dailyWin(e, dailyPick);
-        this.fx.flash('#ffffff', 0.6, 0.6);
-        this.fx.shake(0.8, 0.6);
-        this.fx.hitstop(0.25);
-      }
-    }
-    if (!e.noLoot) this.dropLoot(e);
-  }
-
-  /** A daily exorcism falls: its own drops, seals, sometimes its signature piece; done for today. */
-  /** A Boss Rush boss falls: on to the next one after a breather, or the gauntlet is cleared. */
-  private rushWin(name: string) {
-    const r = rushAdvance(this.time);
-    const p = this.player;
-    if (!r.done) {
-      const next = ENEMIES[rushBoss() ?? '']?.name ?? '';
-      this.game.toast(`${name} down. Next: ${next}`, 'boss', 3);
-      this.schedule(3.2, () => { p.heal(p.maxHpValue() * 0.4); void this.game.travel('rushArena'); });
-      return;
-    }
-    const ps = this.game.ps!;
-    const pay = 2000 + ps.d.level * 400;
-    ps.d.gold += pay;
-    ps.gainExp(Math.round(expToNext(ps.d.level) * 0.5));
-    this.game.ui.banner('BOSS RUSH CLEARED', `${fmtTime(r.secs)}${r.best ? ' · new best' : ''}`, '#ffd23a', 3.5);
-    this.game.toast(`Boss Rush cleared in ${fmtTime(r.secs)}. +¥${pay.toLocaleString()} and EXP.`, 'good', 5);
-    this.schedule(5, () => void this.game.travel('hub'));
-  }
-
-  private dailyWin(e: Enemy, b: DailyBoss) {
-    const ps = this.game.ps!;
-    markDailyCleared(ps, b.id);
-    noteCount('dailies');
-    const drop = (id: string, qty: number, rarity: 0 | 1 | 2 | 3 = 0) => this.loot.push(new Loot(this, e.x + rand(-1.2, 1.2), e.z + rand(-1.2, 1.2), 0, makeItem(id, rarity, qty)));
-    for (const dr of b.drops) if (chance(dr.chance)) drop(dr.id, randInt(dr.qty[0], dr.qty[1]));
-    drop('seal', randInt(b.seals[0], b.seals[1]));
-    const sig = chance(SIG_CHANCE);
-    if (sig) { drop(b.sig, 1, 3); this.fx.pillar(e.x, e.z, 1, 6, 0xff9a3a, 1.4); }
-    this.game.toast(sig ? `Signature drop: ${ITEMS[b.sig].name}!` : 'Daily exorcism cleared. Nitta will have a new list tomorrow.', sig ? 'good' : 'quest', 3.5);
-    this.game.save(false);
-  }
-
-  /** Sealed caches in interiors: always yen and a consumable, usually a piece of gear. */
-  private dropCache(e: Enemy) {
-    const ps = this.game.ps!, L = e.level;
-    if (e.cacheFlag) {
-      // hand-placed caches in the open areas are worth the walk: better gear, materials, and they stay opened
-      ps.d.flags[e.cacheFlag] = true;
-      const total = this.map.caches.length, found = this.map.caches.filter(c => ps.d.flags[c.flag]).length;
-      this.game.toast(`Sealed cache opened — ${found}/${total} in ${this.mapDef.name}`, 'good', 3);
-      const gid = randomGear(L, ps.d.cls);
-      if (gid) this.loot.push(new Loot(this, e.x + rand(-0.6, 0.6), e.z + rand(-0.6, 0.6), 0, makeItem(gid, chance(0.4) ? 2 : 1, 1)));
-      this.loot.push(new Loot(this, e.x + rand(-0.6, 0.6), e.z + rand(-0.6, 0.6), 0, makeItem('fragment', 0, randInt(2, 5))));
-      if (chance(0.45)) this.loot.push(new Loot(this, e.x + rand(-0.6, 0.6), e.z + rand(-0.6, 0.6), 0, makeItem('core', 0, 1)));
-    }
-    this.fx.burst(e.x, 0.8, e.z, 0xffd84a, 24, 4, 0.3, 0.8);
-    this.loot.push(new Loot(this, e.x, e.z, Math.round((40 + L * 22) * rand(0.8, 1.3)), null));
-    const drops: [string, number, 0 | 1 | 2 | 3][] = [[L >= 22 ? pick(['hpL', 'ceL']) : L >= 10 ? pick(['hpM', 'ceM']) : pick(['hpS', 'ceS']), randInt(1, 2), 0]];
-    if (chance(0.75)) { const id = randomGear(L, ps.d.cls); if (id) drops.push([id, 1, rollRarity(0.15)]); }
-    if (chance(0.5)) drops.push(['fragment', randInt(1, 3), 0]);
-    for (const [id, qty, r] of drops) this.loot.push(new Loot(this, e.x + rand(-0.6, 0.6), e.z + rand(-0.6, 0.6), 0, makeItem(id, r, qty)));
-  }
-
-  private dropLoot(e: Enemy) {
-    const ps = this.game.ps!;
-    const L = e.level;
-    const boss = e.isBoss;
-    const n = boss ? 6 : 1;
-    for (let i = 0; i < n; i++) if (boss || chance(0.7)) this.loot.push(new Loot(this, e.x, e.z, Math.round(e.st.gold * difficulty().reward / n * rand(0.6, 1.4)), null));
-    const drops: { id: string; qty: number; rarity: 0 | 1 | 2 | 3 }[] = [];
-    if (chance(boss ? 1 : 0.17)) drops.push({ id: 'fragment', qty: boss ? randInt(4, 8) : randInt(1, 2), rarity: 0 });
-    if (chance(boss ? 0.8 : e.d.grade <= 1 ? 0.06 : 0.012)) drops.push({ id: 'core', qty: 1, rarity: 0 });
-    if (chance(boss ? 1 : 0.08)) {
-      const pots = L >= 22 ? ['hpL', 'ceL', 'hpM'] : L >= 10 ? ['hpM', 'ceM', 'hpS'] : ['hpS', 'ceS'];
-      drops.push({ id: pick(pots), qty: boss ? 3 : 1, rarity: 0 });
-    }
-    const gearChance = boss ? 1 : 0.06 + (4 - e.d.grade) * 0.01;
-    const gearRolls = boss ? 2 : 1;
-    for (let g = 0; g < gearRolls; g++) if (chance(gearChance)) {
-      const id = randomGear(L, ps.d.cls);
-      if (id) drops.push({ id, qty: 1, rarity: boss ? (chance(0.5) ? 2 : 1) : rollRarity(e.d.grade <= 2 ? 0.05 : 0) });
-    }
-    if (boss && chance(0.35)) {
-      const u = uniquesForLevel(L).filter(b => !b.cls || b.cls === ps.d.cls);
-      if (u.length) drops.push({ id: pick(u).id, qty: 1, rarity: 3 });
-    }
-    // quest drops only while needed
-    for (const qd of e.d.drops ?? []) {
-      const need = Object.entries(ps.d.quests).some(([qid, st]) => st.state !== 'done' && QUEST_BY_ID[qid]?.objectives.some(o => o.type === 'collect' && o.item === qd.item && ps.countItem(qd.item) < o.count));
-      if (need && chance(qd.chance)) drops.push({ id: qd.item, qty: 1, rarity: 0 });
-    }
-    for (const dr of drops) this.loot.push(new Loot(this, e.x + rand(-0.5, 0.5), e.z + rand(-0.5, 0.5), 0, makeItem(dr.id, dr.rarity as 0 | 1 | 2 | 3, dr.qty)));
-    void ITEMS;
-  }
+  kill(e: Enemy, killer: Actor | null) { killEnemy(this, e, killer); }
 
   damageTargetActor(src: Actor, t: Actor, mult: number, opts: DamageOpts = {}) { return this.applyDamage(src, t, mult, opts); }
 

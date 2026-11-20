@@ -88,6 +88,15 @@ if (args.has('--watch') || args.has('--serve')) {
 } else {
   await esbuild.build(options);
 }
+// the FBX reader, loaded only when an FBX model is picked; 'three' inside it is the game's own copy
+await esbuild.build({
+  entryPoints: [join(here, 'src', 'lazy', 'fbx.ts')], bundle: true, format: 'iife', target: options.target,
+  outfile: join(outDir, 'fbx.js'), minify: true, legalComments: 'none', logLevel: 'warning',
+  plugins: [{ name: 'shared-three', setup(b) {
+    b.onResolve({ filter: /^three$/ }, () => ({ path: 'three', namespace: 'shared-three' }));
+    b.onLoad({ filter: /.*/, namespace: 'shared-three' }, () => ({ contents: 'module.exports = window.__ccTHREE;', loader: 'js' }));
+  } }],
+});
 if (!args.has('--watch') && !args.has('--serve')) writeWebApp();
 
 /** web/dist: the APK's files, the browser-only extras, and the service worker. */

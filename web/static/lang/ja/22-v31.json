@@ -1,0 +1,16 @@
+{
+"Backup file": "バックアップファイル",
+"One file with all three slots, your unlocked sorcerers, records and settings. Save codes carry the unlocks and records too.": "3つのスロット、解放した術師、記録、設定をまとめた1つのファイル。セーブコードにも解放と記録が含まれます。",
+"Save backup file": "バックアップを保存", "Restore from file": "ファイルから復元",
+"Backup saved in Downloads.": "バックアップをダウンロードに保存した。", "Backup ready: choose where to keep it.": "バックアップの準備ができた。保存先を選んでください。",
+"Backup file downloaded.": "バックアップファイルをダウンロードした。", "The backup file could not be saved.": "バックアップファイルを保存できませんでした。",
+"Restore this backup?": "このバックアップを復元しますか？",
+"Each slot in the file replaces the slot on this phone (the replaced save is kept as that slot's backup). Unlocks and records are merged.": "ファイルの各スロットがこの端末のスロットを置き換えます（置き換えたセーブはそのスロットの予備として残ります）。解放と記録は統合されます。",
+"Hold to restore": "長押しで復元", "Cancel": "キャンセル",
+"Backup restored: {n} slot.": "バックアップを復元した：{n}スロット。", "Backup restored: {n} slots.": "バックアップを復元した：{n}スロット。",
+"That file is not a Cursed Chronicles backup.": "それはCursed Chroniclesのバックアップファイルではありません。",
+"Could not write the save.": "セーブを書き込めませんでした。",
+"Paste a save code here (starts with CC{n}: or CC{n}:)": "ここにセーブコードを貼り付け（CC{0}:またはCC{1}:で始まる）",
+"Text size": "文字の大きさ", "Larger": "特大", "Reduce flashing": "点滅を抑える",
+"The FBX reader could not be loaded.": "FBXの読み込み機能を読み込めませんでした。"
+}

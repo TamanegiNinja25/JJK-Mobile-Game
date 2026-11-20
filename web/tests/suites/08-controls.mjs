@@ -61,5 +61,23 @@ export async function run(t) {
   });
   t.check(r.easy.hp < r.normal.hp && r.normal.hp < r.hard.hp, `health by difficulty ${JSON.stringify(r)}`);
   t.check(r.easy.atk < r.normal.atk && r.normal.atk < r.hard.atk, `damage by difficulty ${JSON.stringify(r)}`);
+  // accessibility: reduce flashing softens screen flashes; text size enlarges text
+  const a11y = await t.eval(() => {
+    const g = window.game, fx = g.world.fx;
+    g.settings.calm = 'on'; g.applySettings();
+    // a stand-in element records the opacities the flash is given
+    const seen = [], real = fx.flashEl;
+    fx.flashEl = { offsetWidth: 0, style: new Proxy({}, { set(o, k, v) { if (k === 'opacity') seen.push(+v); o[k] = v; return true; } }) };
+    fx.flash('#ffffff', 0.85, 0.5);
+    fx.flashEl = real;
+    const calmOp = Math.max(...seen);
+    const calmed = fx.calm;
+    g.settings.calm = 'off'; g.settings.textSize = 1.3; g.applySettings();
+    const big = document.documentElement.classList.contains('ts') && getComputedStyle(document.documentElement).getPropertyValue('--ts').trim();
+    g.settings.textSize = 1; g.applySettings();
+    return { calmed, calmOp, big, after: document.documentElement.classList.contains('ts') };
+  });
+  t.check(a11y.calmed && a11y.calmOp <= 0.2, `reduce flashing: ${JSON.stringify(a11y)}`);
+  t.check(a11y.big === '1.3' && !a11y.after, `text size: ${JSON.stringify(a11y)}`);
   t.note(`zoom ${zoom}, hp ${r.easy.hp}/${r.normal.hp}/${r.hard.hp}`);
 }

@@ -31,10 +31,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -49,7 +49,7 @@ jobs:
 
       - name: Upload the web app
         # the same files as the APK's, hosted on GitHub Pages as the iPhone/iPad home-screen app
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: CursedChronicles-web
           path: web/dist
@@ -57,13 +57,13 @@ jobs:
           if-no-files-found: error
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Load the signing key
         # The permanent key lives in repository secrets so every APK installs as an update.
@@ -96,22 +96,39 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk dist/CursedChronicles.apk
 
       - name: Upload APKs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: CursedChronicles-apk
           path: dist/*.apk
           if-no-files-found: error
 
   e2e:
-    # Plays the built game in headless Chromium (tests/run.mjs in web/): start-up, saves, every sorcerer's
-    # techniques, boss fights, every map, sounds and the web app. A release is only published if it passes.
+    # Plays the built game in headless Chromium (tests/run.mjs in web/), split across parallel jobs so every
+    # sorcerer is covered: start-up, saves, every sorcerer's techniques, boss fights, every map, sounds, the
+    # web app, controllers, Boss Rush, the Japanese text and real phone and tablet screens. A release is only
+    # published if all of them pass.
+    name: e2e (${{ matrix.part }})
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - part: game
+            suites: smoke saves world sound webapp controls endgame japanese
+          - part: sorcerers 1
+            suites: classes
+            classes: yuji,megumi,nobara,sukunaYuji,sukunaMegumi,heianSukuna,moduloYuji,yuta
+          - part: sorcerers 2
+            suites: classes
+            classes: toji,gojo,maki,todo,inumaki,panda,choso,hakari
+          - part: bosses and devices
+            suites: bosses devices
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -129,12 +146,17 @@ jobs:
 
       - name: Play the game
         working-directory: web
-        # a runner is slow at software WebGL (and some are twice as slow as others), so CI casts the
-        # techniques of a sample of sorcerers: a brawler, a summoner, one on stamina and a gambler;
-        # npm run test:e2e locally covers all of them
         env:
-          CLASSES: yuji,megumi,maki,hakari
-        run: npm run test:e2e
+          CLASSES: ${{ matrix.classes }}
+        run: node tests/run.mjs ${{ matrix.suites }}
+
+      - name: Keep screenshots of failures
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-failures-${{ strategy.job-index }}
+          path: web/tests/fail-*.png
+          if-no-files-found: ignore
 
   release:
     # Attaches the APK to a release: one published on GitHub, one named when
@@ -146,7 +168,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: CursedChronicles-apk
           path: dist
@@ -170,7 +192,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: CursedChronicles-web
           path: site

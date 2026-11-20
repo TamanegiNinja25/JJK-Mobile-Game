@@ -370,7 +370,7 @@ export class UI {
     const q = (v: string, l: string) => `<button class="chip ${s.quality === v ? 'on' : ''}" data-q="${v}">${l}</button>`;
     const sx = (v: 'recorded' | 'synth', l: string) => `<button class="chip ${(s.sfxStyle ?? 'recorded') === v ? 'on' : ''}" data-sx="${v}">${l}</button>`;
     // generic chips for the newer settings: data-k is the setting, data-v its value
-    const gc = (k: 'difficulty' | 'vibration' | 'uiScale', v: string | number, l: string) => `<button class="chip ${(s as any)[k] === v ? 'on' : ''}" data-k="${k}" data-v="${v}">${l}</button>`;
+    const gc = (k: 'difficulty' | 'vibration' | 'uiScale' | 'calm' | 'textSize', v: string | number, l: string) => `<button class="chip ${(s as any)[k] === v ? 'on' : ''}" data-k="${k}" data-v="${v}">${l}</button>`;
     const u = updates.latest;
     const status = escapeHtml(updateStatus());
     const keep = (t.querySelector('.slots-panel.settings') as HTMLElement | null)?.scrollTop ?? 0;
@@ -386,6 +386,8 @@ export class UI {
       <div class="panel-title">Controls</div>
       <div class="set-label">Control size</div><div class="chips">${gc('uiScale', 'auto', 'Auto')}${gc('uiScale', 0.9, 'Small')}${gc('uiScale', 1, 'Normal')}${gc('uiScale', 1.2, 'Large')}${gc('uiScale', 1.4, 'Huge')}</div>
       <div class="set-label">Vibration</div><div class="chips">${gc('vibration', 'on', 'On')}${gc('vibration', 'off', 'Off')}</div>
+      <div class="set-label">Text size</div><div class="chips">${gc('textSize', 1, 'Normal')}${gc('textSize', 1.15, 'Large')}${gc('textSize', 1.3, 'Larger')}</div>
+      <div class="set-label">Reduce flashing</div><div class="chips">${gc('calm', 'off', 'Off')}${gc('calm', 'on', 'On')}</div>
       <div class="help">Game controllers work too: left stick moves, A attacks and talks, B dodges, X/Y/LB/RB/LT are skills, RT the ultimate, Start the menu.</div>
       <div class="panel-title">Your own files</div>
       <button class="btn wide" data-a="media">Your Pictures, Sounds &amp; Models</button>
@@ -406,7 +408,7 @@ export class UI {
       const lb = tgt.closest('[data-lang]') as HTMLElement | null;
       if (lb) { s.lang = lb.dataset.lang === 'ja' ? 'ja' : 'en'; audio.play('click'); this.game.saveSettings(); void setLang(s.lang).then(() => { this.game.applySettings(); this.titleSettings(); }); if (s.lang === 'en') location.reload(); return; }
       const gb = tgt.closest('[data-k]') as HTMLElement | null;
-      if (gb) { const k = gb.dataset.k!, v = gb.dataset.v!; (s as any)[k] = k === 'uiScale' && v !== 'auto' ? +v : v; this.game.applySettings(); audio.play('click'); if (k === 'vibration' && v === 'on') haptic('crit'); this.titleSettings(); return; }
+      if (gb) { const k = gb.dataset.k!, v = gb.dataset.v!; (s as any)[k] = (k === 'uiScale' && v !== 'auto') || k === 'textSize' ? +v : v; this.game.applySettings(); audio.play('click'); if (k === 'vibration' && v === 'on') haptic('crit'); this.titleSettings(); return; }
       const sb = tgt.closest('[data-sx]') as HTMLElement | null;
       if (sb) { s.sfxStyle = sb.dataset.sx as 'recorded' | 'synth'; this.game.applySettings(); audio.play('punch'); audio.play('click', { delay: 0.25 }); this.titleSettings(); return; }
       const a = (tgt.closest('[data-a]') as HTMLElement | null)?.dataset.a;

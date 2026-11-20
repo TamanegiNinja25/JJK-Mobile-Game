@@ -22,7 +22,25 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import type { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { AmbientLight, AnimationClip, Bone, BufferGeometry, ClampToEdgeWrapping, Color, ColorManagement, DirectionalLight, EquirectangularReflectionMapping, Euler, FileLoader, Float32BufferAttribute, Group, Line, LineBasicMaterial, Loader, LoaderUtils, MathUtils, Matrix3, Matrix4, Mesh, MeshLambertMaterial, MeshPhongMaterial, NumberKeyframeTrack, Object3D, PerspectiveCamera, PointLight, PropertyBinding, Quaternion, QuaternionKeyframeTrack, RepeatWrapping, SRGBColorSpace, ShapeUtils, Skeleton, SkinnedMesh, SpotLight, Texture, TextureLoader, Uint16BufferAttribute, Vector2, Vector3, Vector4, VectorKeyframeTrack, Curve } from 'three';
+
+/** what the separately built FBX reader (www/fbx.js) imports from three.js, handed over from the game's copy */
+const THREE_FOR_FBX = { AmbientLight, AnimationClip, Bone, BufferGeometry, ClampToEdgeWrapping, Color, ColorManagement, DirectionalLight, EquirectangularReflectionMapping, Euler, FileLoader, Float32BufferAttribute, Group, Line, LineBasicMaterial, Loader, LoaderUtils, MathUtils, Matrix3, Matrix4, Mesh, MeshLambertMaterial, MeshPhongMaterial, NumberKeyframeTrack, Object3D, PerspectiveCamera, PointLight, PropertyBinding, Quaternion, QuaternionKeyframeTrack, RepeatWrapping, SRGBColorSpace, ShapeUtils, Skeleton, SkinnedMesh, SpotLight, Texture, TextureLoader, Uint16BufferAttribute, Vector2, Vector3, Vector4, VectorKeyframeTrack, Curve };
+let fbxReader: Promise<typeof FBXLoader> | null = null;
+/** Loads the FBX reader the first time an FBX model is picked. */
+function loadFbxReader(): Promise<typeof FBXLoader> {
+  const w = window as unknown as { __ccTHREE?: object; __ccFBX?: typeof FBXLoader };
+  w.__ccTHREE = THREE_FOR_FBX;
+  fbxReader ??= new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'fbx.js';
+    s.onload = () => (w.__ccFBX ? resolve(w.__ccFBX) : reject(new Error('The FBX reader could not be loaded.')));
+    s.onerror = () => { fbxReader = null; reject(new Error('The FBX reader could not be loaded.')); };
+    document.head.appendChild(s);
+  });
+  return fbxReader;
+}
 import { clone as cloneRigged } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { unzipSync } from 'three/examples/jsm/libs/fflate.module.js';
 import { toonGradient, outlineMaterial } from '../toon';
@@ -141,7 +159,8 @@ async function load(files: ModelFile[]): Promise<Loaded> {
     const kind = ext(f.name);
     let one: Loaded;
     if (kind === 'fbx') {
-      const root = new FBXLoader(manager).parse(f.data, '');
+      const Reader = await loadFbxReader();
+      const root = new Reader(manager).parse(f.data, '');
       one = { root, clips: root.animations ?? [], vrm: null, format: 'FBX' };
     } else {
       const loader = new GLTFLoader(manager);

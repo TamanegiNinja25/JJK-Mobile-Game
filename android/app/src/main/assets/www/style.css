@@ -342,7 +342,7 @@ button { font-family: inherit; color: inherit; }
 .ws-next b { display: block; color: var(--ok); }
 
 /* ------------------------------------------------------------ title */
-.title { position: absolute; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: radial-gradient(ellipse at 50% 40%, rgba(20, 8, 40, .25), rgba(4, 2, 10, .8) 75%); padding: 12px; overflow: auto; }
+.title { position: absolute; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 18px; background: radial-gradient(ellipse at 50% 40%, rgba(20, 8, 40, .25), rgba(4, 2, 10, .8) 75%); padding: 12px; overflow: auto; }
 .title.tap { cursor: pointer; }
 .logo { text-align: center; filter: drop-shadow(0 6px 20px #000); }
 .logo-jp { font-family: var(--serif); font-weight: 900; font-size: clamp(16px, 3vw, 24px); letter-spacing: .6em; color: #e8dcff; }
@@ -870,3 +870,17 @@ button { font-family: inherit; color: inherit; }
 .rec-row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 8px; border-radius: 6px; background: #ffffff06; font-size: 13px; }
 .rec-row.dim { opacity: .45; }
 .rec-row small { color: var(--dim); }
+
+/* short phone screens held sideways (about 320-460 px tall): a compact logo, so the slot list, the sorcerer
+   picker and the settings fit, and anything taller scrolls instead of being cut off */
+@media (max-height: 460px) {
+  .title { gap: 8px; padding: 6px 12px; }
+  .logo-jp { font-size: 12px; }
+  .logo-en { font-size: clamp(26px, 10vh, 46px); }
+  .logo-sub { font-size: 10px; margin-top: 2px; }
+  .title .slots-panel { padding: 6px 12px 10px; }
+  .title .slot { padding-top: 6px; padding-bottom: 6px; }
+}
+@media (max-height: 360px) {
+  .title .logo-sub, .title .logo-jp { display: none; }
+}

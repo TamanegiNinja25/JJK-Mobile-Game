@@ -89,6 +89,10 @@ export class Game {
     fxStyle: 'toon' as 'toon' | 'pixel',
     /** English or Japanese (see core/i18n.ts) */
     lang: 'en' as Lang,
+    /** reduce flashing: screen flashes, bright bursts and lights are softened (for light-sensitive players) */
+    calm: 'off' as 'on' | 'off',
+    /** text size for dialogue, menus, quest tracker and messages */
+    textSize: 1 as number,
   };
   hints = new QuestHints(this);
   private last = performance.now();
@@ -298,6 +302,10 @@ export class Game {
     setDifficulty(s.difficulty);
     if (currentLang() !== s.lang) void setLang(s.lang);
     this.world.fx.fxStyle = s.fxStyle === 'pixel' ? 'pixel' : 'toon';
+    this.world.fx.calm = s.calm === 'on';
+    const ts = [1, 1.15, 1.3].includes(+s.textSize) ? +s.textSize : 1;
+    document.documentElement.style.setProperty('--ts', String(ts));
+    document.documentElement.classList.toggle('ts', ts > 1);
     setHaptics(s.vibration !== 'off');
     this.applyUiScale();
     this.saveSettings();
