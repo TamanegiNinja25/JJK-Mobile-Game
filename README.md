@@ -20,7 +20,7 @@
 
 ### [▶ Play on iPhone & iPad](https://tamanegininja25.github.io/JJK-Mobile-Game/)
 
-<sub>Latest release · Android 7.0+ · about 3.7 MB · iPhone and iPad as a home-screen web app · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a> · <a href="CHANGELOG.md">changelog</a></sub>
+<sub>Latest release · Android 7.0+ · about 3.4 MB · iPhone and iPad as a home-screen web app · <a href="https://github.com/TamanegiNinja25/JJK-Mobile-Game/releases">all releases</a> · <a href="CHANGELOG.md">changelog</a></sub>
 
 </div>
 
@@ -50,7 +50,7 @@ code. The only files the game ships are small free assets that may be shared:
   mirrors and block walls, CC BY 4.0);
 - pixel-art hit, slam and cursed-energy effects (CC0).
 
-So the APK is about 3.7 MB and runs without an internet connection. The only thing it ever
+So the APK is about 3.4 MB and runs without an internet connection. The only thing it ever
 asks the internet is whether a newer version is out. If you want, you can add pictures, sounds and **3D character models** from your
 own phone (GLB, glTF, VRM or FBX, Mixamo animations included). They are moved by the
 game's own animations and stay on the phone.
