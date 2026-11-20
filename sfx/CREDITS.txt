@@ -1,0 +1,25 @@
+Recorded sound effects in this folder
+
+Made by Kenney (www.kenney.nl) and released under Creative Commons Zero (CC0 1.0),
+https://creativecommons.org/publicdomain/zero/1.0/
+
+  Impact Sounds (1.0, 2019)  impact*, footstep_grass_*, footstep_concrete_*, footstep_wood_*
+  RPG Audio                  footstep00-05, knifeSlice*, chop, cloth*, handleCoins*, doorOpen_*,
+                             metalLatch, metalClick, beltHandle*, clothBelt*
+  Interface Sounds (1.0, 2020)  click_*, select_*, open_*, close_*, error_*
+
+Converted for the game: mixed down to mono, trailing silence trimmed, footsteps shortened with a
+fade-out, and re-encoded as Ogg Opus. Credit is not required by the licence; it is given with thanks.
+
+The .m4a files are the same clips re-encoded as AAC for iPhone and iPad, whose browsers may not play Ogg.
+
+More recorded sounds, from itch.io, all released under CC0 1.0 (public domain):
+
+  Retro Horror SFX Pack, by ognomo (https://ognomo.itch.io/retro-horror-sfx-pack)
+      ogreRoar*, monsterGrowl*, curseScreech*, ghostImpact*
+  Lo-Fi Lo-Fantasy SFX Pack, by ognomo (https://ognomo.itch.io/lo-fi-fantasy-sfx-pack)
+      potionUse*
+  Godot 4 Hit & Impact VFX + SFX Sampler, by SquigglyFish (https://squigglyfish.itch.io/godot-hit-impact-vfx-sfx-sampler)
+      critHit*, groundSlam*, shieldBlock*, energyHit*
+
+Converted the same way: mono, silence trimmed, levelled, Ogg Opus plus an AAC copy.
